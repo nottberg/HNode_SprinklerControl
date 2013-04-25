@@ -155,7 +155,7 @@ int output( int pin, int value )
     return new;
 }
 
-int main( char *argv, int argc )
+int i2ctest()
 {
     int file;
     char *filename = "/dev/i2c-0";
