@@ -1,7 +1,4 @@
-/* $Id: glib-integration.c 937 2005-11-08 21:56:28Z lennart $ */
- 
 
- 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -46,8 +43,7 @@ static gboolean updown = FALSE;
 
 static GOptionEntry entries[] = 
 {
-  { "device", 'd', 0, G_OPTION_ARG_INT, &wait_time, "The device path for the serial port.", "N" },
-  { "x10cmd", 0, 0, G_OPTION_ARG_INT, &debug_period, "Send an x10 command and exit. Cmd String: <> <> <>", "N" },
+  { "device", 'd', 0, G_OPTION_ARG_INT, &wait_time, "The device path for the i2c port.", "N" },
   { "print", 0, 0, G_OPTION_ARG_INT, &event_period, "Turn on printing of rx and tx to standard out", "N" },
   { NULL }
 };
@@ -57,160 +53,13 @@ typedef struct x10NodeContext
     GILink    *ILink;
     GHNode    *HNode;
 
-    GHNodePktSrc    *X10Source;
     GHNodePktSrc    *SwitchSource;
 
-    guint16  X10Port;
     guint16  SwitchPort;
 
 }CONTEXT;
 
 static struct termios saved_io;
-
-/*
-char dev_str[] = "/dev/ttyS0";
-
-unsigned char startbuf[] = {0x02, 0x02, 0x02};
-unsigned char cmdbuf[] = {0x63, 0x40, 0x54, 0x45, 0x41};
-unsigned char cmdbuf2[] = {0x63, 0x40, 0x54, 0x47, 0x41};
-unsigned char cmdbuf3[] = {0x63, 0x40, 0x4C, 0x45, 0x41};
-unsigned char cmdbuf4[] = {0x63, 0x40, 0x4C, 0x47, 0x41};
-
-GIOChannel *serio;
-
-gboolean sendcmd = FALSE;
-gboolean oncmd = TRUE;
-
-static gboolean
-hnode_updown_timeout (void *userdata)
-{
-//    GHNode    *HNode = userdata;
-    GError *error = NULL;
-    gint written;
-
-    g_message ("hnode_updown_timeout!");
-
-    sendcmd = TRUE;
-     
-    // Write the preamble character
-    g_io_channel_write_chars(serio, startbuf, 1, &written, &error);
-    g_io_channel_flush(serio, NULL);
-
-    return TRUE; // Don't re-schedule timeout event 
-}
-
-gboolean
-serio_callback(GIOChannel *ioch, GIOCondition cond, gpointer data)
-{
-  int bytes_read;
-  unsigned char buf;
-  gint written;
-  GError *error = NULL;
- 
-  do {
-    g_io_channel_read_chars(ioch, &buf, 1, &bytes_read, NULL);
-    if (bytes_read)
-    {
-      //process_char(chr);
-      printf("serial: %02x\n", buf);
-
-      if( sendcmd == TRUE )
-      {
-        if(buf == 0xd)
-        {
-            g_io_channel_write_chars(serio, (oncmd == TRUE ? cmdbuf : cmdbuf2), sizeof(cmdbuf), &written, &error);
-            g_io_channel_flush(serio, NULL);
-            sendcmd = FALSE;
-            oncmd = (oncmd == TRUE ? FALSE : TRUE); 
-        }
-        if(buf == 0x15)
-            sendcmd = FALSE;
-      }
-    }                                           
-  } while (bytes_read);
-
-  return TRUE;
-}
-*/
-
-void 
-hnode_x10_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
-{
-    CONTEXT  *Context = (CONTEXT *)data;
-
-#if 0
-    guint DataLength;
-    guint PktType;
-    guint ReqTag;
-
-    GHNode        *HNode = (GHNode *) data;
-	GHNodeClass   *class;
-	GHNodePrivate *priv;
-
-    GHNodePacket *TxPacket;
-
-	class = G_HNODE_GET_CLASS (HNode);
-	priv = G_HNODE_GET_PRIVATE (HNode);
-
-    DataLength = g_hnode_packet_get_data_length(Packet);
-    PktType    = g_hnode_packet_get_uint(Packet);
-    ReqTag     = g_hnode_packet_get_uint(Packet);
-
-	switch( PktType )
-    {
-        // Request for general info about this hnode.
-        case HNPKT_PINFO_REQ:
-            printf("Provider Info Request -- Tag: 0x%x\n", ReqTag);
-
-            TxPacket = g_hnode_packet_new();						
-    
-            // Set the TX address
-            g_hnode_packet_clone_address(TxPacket, Packet);
-
-	        // Check to see if this is the packet we are interested in.
-            g_hnode_packet_set_uint(TxPacket, HNPKT_PINFO_RPY);
-            g_hnode_packet_set_uint(TxPacket, ReqTag);
-
-    		g_hnode_packet_set_short(TxPacket, priv->MicroVersion); // Micro Version
-    		g_hnode_packet_set_char(TxPacket, priv->MinorVersion);  // Minor Version
-    		g_hnode_packet_set_char(TxPacket, priv->MajorVersion);  // Major Version
-
-    		// Get the unique ID for the node.
-            g_hnode_packet_set_bytes(TxPacket, priv->NodeUID, 16);   // NodeUID
-
-        	g_hnode_packet_set_uint(TxPacket, priv->EndPointCount);  // End Point Count
-         	g_hnode_packet_set_short(TxPacket, priv->MgmtPort);      // Mgmt Port
-						
-            g_hnode_packet_set_short(TxPacket, priv->ConfigPort);   // Configuration Port - 0 == configuration not supportted
-
-    		// Save away the addressing information.
-        	g_hnode_packet_set_uint(TxPacket, priv->HostAddrType);  // Address Type
-    		g_hnode_packet_set_uint(TxPacket, priv->HostAddrLength);   // Address Length
-            
-            g_hnode_packet_set_bytes(TxPacket, priv->HostAddr, 128);  // Address string
-
-			// Send a request for info about the provider.
-            g_hnode_pktsrc_send_packet(priv->HNodeSource, TxPacket);
-		break;
-    }
-#endif
-
-    // Free the RX frame
-    g_object_unref(Packet);
-
-	return;
-}
- 
-void 
-hnode_x10_tx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
-{
-    CONTEXT  *Context = (CONTEXT *)data;
-
-    // Free the TX frame
-    g_object_unref(Packet);
-
-	return;
-}
 
 void 
 hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
@@ -427,16 +276,6 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     // Start up the server object
     g_ilink_start(Context.ILink, "/dev/ttyS0");
 
-
-    // Start up a socket to handle raw x10 requests.
-    Context.X10Source = g_hnode_pktsrc_new(PST_HNODE_UDP_ASYNCH);
-    g_signal_connect(Context.X10Source, "rx_packet", G_CALLBACK(hnode_x10_rx), &Context);
-    g_signal_connect(Context.X10Source, "tx_packet", G_CALLBACK(hnode_x10_tx), &Context);
-    g_hnode_pktsrc_start( Context.X10Source );
-
-    AddrObj = g_hnode_pktsrc_get_address_object(Context.X10Source);
-    Context.X10Port = g_hnode_address_GetPort(AddrObj);
-
     // Start up a socket to handle the abstract switch interface requests.
     Context.SwitchSource = g_hnode_pktsrc_new(PST_HNODE_UDP_ASYNCH);
     g_signal_connect(Context.SwitchSource, "rx_packet", G_CALLBACK(hnode_switch_rx), &Context);
@@ -445,7 +284,6 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 
     AddrObj = g_hnode_pktsrc_get_address_object(Context.SwitchSource);
     Context.SwitchPort = g_hnode_address_GetPort(AddrObj);
-
 
     // Allocate a server object
     Context.HNode = g_hnode_new();
@@ -462,16 +300,15 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     // Setup the HNode
     g_hnode_set_version(Context.HNode, 1, 0, 0);
     g_hnode_set_uid(Context.HNode, gUID);
-    g_hnode_set_name_prefix(Context.HNode, "x10Node");
+    g_hnode_set_name_prefix(Context.HNode, "SprinklerControl");
 
     //g_hnode_enable_config_support(HNode);
     //g_signal_connect (G_OBJECT( HNode ), "config-rx", G_CALLBACK( hnode_config_rx ), NULL);
 
-    g_hnode_set_endpoint_count(Context.HNode, 2);
+    g_hnode_set_endpoint_count(Context.HNode, 1);
     
     //guint16 EndPointIndex, guint16 AssociatedEPIndex, guint8 *MimeTypeStr, guint16 Port, guint8 MajorVersion, guint8 MinorVersion, guint16 MicroVersion)
-    g_hnode_set_endpoint(Context.HNode, 0, 0, "x10-raw-interface", Context.X10Port, 1, 0, 0);	
-    g_hnode_set_endpoint(Context.HNode, 1, 1, "hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
+    g_hnode_set_endpoint(Context.HNode, 0, 0, "hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
 
     // Start up the server object
     g_hnode_start(Context.HNode);

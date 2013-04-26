@@ -7,6 +7,8 @@ SET( HNODE_SPRINKLER_CTRL_SRC
      ${CMAKE_SOURCE_DIR}/src/hnode.c
      ${CMAKE_SOURCE_DIR}/src/ilink-obj.c
      ${CMAKE_SOURCE_DIR}/src/i2c_mcp23008.c
+     ${CMAKE_SOURCE_DIR}/src/mcp23008-obj.c
+     ${CMAKE_SOURCE_DIR}/src/sprinkler_controller.c
 )
 
 FIND_PACKAGE(GLIB REQUIRED)
