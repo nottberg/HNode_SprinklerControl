@@ -105,6 +105,20 @@ GMCP23008 *g_mcp23008_new (void);
 
 gboolean g_mcp23008_send_cmd(GMCP23008 *MCP23008, guint8 House, guint8 Unit, guint8 Function, guint8 Repeat);
 
+gboolean g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum, int debug);
+
+// Set single pin to either INPUT or OUTPUT mode
+gboolean g_mcp23008_config(GMCP23008 *MCP23008, int pin, int mode );
+
+gboolean g_mcp23008_pullup(GMCP23008 *MCP23008, int pin, int enable, int check );
+
+gboolean g_mcp23008_input(GMCP23008 *MCP23008, int pin, int check );
+
+gboolean g_mcp23008_output(GMCP23008 *MCP23008, int pin, int value );
+
+gboolean g_mcp23008_i2ctest(GMCP23008 *MCP23008);
+
+
 G_END_DECLS
 
 #endif // __G_I2C_MCP23008_OBJ_H__

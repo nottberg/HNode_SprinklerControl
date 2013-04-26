@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <errno.h>
+#include <linux/i2c-dev.h>
 
 #include "mcp23008-obj.h"
 
@@ -164,6 +165,13 @@ typedef enum GMCP23008RxStates
 typedef struct _GMCP23008Private GMCP23008Private;
 struct _GMCP23008Private
 {
+    guint8  num_gpios;
+    guint8  pullups;
+    guint8  outputvalue;
+    guint8  direction;
+    guint32 i2cdev;
+    gchar  *devfn;
+    guint32 addr;  // The I2C address of the ADC
 
     // Variables to deal with the serial link   
     struct termios saved_io;
@@ -813,5 +821,232 @@ mcp23008_DispatchFunc(GSource *source, GSourceFunc callback, gpointer userdata)
     }
                                         
     return TRUE;
+}
+
+gboolean 
+g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum, int debug)
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    // Set default pin values -- all inputs with pull-ups disabled.
+    // Current OLAT (output) value is polled, not set.
+    priv->direction = 0xFF;
+    priv->pullups = 0;
+  
+    // Attempt to open the i2c device 
+    if( ( priv->i2cdev = open( priv->devfn, O_RDWR ) ) < 0 ) 
+    {
+        perror("Failed to open the i2c bus");
+        exit(1);
+    }
+
+    // Tell the device which endpoint we want to talk to.
+    if( ioctl( priv->i2cdev, I2C_SLAVE, priv->addr ) < 0 )
+    {
+        printf( "Failed to acquire bus access and/or talk to slave.\n" );
+        /* ERROR HANDLING; you can check errno to see what went wrong */
+       exit( 1 );
+    }
+
+    // Init the IO direction and pullup settings
+    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
+    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullups );
+
+    // Read and intial value from the device.
+    priv->outputvalue = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_OLAT );
+
+    printf( "Initial Value Read: %d\n", priv->outputvalue );
+}
+
+// Set single pin to either INPUT or OUTPUT mode
+gboolean 
+g_mcp23008_config(GMCP23008 *MCP23008, int pin, int mode )
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    if( mode == MCP23008_PM_INPUT )
+    {
+        priv->direction |= (1 << pin);
+    }
+    else
+    {
+        priv->direction &= ~(1 << pin);
+    }
+
+    // Update the register
+    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
+
+    return priv->direction;
+}
+
+gboolean 
+g_mcp23008_pullup(GMCP23008 *MCP23008, int pin, int enable, int check )
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    if( check )
+    {
+        if( ( priv->direction & (1 << pin) ) != 0 )
+        {
+            fprintf(stderr, "Pin %d not set to input", pin );
+            exit(1);
+        }
+    }
+
+    if( enable )
+    {
+        priv->pullups |= (1 << pin);
+    }
+    else
+    {
+        priv->pullups &= ~(1 << pin);
+    }
+
+    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullups );
+
+    return priv->pullups;
+}
+
+gboolean 
+g_mcp23008_input(GMCP23008 *MCP23008, int pin, int check )
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    int value;
+
+    if( check )
+    {
+        if( ( priv->direction & (1 << pin) ) != 0 )
+        {
+            fprintf(stderr, "Pin %d not set to input", pin );
+            exit(1);
+        }
+    }
+
+    value = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_GPIO );
+
+    return (value >> pin) & 1;
+}
+
+gboolean 
+g_mcp23008_output(GMCP23008 *MCP23008, int pin, int value )
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    int new;
+
+    if( value )
+    {
+        new = priv->outputvalue | (1 << pin);
+    }
+    else
+    {
+        new = priv->outputvalue & ~(1 << pin);
+    }
+
+    // Only write if pin value has changed:
+    if( new != priv->outputvalue )
+    {
+        priv->outputvalue = new;
+        i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
+    }
+
+    return new;
+}
+
+gboolean 
+g_mcp23008_i2ctest(GMCP23008 *MCP23008)
+{
+	GMCP23008Class   *class;
+	GMCP23008Private *priv;
+	
+	class = G_MCP23008_GET_CLASS (MCP23008);
+	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    int file;
+    char *filename = "/dev/i2c-0";
+    char buf[10] = {0};
+    float data;
+    char channel;
+    int i;
+   
+    g_mcp23008_i2c_init(MCP23008, 0x20, 8, 0, 1 );
+
+    // Set pins 0, 1, 2 as outputs
+    g_mcp23008_config(MCP23008, 0, MCP23008_PM_OUTPUT );
+    g_mcp23008_config(MCP23008, 1, MCP23008_PM_OUTPUT );
+    g_mcp23008_config(MCP23008, 2, MCP23008_PM_OUTPUT );
+    
+    // Set pin 3 to input with the pullup resistor enabled
+    g_mcp23008_pullup(MCP23008, 3, 1, 0 );
+
+    // Read pin 3 and display the results
+    printf( "%d: %x\n", 3, g_mcp23008_input(MCP23008, 3, 0 ) );
+    
+    // Python speed test on output 0 toggling at max speed
+    while(1)
+    {
+        g_mcp23008_output(MCP23008, 0, 1 );
+        g_mcp23008_output(MCP23008, 1, 0 );
+        sleep(1);
+        g_mcp23008_output(MCP23008, 0, 0 );
+        g_mcp23008_output(MCP23008, 1, 1 );
+        sleep(1);
+    }
+ 
+#if 0
+    if( (file = open(filename, O_RDWR)) < 0) 
+    {
+        perror("Failed to open the i2c bus");
+        exit(1);
+    }
+
+    int addr = 0x20;  // The I2C address of the ADC
+    if( ioctl( file, I2C_SLAVE, addr ) < 0 )
+    {
+        printf( "Failed to acquire bus access and/or talk to slave.\n" );
+        /* ERROR HANDLING; you can check errno to see what went wrong */
+       exit( 1 );
+    }
+
+    for (i = 0; i<4; i++)
+    {
+        // Using I2C Read
+        if( read( file, buf, 2 ) != 2 ) 
+        {
+            /* ERROR HANDLING: i2c transaction failed */
+            printf("Failed to read from the i2c bus.\n");
+            perror("Failed read"); 
+            printf("\n\n");
+        }
+        else
+        {
+            data = (float)((buf[0] & 0b00001111)<<8)+buf[1];
+            data = data/4096*5;
+            channel = ((buf[0] & 0b00110000)>>4);
+            printf("Channel %02d Data:  %04f\n",channel,data);
+        }
+    }
+#endif
 }
 
