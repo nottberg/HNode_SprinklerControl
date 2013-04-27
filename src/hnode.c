@@ -245,7 +245,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     g_type_init();
 
     // Parse any command line options.
-    cmdline_context = g_option_context_new ("- a hnode implementation to control X10 devices.");
+    cmdline_context = g_option_context_new ("- a hnode implementation for raspberry pi sprinkler controller.");
     g_option_context_add_main_entries (cmdline_context, entries, NULL); // GETTEXT_PACKAGE);
     g_option_context_parse (cmdline_context, &argc, &argv, &error);
 
@@ -264,6 +264,18 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
         exit(-1);
 
     g_mcp23008_i2c_init( Context.gpio, 0x20, 8, 0, 0 );
+
+    // Set pins 0, 1, 2 as outputs
+    g_mcp23008_config( Context.gpio, 0, MCP23008_PM_OUTPUT );
+    g_mcp23008_config( Context.gpio, 1, MCP23008_PM_OUTPUT );
+    g_mcp23008_config( Context.gpio, 2, MCP23008_PM_OUTPUT );
+    
+    // Set pin 3 to input with the pullup resistor enabled
+    g_mcp23008_pullup( Context.gpio, 3, 1, 0 );
+
+    // Read pin 3 and display the results
+    printf( "%d: %x\n", 3, g_mcp23008_input( Context.gpio, 3, 0 ) );
+
     // Register the server event callback
     //g_signal_connect (G_OBJECT (Context.ILink), "cmd_complete", G_CALLBACK (hnode_cmd_tx), &Context);
     //g_signal_connect (G_OBJECT (Context.ILink), "async_rx", G_CALLBACK (hnode_cmd_rx), &Context);

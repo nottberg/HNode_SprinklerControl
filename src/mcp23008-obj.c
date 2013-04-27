@@ -823,6 +823,8 @@ mcp23008_DispatchFunc(GSource *source, GSourceFunc callback, gpointer userdata)
     return TRUE;
 }
 
+static char *devfn = "/dev/i2c-0";
+
 gboolean 
 g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum, int debug)
 {
@@ -838,7 +840,7 @@ g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum,
     priv->pullups = 0;
   
     // Attempt to open the i2c device 
-    if( ( priv->i2cdev = open( priv->devfn, O_RDWR ) ) < 0 ) 
+    if( ( priv->i2cdev = open( devfn, O_RDWR ) ) < 0 ) 
     {
         perror("Failed to open the i2c bus");
         exit(1);
