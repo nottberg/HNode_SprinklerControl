@@ -28,7 +28,8 @@
 #include <hnode-1.0/hnode-nodeobj.h>
 
 #include "hnode-switch-interface.h"
-#include "ilink-obj.h"
+//#include "ilink-obj.h"
+#include "mcp23008-obj.h"
 
 guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
 
@@ -50,7 +51,8 @@ static GOptionEntry entries[] =
 
 typedef struct x10NodeContext
 {
-    GILink    *ILink;
+    //GILink    *ILink;
+    GMCP23008 *gpio;
     GHNode    *HNode;
 
     GHNodePktSrc    *SwitchSource;
@@ -91,34 +93,20 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             g_hnode_packet_set_uint(TxPacket, SWPKT_SWITCH_LIST_REPLY);
             g_hnode_packet_set_uint(TxPacket, ReqTag);
 
-            g_hnode_packet_set_short(TxPacket, 4); // Number of switch records.
+            g_hnode_packet_set_short(TxPacket, 2); // Number of switch records.
 
             g_hnode_packet_set_short(TxPacket, 0);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 13); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "x10swentryout", 13);
-    		g_hnode_packet_set_short(TxPacket, 20); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Outside Entry Lights", 20);
+    		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
+            g_hnode_packet_set_bytes(TxPacket, "zone1", 5);
+    		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
+            g_hnode_packet_set_bytes(TxPacket, "Sprinkler Zone 1", 16);
             g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
 
             g_hnode_packet_set_short(TxPacket, 1);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 19); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "x10swentrychristmas", 19);
-    		g_hnode_packet_set_short(TxPacket, 24); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Outside Christmas Lights", 24);
-            g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
-
-            g_hnode_packet_set_short(TxPacket, 2);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 15); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "x10appchristmas", 15);
-    		g_hnode_packet_set_short(TxPacket, 23); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Inside Christmas Lights", 23);
-            g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
-
-            g_hnode_packet_set_short(TxPacket, 3);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 12); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "x10swentryin", 12);
-    		g_hnode_packet_set_short(TxPacket, 19); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Front Entry Lights", 19);
+    		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
+            g_hnode_packet_set_bytes(TxPacket, "zone2", 5);
+    		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
+            g_hnode_packet_set_bytes(TxPacket, "Sprinkler Zone 2", 16);
             g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
 
 			// Send a request for info about the provider.
@@ -148,11 +136,13 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             switch( SwitchCmd )
             {
                 case SWINF_CMD_TURN_ON:
-                    g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
+                    g_mcp23008_output(Context->gpio, SwitchID, 1 );
+                    //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
                 break;
 
                 case SWINF_CMD_TURN_OFF:
-                    g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
+                    g_mcp23008_output(Context->gpio, SwitchID, 0 );
+                    //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
                 break;    
             }
 
@@ -207,16 +197,17 @@ hnode_switch_tx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
 	return;
 }
 
+#if 0
 void 
 hnode_cmd_tx(GILink *sb, gpointer Event, gpointer data)
 {
     CONTEXT  *Context = (CONTEXT *)data;
-    ILINK_CMD_RECORD RxRecord; 
+//    ILINK_CMD_RECORD RxRecord; 
 
-    RxRecord.u.raw = (guint32) Event;
+//    RxRecord.u.raw = (guint32) Event;
 
-    g_print("Command Sent Callback -- House: %c  Unit: %d  FuncCode: 0x%x  Repeat: %d\n", 
-                RxRecord.u.b.House, RxRecord.u.b.Unit, RxRecord.u.b.Function, RxRecord.u.b.Repeat);
+//    g_print("Command Sent Callback -- House: %c  Unit: %d  FuncCode: 0x%x  Repeat: %d\n", 
+//                RxRecord.u.b.House, RxRecord.u.b.Unit, RxRecord.u.b.Function, RxRecord.u.b.Repeat);
 
 	return;
 }
@@ -225,17 +216,18 @@ void
 hnode_cmd_rx(GILink *sb, gpointer Event, gpointer data)
 {
     CONTEXT  *Context = (CONTEXT *)data;
-    ILINK_CMD_RECORD RxRecord;
-
-    RxRecord.u.raw = (guint32) Event;
-
-    g_print("Command Recv Callback -- House: %c  Unit: %d  FuncCode: 0x%x  Repeat: %d\n", 
-                RxRecord.u.b.House, RxRecord.u.b.Unit, RxRecord.u.b.Function, RxRecord.u.b.Repeat);
-
-    g_hnode_send_event_frame(Context->HNode, 1, 0, 4, (guint8 *)&RxRecord.u.raw);
+//    ILINK_CMD_RECORD RxRecord;
+//
+//    RxRecord.u.raw = (guint32) Event;
+//
+//    g_print("Command Recv Callback -- House: %c  Unit: %d  FuncCode: 0x%x  Repeat: %d\n", 
+//                RxRecord.u.b.House, RxRecord.u.b.Unit, RxRecord.u.b.Function, RxRecord.u.b.Repeat);
+//
+//    g_hnode_send_event_frame(Context->HNode, 1, 0, 4, (guint8 *)&RxRecord.u.raw);
 
 	return;
 }
+#endif
 
 int
 main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
@@ -260,21 +252,26 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     // Create the GLIB main loop 
     loop = g_main_loop_new (NULL, FALSE);
 
-    Context.ILink = g_ilink_new();
+    //Context.ILink = g_ilink_new();
 
-    if( Context.ILink == NULL )
-        exit(-1);
+    //if( Context.ILink == NULL )
+    //    exit(-1);
 
     // ILink intialization
+    Context.gpio = g_mcp23008_new();
 
+    if( Context.gpio == NULL )
+        exit(-1);
+
+    g_mcp23008_i2c_init( Context.gpio, 0x20, 8, 0, 0 );
     // Register the server event callback
-    g_signal_connect (G_OBJECT (Context.ILink), "cmd_complete", G_CALLBACK (hnode_cmd_tx), &Context);
-    g_signal_connect (G_OBJECT (Context.ILink), "async_rx", G_CALLBACK (hnode_cmd_rx), &Context);
+    //g_signal_connect (G_OBJECT (Context.ILink), "cmd_complete", G_CALLBACK (hnode_cmd_tx), &Context);
+    //g_signal_connect (G_OBJECT (Context.ILink), "async_rx", G_CALLBACK (hnode_cmd_rx), &Context);
 
     // Setup the ILink
 
     // Start up the server object
-    g_ilink_start(Context.ILink, "/dev/ttyS0");
+    //g_ilink_start(Context.ILink, "/dev/ttyS0");
 
     // Start up a socket to handle the abstract switch interface requests.
     Context.SwitchSource = g_hnode_pktsrc_new(PST_HNODE_UDP_ASYNCH);
