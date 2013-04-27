@@ -103,7 +103,17 @@ struct _GMCP23008Event
 
 GMCP23008 *g_mcp23008_new (void);
 
-gboolean g_mcp23008_send_cmd(GMCP23008 *MCP23008, guint8 House, guint8 Unit, guint8 Function, guint8 Repeat);
+gboolean g_mcp23008_set_i2c_address(GMCP23008 *MCP23008, guint busnum, guint address);
+guint g_mcp23008_get_address( GMCP23008 *MCP23008 );
+guint g_mcp23008_get_busnum( GMCP23008 *MCP23008 );
+
+gboolean g_mcp23008_set_debug(GMCP23008 *MCP23008, guint debug);
+guint g_mcp23008_get_debug(GMCP23008 *MCP23008);
+
+gboolean g_mcp23008_start(GMCP23008 *MCP23008);
+gboolean g_mcp23008_stop(GMCP23008 *MCP23008);
+
+//gboolean g_mcp23008_send_cmd(GMCP23008 *MCP23008, guint8 House, guint8 Unit, guint8 Function, guint8 Repeat);
 
 gboolean g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum, int debug);
 
