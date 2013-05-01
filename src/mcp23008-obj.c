@@ -361,13 +361,15 @@ g_mcp23008_stop(GMCP23008 *MCP23008)
 gboolean 
 g_mcp23008_set_port_mode( GMCP23008 *MCP23008, guint mode )
 {
-	GMCP23008Class   *class;
-	GMCP23008Private *priv;
+    GMCP23008Class   *class;
+    GMCP23008Private *priv;
 	
-	class = G_MCP23008_GET_CLASS (MCP23008);
-	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+    class = G_MCP23008_GET_CLASS (MCP23008);
+    priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     priv->direction = mode & 0xFF;
+
+    printf( "set_port_mode: 0x%x\n", priv->direction );
 
     // Update the register
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
@@ -379,11 +381,11 @@ g_mcp23008_set_port_mode( GMCP23008 *MCP23008, guint mode )
 guint 
 g_mcp23008_get_port_mode( GMCP23008 *MCP23008 )
 {
-	GMCP23008Class   *class;
-	GMCP23008Private *priv;
+    GMCP23008Class   *class;
+    GMCP23008Private *priv;
 	
-	class = G_MCP23008_GET_CLASS (MCP23008);
-	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+    class = G_MCP23008_GET_CLASS (MCP23008);
+    priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     // Update the register
     priv->direction = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_IODIR );
@@ -395,11 +397,11 @@ g_mcp23008_get_port_mode( GMCP23008 *MCP23008 )
 gboolean 
 g_mcp23008_set_pin_mode(GMCP23008 *MCP23008, int pin, int mode )
 {
-	GMCP23008Class   *class;
-	GMCP23008Private *priv;
+    GMCP23008Class   *class;
+    GMCP23008Private *priv;
 	
-	class = G_MCP23008_GET_CLASS (MCP23008);
-	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+    class = G_MCP23008_GET_CLASS (MCP23008);
+    priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     if( mode == MCP23008_PIN_INPUT )
     {
@@ -419,13 +421,15 @@ g_mcp23008_set_pin_mode(GMCP23008 *MCP23008, int pin, int mode )
 gboolean 
 g_mcp23008_set_port_pullup(GMCP23008 *MCP23008, guint pullup )
 {
-	GMCP23008Class   *class;
-	GMCP23008Private *priv;
+    GMCP23008Class   *class;
+    GMCP23008Private *priv;
 	
-	class = G_MCP23008_GET_CLASS (MCP23008);
-	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+    class = G_MCP23008_GET_CLASS (MCP23008);
+    priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     priv->pullup = pullup;
+
+    printf( "set_port_pullup: 0x%x\n", priv->pullup );
 
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
 
@@ -520,13 +524,15 @@ g_mcp23008_set_port_state(GMCP23008 *MCP23008, guint value )
 gboolean 
 g_mcp23008_set_pin_state(GMCP23008 *MCP23008, guint8 pin, guint8 value )
 {
-	GMCP23008Class   *class;
-	GMCP23008Private *priv;
+    GMCP23008Class   *class;
+    GMCP23008Private *priv;
 	
-	class = G_MCP23008_GET_CLASS (MCP23008);
-	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+    class = G_MCP23008_GET_CLASS (MCP23008);
+    priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     int new;
+
+    printf( "set_pin_state: 0x%x, 0x%x, 0x%x\n", priv->currentState, pin, value );
 
     if( value )
     {
