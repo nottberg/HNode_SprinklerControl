@@ -537,6 +537,8 @@ g_mcp23008_set_pin_state(GMCP23008 *MCP23008, guint8 pin, guint8 value )
         new = priv->currentState & ~(1 << pin);
     }
 
+    printf("set_pin_state new: 0x%x\n", new);
+
     // Only write if pin value has changed:
     if( new != priv->currentState )
     {
