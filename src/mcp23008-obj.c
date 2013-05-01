@@ -367,7 +367,7 @@ g_mcp23008_set_port_mode( GMCP23008 *MCP23008, guint mode )
     class = G_MCP23008_GET_CLASS (MCP23008);
     priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
-    priv->direction = mode & 0xFF;
+    priv->direction = 0xFF & ~(mode);
 
     printf( "set_port_mode: 0x%x\n", priv->direction );
 
