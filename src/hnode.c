@@ -263,7 +263,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     if( Context.gpio == NULL )
         exit(-1);
 
-    g_mcp23008_set_i2c_address( Context.gpio, 0x20, 0 );
+    g_mcp23008_set_i2c_address( Context.gpio, 0, 0x20 );
 
     g_mcp23008_start( Context.gpio );
 
