@@ -39,34 +39,49 @@ G_BEGIN_DECLS
 
 typedef enum MCP230xxPinMode
 {
-    MCP23008_PM_INPUT,
-    MCP23008_PM_OUTPUT
+    MCP23008_PIN_INPUT,
+    MCP23008_PIN_OUTPUT
 }MCP_PIN_MODE;
 
-typedef enum MCP230xxRegisterAddresses
-{
-    MCP23008_IODIR  = 0x00,
-    MCP23008_GPIO   = 0x09,
-    MCP23008_GPPU   = 0x06,
-    MCP23008_OLAT   = 0x0A,
-}MCP_REG_ADDR;
+#define MCP23008_PM_PIN0_IN   (MCP23008_PIN_INPUT << 0)
+#define MCP23008_PM_PIN0_OUT  (MCP23008_PIN_OUTPUT << 0)
+#define MCP23008_PM_PIN1_IN   (MCP23008_PIN_INPUT << 1)
+#define MCP23008_PM_PIN1_OUT  (MCP23008_PIN_OUTPUT << 1)
+#define MCP23008_PM_PIN2_IN   (MCP23008_PIN_INPUT << 2)
+#define MCP23008_PM_PIN2_OUT  (MCP23008_PIN_OUTPUT << 2)
+#define MCP23008_PM_PIN3_IN   (MCP23008_PIN_INPUT << 3)
+#define MCP23008_PM_PIN3_OUT  (MCP23008_PIN_OUTPUT << 3)
+#define MCP23008_PM_PIN4_IN   (MCP23008_PIN_INPUT << 4)
+#define MCP23008_PM_PIN4_OUT  (MCP23008_PIN_OUTPUT << 4)
+#define MCP23008_PM_PIN5_IN   (MCP23008_PIN_INPUT << 5)
+#define MCP23008_PM_PIN5_OUT  (MCP23008_PIN_OUTPUT << 5)
+#define MCP23008_PM_PIN6_IN   (MCP23008_PIN_INPUT << 6)
+#define MCP23008_PM_PIN6_OUT  (MCP23008_PIN_OUTPUT << 6)
+#define MCP23008_PM_PIN7_IN   (MCP23008_PIN_INPUT << 7)
+#define MCP23008_PM_PIN7_OUT  (MCP23008_PIN_OUTPUT << 7)
 
-// Use this structure to pass tx and rx events to the TW523
-typedef struct MCP23008X10CommandRecord 
+typedef enum MCP230xxPinPullup
 {
-    union
-    {
-        struct
-        {
-            guint8 House;
-            guint8 Unit; 
-            guint8 Function;
-            guint8 Repeat;
-        }b;
-        
-        guint32 raw;
-    }u;
-}MCP23008_CMD_RECORD;
+    MCP23008_PIN_PU_ON,
+    MCP23008_PIN_PU_OFF
+}MCP_PIN_PULLUP;
+
+#define MCP23008_PU_PIN0_ON   (MCP23008_PIN_PU_ON << 0)
+#define MCP23008_PU_PIN0_OFF  (MCP23008_PIN_PU_OFF << 0)
+#define MCP23008_PU_PIN1_ON   (MCP23008_PIN_PU_ON << 1)
+#define MCP23008_PU_PIN1_OFF  (MCP23008_PIN_PU_OFF << 1)
+#define MCP23008_PU_PIN2_ON   (MCP23008_PIN_PU_ON << 2)
+#define MCP23008_PU_PIN2_OFF  (MCP23008_PIN_PU_OFF << 2)
+#define MCP23008_PU_PIN3_ON   (MCP23008_PIN_PU_ON << 3)
+#define MCP23008_PU_PIN3_OFF  (MCP23008_PIN_PU_OFF << 3)
+#define MCP23008_PU_PIN4_ON   (MCP23008_PIN_PU_ON << 4)
+#define MCP23008_PU_PIN4_OFF  (MCP23008_PIN_PU_OFF << 4)
+#define MCP23008_PU_PIN5_ON   (MCP23008_PIN_PU_ON << 5)
+#define MCP23008_PU_PIN5_OFF  (MCP23008_PIN_PU_OFF << 5)
+#define MCP23008_PU_PIN6_ON   (MCP23008_PIN_PU_ON << 6)
+#define MCP23008_PU_PIN6_OFF  (MCP23008_PIN_PU_OFF << 6)
+#define MCP23008_PU_PIN7_ON   (MCP23008_PIN_PU_ON << 7)
+#define MCP23008_PU_PIN7_OFF  (MCP23008_PIN_PU_OFF << 7)
 
 #define G_TYPE_MCP23008			(g_mcp23008_get_type ())
 #define G_MCP23008(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), G_TYPE_MCP23008, GILink))
@@ -113,21 +128,18 @@ guint g_mcp23008_get_debug(GMCP23008 *MCP23008);
 gboolean g_mcp23008_start(GMCP23008 *MCP23008);
 gboolean g_mcp23008_stop(GMCP23008 *MCP23008);
 
-//gboolean g_mcp23008_send_cmd(GMCP23008 *MCP23008, guint8 House, guint8 Unit, guint8 Function, guint8 Repeat);
+guint g_mcp23008_get_port_mode( GMCP23008 *MCP23008 );
+gboolean g_mcp23008_set_port_mode(GMCP23008 *MCP23008, guint mode );
+gboolean g_mcp23008_set_pin_mode(GMCP23008 *MCP23008, int pin, int mode );
 
-gboolean g_mcp23008_i2c_init(GMCP23008 *MCP23008, int address, int num_gpios, int busnum, int debug);
+guint g_mcp23008_get_port_pullup( GMCP23008 *MCP23008 );
+gboolean g_mcp23008_set_port_pullup(GMCP23008 *MCP23008, guint pullup );
+gboolean g_mcp23008_set_pin_pullup(GMCP23008 *MCP23008, int pin, int enable );
 
-// Set single pin to either INPUT or OUTPUT mode
-gboolean g_mcp23008_config(GMCP23008 *MCP23008, int pin, int mode );
-
-gboolean g_mcp23008_pullup(GMCP23008 *MCP23008, int pin, int enable, int check );
-
-gboolean g_mcp23008_input(GMCP23008 *MCP23008, int pin, int check );
-
-gboolean g_mcp23008_output(GMCP23008 *MCP23008, int pin, int value );
-
-gboolean g_mcp23008_i2ctest(GMCP23008 *MCP23008);
-
+guint g_mcp23008_get_port_state( GMCP23008 *MCP23008 );
+gboolean g_mcp23008_check_pin_state(GMCP23008 *MCP23008, int pin );
+gboolean g_mcp23008_set_port_state(GMCP23008 *MCP23008, guint value );
+gboolean g_mcp23008_set_pin_state(GMCP23008 *MCP23008, guint8 pin, guint8 value );
 
 G_END_DECLS
 

@@ -136,12 +136,12 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             switch( SwitchCmd )
             {
                 case SWINF_CMD_TURN_ON:
-                    g_mcp23008_output(Context->gpio, SwitchID, 1 );
+                    g_mcp23008_set_pin_state(Context->gpio, SwitchID, 1 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
                 break;
 
                 case SWINF_CMD_TURN_OFF:
-                    g_mcp23008_output(Context->gpio, SwitchID, 0 );
+                    g_mcp23008_set_pin_state(Context->gpio, SwitchID, 0 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
                 break;    
             }
@@ -268,15 +268,13 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     g_mcp23008_start( Context.gpio );
 
     // Set pins 0, 1, 2 as outputs
-    g_mcp23008_config( Context.gpio, 0, MCP23008_PM_OUTPUT );
-    g_mcp23008_config( Context.gpio, 1, MCP23008_PM_OUTPUT );
-    g_mcp23008_config( Context.gpio, 2, MCP23008_PM_OUTPUT );
+    g_mcp23008_set_port_mode( Context.gpio, (MCP23008_PM_PIN0_OUT | MCP23008_PM_PIN1_OUT | MCP23008_PM_PIN2_OUT) );
     
     // Set pin 3 to input with the pullup resistor enabled
-    g_mcp23008_pullup( Context.gpio, 3, 1, 0 );
+    g_mcp23008_set_port_pullup( Context.gpio, (MCP23008_PU_PIN3_ON) );
 
     // Read pin 3 and display the results
-    printf( "%d: %x\n", 3, g_mcp23008_input( Context.gpio, 3, 0 ) );
+    printf( "%d: %x\n", 3, g_mcp23008_check_pin_state( Context.gpio, 3 ) );
 
     // Register the server event callback
     //g_signal_connect (G_OBJECT (Context.ILink), "cmd_complete", G_CALLBACK (hnode_cmd_tx), &Context);
