@@ -14,11 +14,15 @@
 class RESTRepresentation
 {
     private:
+        unsigned long testDataLength;
+        unsigned char testData[1024];
 
     public:
         RESTRepresentation();
        ~RESTRepresentation();
 
+        unsigned long  getLength();
+        unsigned char *getBuffer();
 };
 
 typedef enum RESTResourceMethodFlags
@@ -29,6 +33,29 @@ typedef enum RESTResourceMethodFlags
     REST_RMETHOD_POST   = 0x04,
     REST_RMETHOD_DELETE = 0x08,
 }REST_RMETHOD_T;
+
+typedef enum RESTResponseCode
+{
+    REST_HTTP_RCODE_NONE             = 0,
+    REST_HTTP_RCODE_OK               = 200,
+    REST_HTTP_RCODE_CREATED          = 201,
+    REST_HTTP_RCODE_ACCEPTED         = 202,
+    REST_HTTP_RCODE_PARTIALINFO      = 203,
+    REST_HTTP_RCODE_NO_RESPONSE      = 204,
+    REST_HTTP_RCODE_MOVED            = 301,
+    REST_HTTP_RCODE_FOUND            = 302,
+    REST_HTTP_RCODE_METHOD           = 303,
+    REST_HTTP_RCODE_NOT_MODIFIED     = 304,
+    REST_HTTP_RCODE_BAD_REQUEST      = 400,
+    REST_HTTP_RCODE_UNAUTHORIZED     = 401,
+    REST_HTTP_RCODE_PAYMENT_REQUIRED = 402,
+    REST_HTTP_RCODE_FORBIDDEN        = 403,
+    REST_HTTP_RCODE_NOT_FOUND        = 404,
+    REST_HTTP_RCODE_INTERNAL_ERROR   = 500,
+    REST_HTTP_RCODE_NOT_IMPLEMENTED  = 501,
+    REST_HTTP_RCODE_OVERLOADED       = 502,
+    REST_HTTP_RCODE_GATEWAY_TIMEOUT  = 503,
+}REST_HTTP_RCODE_T;
 
 class RESTRequest
 {
@@ -42,6 +69,8 @@ class RESTRequest
         REST_RMETHOD_T reqMethod;
 
         std::map<std::string, std::string> reqParams;
+
+        REST_HTTP_RCODE_T rspCode;
 
     public:
         RESTRequest();
@@ -57,7 +86,8 @@ class RESTRequest
 
         REST_RMETHOD_T getMethod();
 
-        int getResponseCode();
+        void setResponseCode( REST_HTTP_RCODE_T code );
+        REST_HTTP_RCODE_T getResponseCode();
 
         void clearParameters();
         void setParameter( std::string name, std::string value );

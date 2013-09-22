@@ -100,8 +100,10 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
                         std::string version, const char *upload_data,
                         size_t *upload_data_size, void **con_cls )
 {
-    RESTRequest        *request;
-    RESTRepresentation *payload;
+    RESTRequest         *request;
+    RESTRepresentation  *payload;
+    int                  ret;
+    struct MHD_Response *response;
 
     printf("newRequest\n");
 
@@ -123,6 +125,7 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
 
         // Scan through the registered resources and see if 
         // a match exists.
+        bool request_handled = false;
         for( std::list<RESTResource *>::iterator it=resourceList.begin(); it != resourceList.end(); ++it )
         {
             printf("newRequest4\n");
@@ -132,10 +135,46 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
 
             // Try to process the request, exit if the request gets handled
             if( (*it)->processRequest( request, payload ) == true )
+            {
+                request_handled = true;
                 break;
+            }
         }
 
         printf("newRequest5\n");
+
+        // Build and send the response
+        ret = MHD_NO;
+        if( request_handled == true )
+        {
+            printf("Response Content(%d): %*.*s\n", payload->getLength(), payload->getLength(), payload->getLength(), payload->getBuffer());
+
+            response = MHD_create_response_from_buffer( payload->getLength(), payload->getBuffer(), MHD_RESPMEM_MUST_COPY );
+
+            if( response )
+            {
+                ret = MHD_queue_response( connection, request->getResponseCode(), response );
+                MHD_destroy_response( response );
+            }
+        }
+        else
+        {
+            response = MHD_create_response_from_buffer( 0, 0, MHD_RESPMEM_MUST_COPY );
+
+            if( response )
+            {
+                ret = MHD_queue_response( connection, MHD_HTTP_BAD_REQUEST, response );
+                MHD_destroy_response( response );
+            }
+
+        }
+
+        // Cleanup
+        delete payload;
+        delete request;
+
+        // Tell the daemon what to do.
+        return ret;
 
         // No match for the resource so return a bad request indication
 

@@ -9,6 +9,8 @@ RESTRequest::RESTRequest()
     //struct MHD_PostProcessor *postprocessor;
     
     reqMethod = REST_RMETHOD_NONE;
+
+    rspCode = REST_HTTP_RCODE_NONE;
 }
 
 RESTRequest::~RESTRequest()
@@ -70,10 +72,16 @@ RESTRequest::sendPage( struct MHD_Connection *connection, const char *page )
 #endif
 }
 
-int 
+void 
+RESTRequest::setResponseCode( REST_HTTP_RCODE_T code )
+{
+    rspCode = code;
+}
+
+REST_HTTP_RCODE_T
 RESTRequest::getResponseCode()
 {
-
+    return rspCode;
 }
 
 REST_RMETHOD_T 

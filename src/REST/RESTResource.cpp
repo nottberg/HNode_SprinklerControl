@@ -180,23 +180,27 @@ void
 RESTResource::restGet( RESTRequest *request, RESTRepresentation *data )
 {
     std::cout << "RESTResource::restGet" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
 RESTResource::restPut( RESTRequest *request, RESTRepresentation *data )
 {
     std::cout << "RESTResource::restPut" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
 RESTResource::restPost( RESTRequest *request, RESTRepresentation *data )
 {
     std::cout << "RESTResource::restPost" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
 RESTResource::restDelete( RESTRequest *request, RESTRepresentation *data )
 {
     std::cout << "RESTResource::restDelete" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
