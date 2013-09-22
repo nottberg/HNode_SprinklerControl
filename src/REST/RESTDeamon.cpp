@@ -100,28 +100,42 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
                         std::string version, const char *upload_data,
                         size_t *upload_data_size, void **con_cls )
 {
-    RESTRequest *request;
+    RESTRequest        *request;
+    RESTRepresentation *payload;
+
+    printf("newRequest\n");
 
     // Check if this is a new request.
     if( NULL == *con_cls )
     {
+        printf("newRequest2\n");
+
         // Create a new request
         request = new RESTRequest();
+        payload = new RESTRepresentation();
 
         // Fill the request parameters
         request->setURL( url );
         request->decodeRequestMethod( method );
         request->setVersion( version );
 
+        printf("newRequest3\n");
+
         // Scan through the registered resources and see if 
         // a match exists.
         for( std::list<RESTResource *>::iterator it=resourceList.begin(); it != resourceList.end(); ++it )
         {
-            if( (*it)->isURLMatch( request ) )
-            {
-                (*it)->processRequest( request );
-            }
+            printf("newRequest4\n");
+
+            // Clear parameters
+            request->clearParameters();
+
+            // Try to process the request, exit if the request gets handled
+            if( (*it)->processRequest( request, payload ) == true )
+                break;
         }
+
+        printf("newRequest5\n");
 
         // No match for the resource so return a bad request indication
 

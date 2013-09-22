@@ -1,3 +1,4 @@
+#include <string.h>
 
 #include "REST.hpp"
 
@@ -6,7 +7,8 @@ RESTRequest::RESTRequest()
     //int connectiontype;
     //char *answerstring;
     //struct MHD_PostProcessor *postprocessor;
-
+    
+    reqMethod = REST_RMETHOD_NONE;
 }
 
 RESTRequest::~RESTRequest()
@@ -17,12 +19,28 @@ RESTRequest::~RESTRequest()
 void 
 RESTRequest::setURL( std::string url )
 {
+    urlStr = url;
+}
 
+std::string 
+RESTRequest::getURL()
+{
+    return urlStr;
 }
 
 void 
 RESTRequest::decodeRequestMethod( std::string method )
 {
+    reqMethod = REST_RMETHOD_NONE;
+
+    if( "GET" == method )
+        reqMethod = REST_RMETHOD_GET;
+    else if( "PUT" == method )
+        reqMethod = REST_RMETHOD_PUT;
+    else if( "POST" == method )
+        reqMethod = REST_RMETHOD_POST;
+    else if( "DELETE" == method )
+        reqMethod = REST_RMETHOD_DELETE;
 
 }
 
@@ -58,15 +76,21 @@ RESTRequest::getResponseCode()
 
 }
 
-bool
-RESTRequest::hasResponseRepresentation()
+REST_RMETHOD_T 
+RESTRequest::getMethod()
 {
-
+    return reqMethod;
 }
 
-RESTRepresentation 
-RESTRequest::getResponseRepresentation()
+void 
+RESTRequest::clearParameters()
 {
+    reqParams.clear();
+}
 
+void 
+RESTRequest::setParameter( std::string name, std::string value )
+{
+    reqParams.insert( std::pair<std::string, std::string>(name, value) );
 }
 
