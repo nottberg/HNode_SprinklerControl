@@ -40,32 +40,6 @@ const char *errorpage =
 "<html><body>This doesn’t seem to be right.</body></html>";
 #endif
 
-#if 0
-static int
-iterate_post( void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
-              const char *filename, const char *content_type,
-              const char *transfer_encoding, const char *data, uint64_t off,
-              size_t size )
-{
-    struct connection_info_struct *con_info = coninfo_cls;
-    if( 0 == strcmp( key, "name" ) )
-    {
-        if( (size > 0) && (size <= MAXNAMESIZE) )
-        {
-            char *answerstring;
-            answerstring = malloc( MAXANSWERSIZE );
-            if( !answerstring )
-                return MHD_NO;
-            snprintf( answerstring, MAXANSWERSIZE, greetingpage, data );
-            con_info->answerstring = answerstring;
-        }   
-        else
-            con_info->answerstring = NULL;
-        return MHD_NO;
-    }
-    return MHD_YES;
-}
-#endif
 
 RESTDaemon::RESTDaemon()
 {
@@ -95,86 +69,113 @@ RESTDaemon::stop()
 }
 
 int
-RESTDaemon::newRequest( struct MHD_Connection *connection,
-                        std::string url, std::string method,
-                        std::string version, const char *upload_data,
-                        size_t *upload_data_size, void **con_cls )
+RESTDaemon::sendResponse( RESTRequest *request, RESTRepresentation *payload )
 {
-    RESTRequest         *request;
-    RESTRepresentation  *payload;
+    int ret;
+    struct MHD_Response *response;
+
+    // Build and send the response
+    ret = MHD_NO;
+    printf("Response Content(%ld): %*.*s\n", payload->getLength(), (int)payload->getLength(), (int)payload->getLength(), payload->getBuffer());
+
+    response = MHD_create_response_from_buffer( payload->getLength(), payload->getBuffer(), MHD_RESPMEM_MUST_COPY );
+
+    if( response )
+    {
+        ret = MHD_queue_response( request->getConnection(), request->getResponseCode(), response );
+        MHD_destroy_response( response );
+    }
+
+    // Cleanup
+    delete payload;
+    delete request;
+
+    // Tell the daemon what to do.
+    return ret; 
+}
+
+int
+RESTDaemon::newRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size )
+{
     int                  ret;
     struct MHD_Response *response;
 
-    printf("newRequest\n");
+    printf("newRequest -- size: %ld\n", *upload_data_size);
 
     // Check if this is a new request.
-    if( NULL == *con_cls )
+    printf("newRequest2\n");
+
+    // Create a new request
+    //payload = new RESTRepresentation();
+    //request->setInboundRepresentation( payload );
+
+    // Handle any inbound 
+    if( *upload_data_size )
     {
-        printf("newRequest2\n");
+        *upload_data_size = request->processUploadData( upload_data, *upload_data_size );
+    }
 
-        // Create a new request
-        request = new RESTRequest();
-        payload = new RESTRepresentation();
+    printf("newRequest3\n");
 
-        // Fill the request parameters
-        request->setURL( url );
-        request->decodeRequestMethod( method );
-        request->setVersion( version );
+    request->requestHeaderData();
 
-        printf("newRequest3\n");
+    // Scan through the registered resources and see if 
+    // a match exists.
+    bool request_handled = false;
+    for( std::list<RESTResource *>::iterator it=resourceList.begin(); it != resourceList.end(); ++it )
+    {
+        printf("newRequest4\n");
 
-        // Scan through the registered resources and see if 
-        // a match exists.
-        bool request_handled = false;
-        for( std::list<RESTResource *>::iterator it=resourceList.begin(); it != resourceList.end(); ++it )
+        // Clear parameters
+        request->clearParameters();
+
+        // Try to process the request, exit if the request gets handled
+        if( (*it)->linkRequest( request ) == true )
         {
-            printf("newRequest4\n");
-
-            // Clear parameters
-            request->clearParameters();
-
-            // Try to process the request, exit if the request gets handled
-            if( (*it)->processRequest( request, payload ) == true )
-            {
-                request_handled = true;
-                break;
-            }
+            request_handled = true;
+            break;
         }
+    }
 
-        printf("newRequest5\n");
+    printf("newRequest5\n");
 
-        // Build and send the response
-        ret = MHD_NO;
-        if( request_handled == true )
+    // Build and send the response
+    ret = MHD_YES;
+/*
+    if( request_handled == true )
+    {
+        printf("Response Content(%ld): %*.*s\n", payload->getLength(), (int)payload->getLength(), (int)payload->getLength(), payload->getBuffer());
+
+        response = MHD_create_response_from_buffer( payload->getLength(), payload->getBuffer(), MHD_RESPMEM_MUST_COPY );
+
+        if( response )
         {
-            printf("Response Content(%d): %*.*s\n", payload->getLength(), payload->getLength(), payload->getLength(), payload->getBuffer());
-
-            response = MHD_create_response_from_buffer( payload->getLength(), payload->getBuffer(), MHD_RESPMEM_MUST_COPY );
-
-            if( response )
-            {
-                ret = MHD_queue_response( connection, request->getResponseCode(), response );
-                MHD_destroy_response( response );
-            }
+            ret = MHD_queue_response( request->getConnection(), request->getResponseCode(), response );
+            MHD_destroy_response( response );
         }
-        else
+    }
+    else
+*/
+    if( request_handled == false )
+    {
+        response = MHD_create_response_from_buffer( 0, 0, MHD_RESPMEM_MUST_COPY );
+
+        if( response )
         {
-            response = MHD_create_response_from_buffer( 0, 0, MHD_RESPMEM_MUST_COPY );
-
-            if( response )
-            {
-                ret = MHD_queue_response( connection, MHD_HTTP_BAD_REQUEST, response );
-                MHD_destroy_response( response );
-            }
-
+            ret = MHD_queue_response( request->getConnection(), MHD_HTTP_BAD_REQUEST, response );
+            MHD_destroy_response( response );
         }
 
         // Cleanup
-        delete payload;
         delete request;
 
-        // Tell the daemon what to do.
-        return ret;
+        // Request is being rejected
+        return MHD_NO;
+    }
+
+
+    // Continue the request processing
+    return MHD_YES;
 
         // No match for the resource so return a bad request indication
 
@@ -195,10 +196,10 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
             return MHD_YES;
     }
 #endif
-    } 
+   // } 
 
     // This is a continuing request for a POST/PUT upload.
-    request = (RESTRequest *) *con_cls;
+    //request = (RESTRequest *) *con_cls;
 
     // Process the continueing operation
     
@@ -225,9 +226,41 @@ RESTDaemon::newRequest( struct MHD_Connection *connection,
 #endif
 }
 
+int
+RESTDaemon::continueRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size )
+{
+    RESTRepresentation  *payload;
+    int                  ret;
+    struct MHD_Response *response;
+
+    printf("continueRequest -- size: %ld\n", *upload_data_size);
+
+    // Handle any inbound 
+    *upload_data_size = request->processUploadData( upload_data, *upload_data_size );
+
+    // Continue
+    return MHD_YES;
+}
+
+int 
+RESTDaemon::requestReady( RESTRequest *request )
+{
+    printf("requestReady\n");
+
+    request->execute();
+
+    return MHD_YES;
+}
+
 void
 RESTDaemon::requestComplete( struct MHD_Connection *connection, void **con_cls, enum MHD_RequestTerminationCode toe )
 {
+    printf("requestComplete\n");
+
+    // Cleanup
+    //delete payload;
+    //delete request;
+
 #if 0
     struct connection_info_struct *con_info = *con_cls;
 
@@ -260,8 +293,32 @@ RESTDaemon::connection_request( void *cls, struct MHD_Connection *connection,
                                 size_t *upload_data_size, void **con_cls )
 {
     RESTDaemon *daemon = (RESTDaemon *)cls;
+    RESTRequest *request = NULL;
 
-    return daemon->newRequest( connection, url, method, version, upload_data, upload_data_size, con_cls );
+    printf("connection_request -- method: %s, size: %ld, url: %s\n", method, *upload_data_size, url);
+
+    // Check if this is a new request or a continuing one
+    if( *con_cls == NULL ) 
+    {
+        request = new RESTRequest( connection );
+        *con_cls = request;
+
+        request->setURL( url );
+        request->decodeRequestMethod( method );
+        request->setVersion( version );
+       
+        return daemon->newRequest( request, upload_data, upload_data_size );
+    }
+    else if( *upload_data_size )
+    {
+        RESTRequest *request = (RESTRequest *) *con_cls;
+        return daemon->continueRequest( request, upload_data, upload_data_size );
+    }
+    else
+    {
+        RESTRequest *request = (RESTRequest *) *con_cls;
+        return daemon->requestReady( request );
+    }
 }
 
 void
@@ -269,7 +326,10 @@ RESTDaemon::request_completed( void *cls, struct MHD_Connection *connection, voi
 {
     RESTDaemon *daemon = (RESTDaemon *)cls;
 
+    printf("request_completed\n");
+
     daemon->requestComplete( connection, con_cls, toe );
 }
+
 
 

@@ -17,12 +17,28 @@ class RESTRepresentation
         unsigned long testDataLength;
         unsigned char testData[1024];
 
+        std::string   contentType;
+        unsigned long contentLength;
+
+        std::map<std::string, std::string> paramMap;
+ 
     public:
         RESTRepresentation();
        ~RESTRepresentation();
 
+        void setContentType( std::string contentType );
+        std::string getContentType();
+
+        void setContentLength( std::string contentType );
+        unsigned long getContentLength();
+
+        void addParameter( std::string name, std::string value );
+
         unsigned long  getLength();
         unsigned char *getBuffer();
+
+        size_t addUploadData( const char *buffer, size_t length );
+
 };
 
 typedef enum RESTResourceMethodFlags
@@ -62,8 +78,14 @@ class RESTRequest
     private:
         int connectiontype;
         char *answerstring;
-        struct MHD_PostProcessor *postprocessor;
- 
+        //struct MHD_PostProcessor *postprocessor;
+        
+        struct MHD_Connection    *connection;
+        struct MHD_PostProcessor *postProcessor;
+
+        RESTRepresentation  inRepresentation;
+        RESTRepresentation  outRepresentation;
+
         std::string urlStr;
 
         REST_RMETHOD_T reqMethod;
@@ -72,11 +94,25 @@ class RESTRequest
 
         REST_HTTP_RCODE_T rspCode;
 
+        void *resourcePtr;
+
+        static int iterate_post( void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
+                                 const char *filename, const char *content_type,
+                                 const char *transfer_encoding, const char *data, uint64_t off,
+                                 size_t size );
+
+        static int iterate_headers( void *cls, MHD_ValueKind kind, const char *key, const char *value );
+        static int iterate_arguments( void *cls, MHD_ValueKind kind, const char *key, const char *value );
+
+
     public:
-        RESTRequest();
+        RESTRequest( struct MHD_Connection *connection );
        ~RESTRequest();
 
-        int sendPage( struct MHD_Connection *connection, const char *page );
+        struct MHD_Connection *getConnection();
+
+        RESTRepresentation *getInboundRepresentation();
+        RESTRepresentation *getOutboudRepresentation();
 
         void setURL( std::string url );
         std::string getURL();
@@ -91,6 +127,23 @@ class RESTRequest
 
         void clearParameters();
         void setParameter( std::string name, std::string value );
+
+        int processUploadData( const char *upload_data, size_t upload_data_size );
+
+        void requestRXData();
+
+        int processHeader( enum MHD_ValueKind kind, const char *key, const char *value );
+        int processUrlArg( enum MHD_ValueKind kind, const char *key, const char *value );
+        int processDataIteration( enum MHD_ValueKind kind, const char *key,
+                           const char *filename, const char *content_type,
+                           const char *transfer_encoding, const char *data, uint64_t off,
+                           size_t size );
+
+        void requestHeaderData();
+
+        void setLink( void *resource );
+
+        void execute();
 };
 
 typedef enum RESTResourcePatternElementMatchType
@@ -138,15 +191,17 @@ class RESTResource
 
         void setURLPattern( std::string pattern, REST_RMETHOD_T methodFlags );
 
-        bool processRequest( RESTRequest *request, RESTRepresentation *data );
+        bool linkRequest( RESTRequest *request );
 
-        virtual void restGet( RESTRequest *request, RESTRepresentation *data );
+        bool executeRequest( RESTRequest *request );
 
-        virtual void restPut( RESTRequest *request, RESTRepresentation *data );
+        virtual void restGet( RESTRequest *request );
 
-        virtual void restPost( RESTRequest *request, RESTRepresentation *data );
+        virtual void restPut( RESTRequest *request );
 
-        virtual void restDelete( RESTRequest *request, RESTRepresentation *data );
+        virtual void restPost( RESTRequest *request );
+
+        virtual void restDelete( RESTRequest *request );
 
 };
 
@@ -160,15 +215,16 @@ class RESTDaemon
         static int connection_request( void *cls, struct MHD_Connection *connection,
                                 const char *url, const char *method,
                                 const char *version, const char *upload_data,
-                                size_t *upload_data_size, void **con_cls );
+                                size_t *upload_data_size, void **con_cls);
 
         static void request_completed( void *cls, struct MHD_Connection *connection, 
                                        void **con_cls, enum MHD_RequestTerminationCode toe );
 
-        int newRequest( struct MHD_Connection *connection,
-                        std::string url, std::string method,
-                        std::string version, const char *upload_data,
-                        size_t *upload_data_size, void **con_cls );
+        int sendResponse( RESTRequest *request, RESTRepresentation *payload );
+
+        int newRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size );
+        int continueRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size );
+        int requestReady( RESTRequest *request );
 
         void requestComplete( struct MHD_Connection *connection, void **con_cls, enum MHD_RequestTerminationCode toe );
 

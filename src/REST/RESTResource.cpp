@@ -85,7 +85,7 @@ RESTResource::setURLPattern( std::string pattern, REST_RMETHOD_T methodFlags )
 }
 
 bool 
-RESTResource::processRequest( RESTRequest *request, RESTRepresentation *payload )
+RESTResource::linkRequest( RESTRequest *request )
 {
     RESTResourcePE *elem;
 
@@ -147,28 +147,38 @@ RESTResource::processRequest( RESTRequest *request, RESTRepresentation *payload 
         return false;
     }
 
+    // Setup the link for future request handling.
+    request->setLink( this );
+
+    // Request handled.
+    return true;
+}
+
+bool 
+RESTResource::executeRequest( RESTRequest *request )
+{
     // Match process was successful,
     // execute the request.
     switch( request->getMethod() )
     {
         case REST_RMETHOD_GET:
             std::cout << "Process Request: Get" << std::endl;
-            restGet( request, payload );
+            restGet( request );
         break;
 
         case REST_RMETHOD_PUT:
             std::cout << "Process Request: Put" << std::endl;
-            restPut( request, payload );
+            restPut( request );
         break;
 
         case REST_RMETHOD_POST:
             std::cout << "Process Request: Post" << std::endl;
-            restPost( request, payload );
+            restPost( request );
         break;
 
         case REST_RMETHOD_DELETE:
             std::cout << "Process Request: Delete" << std::endl;
-            restDelete( request, payload );
+            restDelete( request );
         break;
     }
 
@@ -177,28 +187,28 @@ RESTResource::processRequest( RESTRequest *request, RESTRepresentation *payload 
 }
 
 void 
-RESTResource::restGet( RESTRequest *request, RESTRepresentation *data )
+RESTResource::restGet( RESTRequest *request )
 {
     std::cout << "RESTResource::restGet" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
-RESTResource::restPut( RESTRequest *request, RESTRepresentation *data )
+RESTResource::restPut( RESTRequest *request )
 {
     std::cout << "RESTResource::restPut" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
-RESTResource::restPost( RESTRequest *request, RESTRepresentation *data )
+RESTResource::restPost( RESTRequest *request )
 {
     std::cout << "RESTResource::restPost" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
 }
 
 void 
-RESTResource::restDelete( RESTRequest *request, RESTRepresentation *data )
+RESTResource::restDelete( RESTRequest *request )
 {
     std::cout << "RESTResource::restDelete" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
