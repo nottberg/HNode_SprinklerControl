@@ -95,6 +95,7 @@ class RESTRequest
         REST_HTTP_RCODE_T rspCode;
 
         void *resourcePtr;
+        void *daemonPtr;
 
         static int iterate_post( void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
                                  const char *filename, const char *content_type,
@@ -106,13 +107,13 @@ class RESTRequest
 
 
     public:
-        RESTRequest( struct MHD_Connection *connection );
+        RESTRequest( struct MHD_Connection *connection, void *daemonPtr );
        ~RESTRequest();
 
         struct MHD_Connection *getConnection();
 
         RESTRepresentation *getInboundRepresentation();
-        RESTRepresentation *getOutboudRepresentation();
+        RESTRepresentation *getOutboundRepresentation();
 
         void setURL( std::string url );
         std::string getURL();
@@ -144,6 +145,8 @@ class RESTRequest
         void setLink( void *resource );
 
         void execute();
+
+        void sendResponse();
 };
 
 typedef enum RESTResourcePatternElementMatchType
@@ -220,8 +223,6 @@ class RESTDaemon
         static void request_completed( void *cls, struct MHD_Connection *connection, 
                                        void **con_cls, enum MHD_RequestTerminationCode toe );
 
-        int sendResponse( RESTRequest *request, RESTRepresentation *payload );
-
         int newRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size );
         int continueRequest( RESTRequest *request, const char *upload_data, size_t *upload_data_size );
         int requestReady( RESTRequest *request );
@@ -236,6 +237,9 @@ class RESTDaemon
         void stop();
 
         bool registerResource( RESTResource *resource );
+
+        int sendResponse( RESTRequest *request );
+
 };
 
 #endif // __REST_H__

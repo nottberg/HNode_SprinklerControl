@@ -191,6 +191,7 @@ RESTResource::restGet( RESTRequest *request )
 {
     std::cout << "RESTResource::restGet" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
 }
 
 void 
@@ -198,6 +199,7 @@ RESTResource::restPut( RESTRequest *request )
 {
     std::cout << "RESTResource::restPut" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
 }
 
 void 
@@ -205,6 +207,7 @@ RESTResource::restPost( RESTRequest *request )
 {
     std::cout << "RESTResource::restPost" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
 }
 
 void 
@@ -212,5 +215,6 @@ RESTResource::restDelete( RESTRequest *request )
 {
     std::cout << "RESTResource::restDelete" << std::endl;
     request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
 }
 

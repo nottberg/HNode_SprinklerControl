@@ -69,10 +69,13 @@ RESTDaemon::stop()
 }
 
 int
-RESTDaemon::sendResponse( RESTRequest *request, RESTRepresentation *payload )
+RESTDaemon::sendResponse( RESTRequest *request )
 {
     int ret;
     struct MHD_Response *response;
+    RESTRepresentation *payload;
+
+    payload = request->getOutboundRepresentation();
 
     // Build and send the response
     ret = MHD_NO;
@@ -85,10 +88,6 @@ RESTDaemon::sendResponse( RESTRequest *request, RESTRepresentation *payload )
         ret = MHD_queue_response( request->getConnection(), request->getResponseCode(), response );
         MHD_destroy_response( response );
     }
-
-    // Cleanup
-    delete payload;
-    delete request;
 
     // Tell the daemon what to do.
     return ret; 
@@ -257,26 +256,8 @@ RESTDaemon::requestComplete( struct MHD_Connection *connection, void **con_cls, 
 {
     printf("requestComplete\n");
 
-    // Cleanup
-    //delete payload;
-    //delete request;
-
-#if 0
-    struct connection_info_struct *con_info = *con_cls;
-
-    if( NULL == con_info )
-        return;
-
-    if( con_info->connectiontype == POST )
-    {
-        MHD_destroy_post_processor( con_info->postprocessor );
-        if( con_info->answerstring )
-            free( con_info->answerstring );
-    }
-
-    free( con_info );
-    *con_cls = NULL;
-#endif
+    RESTRequest *request = (RESTRequest *) *con_cls;
+    delete request;
 }
 
 bool 
@@ -300,7 +281,7 @@ RESTDaemon::connection_request( void *cls, struct MHD_Connection *connection,
     // Check if this is a new request or a continuing one
     if( *con_cls == NULL ) 
     {
-        request = new RESTRequest( connection );
+        request = new RESTRequest( connection, daemon );
         *con_cls = request;
 
         request->setURL( url );

@@ -5,7 +5,7 @@
 
 #define POSTBUFFERSIZE 1024
 
-RESTRequest::RESTRequest(struct MHD_Connection *newConnection )
+RESTRequest::RESTRequest(struct MHD_Connection *newConnection, void *daemon )
 {
     //int connectiontype;
     //char *answerstring;
@@ -17,6 +17,9 @@ RESTRequest::RESTRequest(struct MHD_Connection *newConnection )
     rspCode = REST_HTTP_RCODE_NONE;
 
     resourcePtr = NULL;
+    daemonPtr = daemon;
+
+    postProcessor = NULL;
 }
 
 RESTRequest::~RESTRequest()
@@ -56,7 +59,7 @@ RESTRequest::getInboundRepresentation()
 }
 
 RESTRepresentation *
-RESTRequest::getOutboudRepresentation()
+RESTRequest::getOutboundRepresentation()
 {
     return &outRepresentation;
 }
@@ -226,6 +229,16 @@ RESTRequest::execute()
     if( resourcePtr )
     {
         ((RESTResource *)resourcePtr)->executeRequest( this );
+    }
+}
+
+void 
+RESTRequest::sendResponse()
+{
+    printf( "sendResponse\n" );
+    if( daemonPtr )
+    {
+        ((RESTDaemon *)daemonPtr)->sendResponse( this );
     }
 }
 
