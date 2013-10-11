@@ -1,4 +1,3 @@
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -23,13 +22,15 @@
 
 #include <avahi-glib/glib-watch.h>
 #include <avahi-glib/glib-malloc.h>
- 
+
+
 #include <hnode-1.0/hnode-pktsrc.h>
 #include <hnode-1.0/hnode-nodeobj.h>
 
 #include "hnode-switch-interface.h"
 //#include "ilink-obj.h"
 #include "mcp23008-obj.h"
+
 #include "REST/REST.hpp"
 
 guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
@@ -60,7 +61,7 @@ typedef struct x10NodeContext
 
     guint16  SwitchPort;
 
-    RESTDaemon   rest;
+    RESTDaemon   Rest;
     //RESTResource controller;
     RESTResource toggles;
     //RESTResource zones;
@@ -104,16 +105,16 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
 
             g_hnode_packet_set_short(TxPacket, 0);  // Local SwitchID
     		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "zone1", 5);
+            g_hnode_packet_set_bytes(TxPacket, (guint8*)"zone1", 5);
     		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Sprinkler Zone 1", 16);
+            g_hnode_packet_set_bytes(TxPacket, (guint8*)"Sprinkler Zone 1", 16);
             g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
 
             g_hnode_packet_set_short(TxPacket, 1);  // Local SwitchID
     		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, "zone2", 5);
+            g_hnode_packet_set_bytes(TxPacket, (guint8*)"zone2", 5);
     		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, "Sprinkler Zone 2", 16);
+            g_hnode_packet_set_bytes(TxPacket, (guint8*)"Sprinkler Zone 2", 16);
             g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
 
 			// Send a request for info about the provider.
@@ -243,7 +244,7 @@ start_rest_daemon(CONTEXT *Context)
     //rest.registerResource( &controller );
 
     Context->toggles.setURLPattern( "/irrigation/toggles", REST_RMETHOD_GET );
-    Context->Rest.registerResource( &toggles );
+    Context->Rest.registerResource( &(Context->toggles) );
 
     //zones.setURLPattern( "/irrigation/zones", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
     //rest.registerResource( &zones );
@@ -334,7 +335,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     // Setup the HNode
     g_hnode_set_version(Context.HNode, 1, 0, 0);
     g_hnode_set_uid(Context.HNode, gUID);
-    g_hnode_set_name_prefix(Context.HNode, "SprinklerControl");
+    g_hnode_set_name_prefix(Context.HNode, (guint8*)"SprinklerControl");
 
     //g_hnode_enable_config_support(HNode);
     //g_signal_connect (G_OBJECT( HNode ), "config-rx", G_CALLBACK( hnode_config_rx ), NULL);
@@ -342,8 +343,8 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     g_hnode_set_endpoint_count(Context.HNode, 1);
     
     //guint16 EndPointIndex, guint16 AssociatedEPIndex, guint8 *MimeTypeStr, guint16 Port, guint8 MajorVersion, guint8 MinorVersion, guint16 MicroVersion)
-    g_hnode_set_endpoint(Context.HNode, 0, 0, "hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
-    g_hnode_set_endpoint(Context.HNode, 1, 1, "hnode-irrigation-rest", 8888, 1, 0, 0);	
+    g_hnode_set_endpoint(Context.HNode, 0, 0, (guint8*)"hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
+    g_hnode_set_endpoint(Context.HNode, 1, 1, (guint8*)"hnode-irrigation-rest", 8888, 1, 0, 0);	
 
 
     // Start up the server object
