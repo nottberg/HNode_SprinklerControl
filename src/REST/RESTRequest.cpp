@@ -210,6 +210,8 @@ RESTRequest::processUrlArg( enum MHD_ValueKind kind, const char *key, const char
 {
     printf( "processUrlArg -- kind: %d, key: %s, value: %s\n", kind, key, value );
 
+    setParameter( key, value );
+
     return MHD_YES;
 }
 

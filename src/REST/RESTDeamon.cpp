@@ -125,9 +125,6 @@ RESTDaemon::newRequest( RESTRequest *request, const char *upload_data, size_t *u
     {
         printf("newRequest4\n");
 
-        // Clear parameters
-        request->clearParameters();
-
         // Try to process the request, exit if the request gets handled
         if( (*it)->linkRequest( request ) == true )
         {

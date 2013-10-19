@@ -38,6 +38,10 @@ class Switch
         void setDescription( std::string descStr );
         std::string getDescription();
 
+        bool isStateOn();
+
+        bool setStateOn();
+        bool setStateOff();
 };
 
 class SwitchDevice

@@ -58,4 +58,37 @@ Switch::getDescription()
     return desc;
 }
 
+bool 
+Switch::isStateOn()
+{
+    int state;
+
+    // Try to get the switch state
+    if( parent->getState( this, state ) )
+    {
+        // Error - say the switch is off.
+        return false;
+    }
+
+    // If the switch is on then return true
+    if( state )
+        return true;
+
+    // Otherwise false
+    return false;
+}
+
+bool 
+Switch::setStateOn()
+{
+    return parent->setState( this, 1 );
+}
+
+bool 
+Switch::setStateOff()
+{
+    return parent->setState( this, 0 );
+}
+
+
 

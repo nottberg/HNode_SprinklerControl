@@ -87,6 +87,8 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
 {
     CONTEXT  *Context = (CONTEXT *)data;
 
+    SwitchManager *swmgr = &Context->switchManager;
+
     guint DataLength;
     guint PktType;
     guint ReqTag;
@@ -112,21 +114,28 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             g_hnode_packet_set_uint(TxPacket, SWPKT_SWITCH_LIST_REPLY);
             g_hnode_packet_set_uint(TxPacket, ReqTag);
 
-            g_hnode_packet_set_short(TxPacket, 2); // Number of switch records.
+            g_hnode_packet_set_short(TxPacket, swmgr->getSwitchCount()); // Number of switch records.
 
-            g_hnode_packet_set_short(TxPacket, 0);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, (guint8*)"zone1", 5);
-    		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, (guint8*)"Sprinkler Zone 1", 16);
-            g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
+            for( int index = 0; index < swmgr->getSwitchCount(); index++ )
+            {
+                std::string tmpStr;
+                unsigned int tmpLen;
+                Switch *swObj = swmgr->getSwitchByIndex( index );
 
-            g_hnode_packet_set_short(TxPacket, 1);  // Local SwitchID
-    		g_hnode_packet_set_short(TxPacket, 5); // Switch Name Length
-            g_hnode_packet_set_bytes(TxPacket, (guint8*)"zone2", 5);
-    		g_hnode_packet_set_short(TxPacket, 16); // Switch Description Length
-            g_hnode_packet_set_bytes(TxPacket, (guint8*)"Sprinkler Zone 2", 16);
-            g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
+                g_hnode_packet_set_short(TxPacket, index);  // Local SwitchID
+
+                tmpStr = swObj->getName();
+                tmpLen = tmpStr.size();
+                g_hnode_packet_set_short(TxPacket, tmpLen); // Switch Name Length
+                g_hnode_packet_set_bytes(TxPacket, (guint8*)tmpStr.c_str(), tmpLen);
+
+                tmpStr = swObj->getDescription();
+                tmpLen = tmpStr.size();
+                g_hnode_packet_set_short(TxPacket, tmpLen); // Switch Name Length
+                g_hnode_packet_set_bytes(TxPacket, (guint8*)tmpStr.c_str(), tmpLen);
+
+                g_hnode_packet_set_uint(TxPacket, SWINF_CAPFLAGS_ONOFF); 
+            }
 
 			// Send a request for info about the provider.
             g_hnode_pktsrc_send_packet(Context->SwitchSource, TxPacket);
@@ -155,13 +164,23 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             switch( SwitchCmd )
             {
                 case SWINF_CMD_TURN_ON:
+                {
+                     Switch *swObj = swmgr->getSwitchByIndex( SwitchID );
+                     if( swObj )
+                         swObj->setStateOn();
                     //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 1 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
+                }
                 break;
 
                 case SWINF_CMD_TURN_OFF:
+                {
+                     Switch *swObj = swmgr->getSwitchByIndex( SwitchID );
+                     if( swObj )
+                         swObj->setStateOff();
                     //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 0 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
+                }
                 break;    
             }
 

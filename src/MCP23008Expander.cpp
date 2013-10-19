@@ -57,13 +57,25 @@ MCP23008Expander::setAsInput( Switch *io )
 bool 
 MCP23008Expander::getState( Switch *io, int &state )
 {
+    unsigned int SwitchID = strtol( io->getAddress().c_str(), NULL, 0 );
 
+    state = 0;
+
+    if( g_mcp23008_check_pin_state( expander, SwitchID ) )
+        state = 1;
+
+    return false;    
 }
 
 bool 
 MCP23008Expander::setState( Switch *io, int state )
 {
+    unsigned int SwitchID = strtol( io->getAddress().c_str(), NULL, 0 );
 
+    if( state )
+        return g_mcp23008_set_pin_state( expander, SwitchID, 1 );
+    else
+        return g_mcp23008_set_pin_state( expander, SwitchID, 0 );
 }
 
 bool 

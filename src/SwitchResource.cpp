@@ -77,6 +77,8 @@ SwitchResource::restGet( RESTRequest *request )
     if( request->getParameter( "switchid", swID ) )
     {
         printf("Failed to look up switchid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
         return;
     }
 
@@ -103,6 +105,13 @@ SwitchResource::restGet( RESTRequest *request )
     rspData += swObj->getDescription();
     rspData += "</desc>";
 
+    rspData += "<state>";
+    if( swObj->isStateOn() )
+        rspData += "on";
+    else
+        rspData += "off";
+    rspData += "</state>";
+
     rspData += "</switch>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
@@ -115,6 +124,64 @@ SwitchResource::restGet( RESTRequest *request )
 void 
 SwitchResource::restPut( RESTRequest *request )
 {
+    std::string swID;
+    std::string stateStr;
+    Switch *swObj;
+    bool result = true;
 
+    if( request->getParameter( "switchid", swID ) )
+    {
+        printf("Failed to look up switchid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL SwitchID: %s\n", swID.c_str() );
+
+    swObj = swManager->getSwitchByID( swID );
+
+    if( swObj == NULL )
+    {
+        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+        request->sendResponse();
+        return;
+    }    
+
+    if( request->getParameter( "state", stateStr ) )
+    {
+        printf("Failed to find 'state' parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    if( stateStr == "on" )
+    {
+        printf( "Turn Switch On: %s\n", swID.c_str() );
+        result = swObj->setStateOn();
+    }
+    else if( stateStr == "off" )
+    {
+        printf( "Turn Switch Off: %s\n", swID.c_str() );
+        result = swObj->setStateOff();
+    }
+    else
+    {
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    if( result == true )
+    {
+        request->setResponseCode( REST_HTTP_RCODE_INTERNAL_ERROR );
+        request->sendResponse(); 
+    }
+    else
+    {
+        request->setResponseCode( REST_HTTP_RCODE_OK );
+        request->sendResponse();
+    }
 }
 
