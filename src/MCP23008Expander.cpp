@@ -85,8 +85,7 @@ MCP23008Expander::start()
     g_mcp23008_set_i2c_address( expander, getDeviceNumber(), getBusAddress() );
 
     // Start things up
-    //return g_mcp23008_start( expander );
-    return false;
+    return g_mcp23008_start( expander );
 }
 
 

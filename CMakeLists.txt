@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8 ) 
-PROJECT( hnode_sprinkler_controller ) 
+PROJECT( hnode_irrigation_daemon ) 
 
 SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
 
@@ -45,12 +45,12 @@ INCLUDE_DIRECTORIES( ${LIBXML2_INCLUDE_DIR} )
 INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIRS} )
 INCLUDE_DIRECTORIES( ${CMAKE_SOURCE_DIR}/src )
 
-ADD_EXECUTABLE( hnode_sprinkler_controller_daemon ${HNODE_SPRINKLER_CTRL_SRC} ) 
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${GLIB_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${GOBJECT_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${AVAHI_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${HNODE_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${LIBXML2_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${MICROHTTPD_LIBRARIES} )
-TARGET_LINK_LIBRARIES( hnode_sprinkler_controller_daemon ${Boost_LIBRARIES} )
+ADD_EXECUTABLE( hnode_irrigation_daemon ${HNODE_SPRINKLER_CTRL_SRC} ) 
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${GLIB_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${GOBJECT_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${AVAHI_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${HNODE_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${LIBXML2_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${MICROHTTPD_LIBRARIES} )
+TARGET_LINK_LIBRARIES( hnode_irrigation_daemon ${Boost_LIBRARIES} )
 
