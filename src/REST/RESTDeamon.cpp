@@ -166,7 +166,7 @@ RESTDaemon::newRequest( RESTRequest *request, const char *upload_data, size_t *u
         }
 
         // Cleanup
-        delete request;
+        //delete request;
 
         // Request is being rejected
         return MHD_NO;

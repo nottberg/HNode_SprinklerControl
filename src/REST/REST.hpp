@@ -14,8 +14,9 @@
 class RESTRepresentation
 {
     private:
-        unsigned long testDataLength;
-        unsigned char testData[1024];
+        unsigned long rspDataBufferLength;
+        unsigned long rspDataLength;
+        unsigned char *rspData;
 
         std::string   contentType;
         unsigned long contentLength;
@@ -37,7 +38,8 @@ class RESTRepresentation
         unsigned long  getLength();
         unsigned char *getBuffer();
 
-        size_t addUploadData( const char *buffer, size_t length );
+        void resetData();
+        size_t appendData( const char *buffer, size_t length );
 
 };
 
@@ -128,6 +130,7 @@ class RESTRequest
 
         void clearParameters();
         void setParameter( std::string name, std::string value );
+        bool getParameter( std::string name, std::string &value );
 
         int processUploadData( const char *upload_data, size_t upload_data_size );
 

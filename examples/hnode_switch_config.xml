@@ -1,0 +1,10 @@
+<hnode-switch-cfg>
+   <switch-device-list>
+       <i2c-expander type="mcp23008" id="irrigation1">
+           <i2c-addr devnum="0" busaddr="0x20"/>
+           <switch-map>
+             <switch index="0" id="valve1"/>
+           </switch-map>
+       </i2c-expander>
+   </switch-device-list>
+</hnode-switch-cfg>

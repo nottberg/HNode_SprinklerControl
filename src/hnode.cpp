@@ -33,6 +33,11 @@
 
 #include "REST/REST.hpp"
 
+#include "SwitchManager.hpp"
+#include "SwitchResource.hpp"
+
+#include "ZoneManager.hpp"
+
 guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
 
 static gint wait_time = 0;
@@ -54,7 +59,7 @@ static GOptionEntry entries[] =
 typedef struct x10NodeContext
 {
     //GILink    *ILink;
-    GMCP23008 *gpio;
+    //GMCP23008 *gpio;
     GHNode    *HNode;
 
     GHNodePktSrc    *SwitchSource;
@@ -67,6 +72,12 @@ typedef struct x10NodeContext
     //RESTResource zones;
     //RESTResource zone;
 
+    ZoneManager   zoneManager;
+
+    SwitchManager switchManager;
+
+    SwitchListResource switchListResource;
+    SwitchResource switchResource;
 }CONTEXT;
 
 static struct termios saved_io;
@@ -144,12 +155,12 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
             switch( SwitchCmd )
             {
                 case SWINF_CMD_TURN_ON:
-                    g_mcp23008_set_pin_state(Context->gpio, SwitchID, 1 );
+                    //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 1 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
                 break;
 
                 case SWINF_CMD_TURN_OFF:
-                    g_mcp23008_set_pin_state(Context->gpio, SwitchID, 0 );
+                    //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 0 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
                 break;    
             }
@@ -238,13 +249,21 @@ hnode_cmd_rx(GILink *sb, gpointer Event, gpointer data)
 #endif
 
 int
-start_rest_daemon(CONTEXT *Context)
+hnode_start_rest_daemon(CONTEXT *Context)
 {
+    // Load the configuration for the switches
+    Context->switchManager.loadConfiguration();
+
+    // Init the REST resources.
+    Context->switchListResource.setSwitchManager( &Context->switchManager );
+    Context->switchResource.setSwitchManager( &Context->switchManager );
+
     //controller.setURLPattern( "/irrigation", REST_RMETHOD_GET );
     //rest.registerResource( &controller );
 
-    Context->toggles.setURLPattern( "/irrigation/toggles", REST_RMETHOD_GET );
-    Context->Rest.registerResource( &(Context->toggles) );
+    //Context->toggles.setURLPattern( "/irrigation/toggles", REST_RMETHOD_GET );
+    Context->Rest.registerResource( &(Context->switchListResource) );
+    Context->Rest.registerResource( &(Context->switchResource) );
 
     //zones.setURLPattern( "/irrigation/zones", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
     //rest.registerResource( &zones );
@@ -284,23 +303,23 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     //    exit(-1);
 
     // ILink intialization
-    Context.gpio = g_mcp23008_new();
+    //Context.gpio = g_mcp23008_new();
 
-    if( Context.gpio == NULL )
-        exit(-1);
+    //if( Context.gpio == NULL )
+    //    exit(-1);
 
-    g_mcp23008_set_i2c_address( Context.gpio, 0, 0x20 );
+    //g_mcp23008_set_i2c_address( Context.gpio, 0, 0x20 );
 
-    g_mcp23008_start( Context.gpio );
+    //g_mcp23008_start( Context.gpio );
 
     // Set pins 0, 1, 2 as outputs
-    g_mcp23008_set_port_mode( Context.gpio, (MCP23008_PM_PIN0_OUT | MCP23008_PM_PIN1_OUT | MCP23008_PM_PIN2_OUT) );
+    //g_mcp23008_set_port_mode( Context.gpio, (MCP23008_PM_PIN0_OUT | MCP23008_PM_PIN1_OUT | MCP23008_PM_PIN2_OUT) );
     
     // Set pin 3 to input with the pullup resistor enabled
-    g_mcp23008_set_port_pullup( Context.gpio, (MCP23008_PU_PIN3_ON) );
+    //g_mcp23008_set_port_pullup( Context.gpio, (MCP23008_PU_PIN3_ON) );
 
     // Read pin 3 and display the results
-    printf( "%d: %x\n", 3, g_mcp23008_check_pin_state( Context.gpio, 3 ) );
+    //printf( "%d: %x\n", 3, g_mcp23008_check_pin_state( Context.gpio, 3 ) );
 
     // Register the server event callback
     //g_signal_connect (G_OBJECT (Context.ILink), "cmd_complete", G_CALLBACK (hnode_cmd_tx), &Context);
@@ -340,12 +359,14 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     //g_hnode_enable_config_support(HNode);
     //g_signal_connect (G_OBJECT( HNode ), "config-rx", G_CALLBACK( hnode_config_rx ), NULL);
 
-    g_hnode_set_endpoint_count(Context.HNode, 1);
+    g_hnode_set_endpoint_count(Context.HNode, 2);
     
     //guint16 EndPointIndex, guint16 AssociatedEPIndex, guint8 *MimeTypeStr, guint16 Port, guint8 MajorVersion, guint8 MinorVersion, guint16 MicroVersion)
     g_hnode_set_endpoint(Context.HNode, 0, 0, (guint8*)"hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
     g_hnode_set_endpoint(Context.HNode, 1, 1, (guint8*)"hnode-irrigation-rest", 8888, 1, 0, 0);	
 
+    // Fire up the rest daemon
+    hnode_start_rest_daemon( &Context );
 
     // Start up the server object
     g_hnode_start(Context.HNode);
@@ -355,8 +376,6 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 
     /* Start the GLIB Main Loop */
     g_main_loop_run (loop);
-
-
 
     fail:
     /* Clean up */

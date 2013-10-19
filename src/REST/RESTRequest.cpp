@@ -116,6 +116,25 @@ RESTRequest::setParameter( std::string name, std::string value )
     reqParams.insert( std::pair<std::string, std::string>(name, value) );
 }
 
+bool
+RESTRequest::getParameter( std::string name, std::string &value )
+{
+    std::map<std::string, std::string>::iterator it;
+
+    value.clear();
+
+    it=reqParams.find( name );
+
+    if( it == reqParams.end() )
+    {
+        return true;
+    }   
+
+    value = it->second;
+    
+    return false;
+}
+
 int
 RESTRequest::processUploadData( const char *upload_data, size_t upload_data_size )
 {
@@ -137,7 +156,7 @@ RESTRequest::processUploadData( const char *upload_data, size_t upload_data_size
     if( result == MHD_NO )
     {
         // The data wansn't in url-encoded form to just store it raw.
-        inRepresentation.addUploadData( upload_data, upload_data_size );
+        inRepresentation.appendData( upload_data, upload_data_size );
     }
 
     return 0;

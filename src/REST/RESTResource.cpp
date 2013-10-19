@@ -7,6 +7,7 @@
 
 #include <boost/foreach.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/regex.hpp>
 
 #include "REST.hpp"
 
@@ -76,10 +77,23 @@ RESTResource::setURLPattern( std::string pattern, REST_RMETHOD_T methodFlags )
     unsigned int index = 0;
     BOOST_FOREACH (const std::string& t, tokens) 
     {
-        std::cout << "Adding pattern: " << t << "." << index << std::endl;
-        elem.setMatch( REST_RPE_MATCH_STRING, t );
-        patternElements.push_back( elem );
-        index += 1;
+        boost::regex  e("\\{([A-Za-z0-9-]+)\\}");
+        boost::smatch what;
+
+        if( regex_match(t, what, e) )
+        {
+            std::cout << "Adding URL parameter: " << what[1] << std::endl; 
+            elem.setMatch( REST_RPE_MATCH_PARAM, what[1] );
+            patternElements.push_back( elem );
+            index += 1;
+        }
+        else
+        {
+            std::cout << "Adding pattern: " << t << "." << index << std::endl;
+            elem.setMatch( REST_RPE_MATCH_STRING, t );
+            patternElements.push_back( elem );
+            index += 1;
+        }
     }
 
 }

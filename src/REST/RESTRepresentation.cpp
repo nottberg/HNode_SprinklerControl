@@ -6,18 +6,17 @@
 
 RESTRepresentation::RESTRepresentation()
 {
-    std::string testdata = "<html><body><h1>Test Data</h1><p>Test Data</p></body></html>";
+    rspDataBufferLength = 0;
+    rspDataLength       = 0;
+    rspData             = NULL;
 
-    testDataLength = testdata.size();
-    memcpy( testData, testdata.c_str(), testDataLength );
-
-    contentLength = 0;
+    contentLength       = 0;
 }
 
 RESTRepresentation::~RESTRepresentation()
 {
-
-
+    if( rspDataBufferLength )
+        free( rspData );
 }
 
 void 
@@ -56,19 +55,54 @@ RESTRepresentation::addParameter( std::string name, std::string value )
 unsigned long
 RESTRepresentation::getLength()
 {
-    return testDataLength;
+    return rspDataLength;
 }
 
 unsigned char *
 RESTRepresentation::getBuffer()
 {
-    return testData;
+    return rspData;
+}
+
+void 
+RESTRepresentation::resetData()
+{
+    rspDataLength = 0;
 }
 
 size_t 
-RESTRepresentation::addUploadData( const char *buffer, size_t length )
+RESTRepresentation::appendData( const char *buffer, size_t length )
 {
-    printf("RESTRepresentation::addUploadData -- size: %ld\n", length);
+    unsigned char *tmpBuf;
+    unsigned long  neededBytes;
+
+    printf("RESTRepresentation::appendData -- size: %ld\n", length);
+    
+    // Calculate the number of bytes needed
+    neededBytes = rspDataLength + length;
+
+    // Check if there is already enough space in the buffer
+    if( neededBytes > rspDataBufferLength )
+    {
+        // Buffer needs to be increased in size.  Calculate the size of
+        // new buffer.
+        neededBytes = ( neededBytes & ~(1024) ) + 1024;
+ 
+        tmpBuf = (unsigned char *) malloc( neededBytes );
+        rspDataBufferLength = neededBytes;
+
+        if( rspDataLength )
+        {
+            memcpy( tmpBuf, rspData, rspDataLength );
+            free( rspData );
+            rspData = NULL;
+        }
+
+        rspData = tmpBuf;
+    }
+
+    memcpy( &tmpBuf[rspDataLength], buffer, length );
+    rspDataLength += length;
 
     return 0;
 }
