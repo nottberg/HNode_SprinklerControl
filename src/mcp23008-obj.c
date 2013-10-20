@@ -317,8 +317,9 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     // Attempt to open the i2c device 
     if( ( priv->i2cdev = open( devfn, O_RDWR ) ) < 0 ) 
     {
+        printf( "Failed to acquire bus access and/or talk to slave.\n" ); 
         perror("Failed to open the i2c bus");
-        exit(1);
+        return TRUE;
     }
 
     // Tell the device which endpoint we want to talk to.
@@ -326,7 +327,7 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     {
         printf( "Failed to acquire bus access and/or talk to slave.\n" );
         /* ERROR HANDLING; you can check errno to see what went wrong */
-       exit( 1 );
+        return TRUE;
     }
 
     priv->i2cActive = TRUE;
