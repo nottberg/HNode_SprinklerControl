@@ -267,30 +267,39 @@ hnode_cmd_rx(GILink *sb, gpointer Event, gpointer data)
 }
 #endif
 
-int
-hnode_start_rest_daemon(CONTEXT *Context)
+bool
+hnode_load_configuration(CONTEXT *Context)
 {
     // Load the configuration for the switches
     Context->switchManager.loadConfiguration();
+    Context->zoneManager.loadConfiguration();
 
+    return false;
+}
+
+bool
+hnode_start_hardware_interface(CONTEXT *Context)
+{
+    // Load the configuration for the switches
+    Context->switchManager.start();
+    Context->zoneManager.start();
+
+    return false;
+}
+
+bool
+hnode_start_rest_daemon(CONTEXT *Context)
+{
     // Init the REST resources.
     Context->switchListResource.setSwitchManager( &Context->switchManager );
     Context->switchResource.setSwitchManager( &Context->switchManager );
 
-    //controller.setURLPattern( "/irrigation", REST_RMETHOD_GET );
-    //rest.registerResource( &controller );
-
-    //Context->toggles.setURLPattern( "/irrigation/toggles", REST_RMETHOD_GET );
     Context->Rest.registerResource( &(Context->switchListResource) );
     Context->Rest.registerResource( &(Context->switchResource) );
 
-    //zones.setURLPattern( "/irrigation/zones", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
-    //rest.registerResource( &zones );
-
-    //zone.setURLPattern( "/irrigation/zones/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE) ); 
-    //rest.registerResource( &zone );
-
     Context->Rest.start();
+
+    return false;
 }
 
 int
@@ -383,6 +392,10 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     //guint16 EndPointIndex, guint16 AssociatedEPIndex, guint8 *MimeTypeStr, guint16 Port, guint8 MajorVersion, guint8 MinorVersion, guint16 MicroVersion)
     g_hnode_set_endpoint(Context.HNode, 0, 0, (guint8*)"hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
     g_hnode_set_endpoint(Context.HNode, 1, 1, (guint8*)"hnode-irrigation-rest", 8888, 1, 0, 0);	
+
+    hnode_load_configuration( &Context );
+
+    hnode_start_hardware_interface( &Context );
 
     // Fire up the rest daemon
     hnode_start_rest_daemon( &Context );

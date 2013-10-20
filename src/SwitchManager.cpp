@@ -201,20 +201,23 @@ SwitchManager::loadConfiguration()
         }
     }
 
-    // Build the global list of Switch Objects
-    //for( std::vector<I2CExpander *>::iterator it = i2cExpanderList.begin() ; it != i2cExpanderList.end(); ++it)
-    //{
-    //    for( int index = 0; index < (*it)->getSwitchCount(); index++ )
-    //    {
-    //        printf( "SwitchManager: adding switch - %d\n", index );
-    //        Switch *swObj = (*it)->getSwitchByIndex( index );
-    //        switchList.push_back( swObj );
-    //    }
-    //}
 
     // Free the config document
     xmlFreeDoc(doc);
 
+    return false;
+}
+
+bool 
+SwitchManager::start()
+{
+    // Start up all of the i2c expander devices
+    for( std::vector<I2CExpander *>::iterator it = i2cExpanderList.begin() ; it != i2cExpanderList.end(); ++it)
+    {
+        (*it)->start();
+    }
+
+    // Done with startup
     return false;
 }
 

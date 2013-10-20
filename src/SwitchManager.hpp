@@ -38,6 +38,8 @@ class SwitchManager
         Switch *getSwitchByIndex( int index );
 
         Switch *getSwitchByID( std::string switchID );
+
+        bool start();
 };
 
 #endif // __SWITCHMANAGER_H__

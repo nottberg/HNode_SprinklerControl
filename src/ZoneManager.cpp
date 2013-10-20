@@ -46,4 +46,10 @@ ZoneManager::loadConfiguration()
     return false;
 }
 
+bool 
+ZoneManager::start()
+{
+    return false;
+}
+
 

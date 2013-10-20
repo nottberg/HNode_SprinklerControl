@@ -35,6 +35,8 @@ class ZoneManager
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();
+
+        bool start();
 };
 
 #endif // __ZONE_H__
