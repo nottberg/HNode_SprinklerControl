@@ -314,6 +314,8 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     // Build the device string
     sprintf( devfn, "/dev/i2c-%d", priv->i2cBusIndex );
   
+    printf( "mcp23008 start: %s, %x\n", devfn, priv->i2cAddress );
+
     // Attempt to open the i2c device 
     if( ( priv->i2cdev = open( devfn, O_RDWR ) ) < 0 ) 
     {
@@ -340,6 +342,8 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     priv->currentState = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_OLAT );
 
     printf( "Initial Value Read: %d\n", priv->currentState );
+
+    return FALSE;
 }
 
 gboolean
@@ -356,6 +360,7 @@ g_mcp23008_stop(GMCP23008 *MCP23008)
 
     priv->i2cActive = FALSE;
 
+    return FALSE;
 }
 
 // Set single pin to either INPUT or OUTPUT mode
