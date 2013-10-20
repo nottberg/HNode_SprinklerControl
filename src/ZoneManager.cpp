@@ -33,6 +33,7 @@ ZoneManager::setConfigurationPath( std::string cfgPath )
 bool
 ZoneManager::loadConfiguration()
 {
+#if 0
     xmlDocPtr doc; /* the resulting document tree */
 
     doc = xmlReadFile( cfgPath.c_str(), NULL, 0 );
@@ -42,7 +43,7 @@ ZoneManager::loadConfiguration()
 	    return true;
     }
     xmlFreeDoc(doc);
-
+#endif
     return false;
 }
 
