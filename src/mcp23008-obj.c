@@ -334,6 +334,9 @@ g_mcp23008_start(GMCP23008 *MCP23008)
 
     priv->i2cActive = TRUE;
 
+    // Clear all of the outputs initially.
+    g_mcp23008_set_port_state( MCP23008, 0 );
+
     // Init the IO direction and pullup settings
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
@@ -342,9 +345,6 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     priv->currentState = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_OLAT );
 
     printf( "Initial Value Read: %d\n", priv->currentState );
-
-    // Clear all of the outputs initially.
-    g_mcp23008_set_port_state( MCP23008, 0 );
 
     return FALSE;
 }
@@ -424,7 +424,7 @@ g_mcp23008_set_pin_mode(GMCP23008 *MCP23008, int pin, int mode )
     // Update the register
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
 
-    return priv->direction;
+    return FALSE;
 }
 
 gboolean 
@@ -442,7 +442,7 @@ g_mcp23008_set_port_pullup(GMCP23008 *MCP23008, guint pullup )
 
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
 
-    return priv->pullup;
+    return FALSE;
 }
 
 // Set single pin to either INPUT or OUTPUT mode
@@ -481,7 +481,7 @@ g_mcp23008_set_pin_pullup(GMCP23008 *MCP23008, int pin, int enable )
 
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
 
-    return priv->pullup;
+    return FALSE;
 }
 
 guint 
@@ -527,7 +527,7 @@ g_mcp23008_set_port_state(GMCP23008 *MCP23008, guint value )
 
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
 
-    return new;
+    return FALSE;
 }
 
 gboolean 
@@ -561,7 +561,7 @@ g_mcp23008_set_pin_state(GMCP23008 *MCP23008, guint8 pin, guint8 value )
         i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
     }
 
-    return new;
+    return FALSE;
 }
 
 #if 0
