@@ -546,14 +546,12 @@ g_mcp23008_set_port_state(GMCP23008 *MCP23008, guint value )
 	class = G_MCP23008_GET_CLASS (MCP23008);
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
-    int new;
-
     priv->currentState = value;
 
     if( priv->i2cActive == FALSE )
         return TRUE;
 
-    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
+    i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, priv->currentState );
 
     return FALSE;
 }
