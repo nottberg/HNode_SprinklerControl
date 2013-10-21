@@ -343,22 +343,6 @@ g_mcp23008_start(GMCP23008 *MCP23008)
 
     printf( "Initial Value Read: %d\n", priv->currentState );
 
-    g_mcp23008_set_pin_state( MCP23008, 0, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 1, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 2, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 3, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 4, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 5, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 6, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( MCP23008, 7, 1 );
- 
     return FALSE;
 }
 
