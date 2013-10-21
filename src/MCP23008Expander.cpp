@@ -98,24 +98,6 @@ MCP23008Expander::start()
     g_mcp23008_set_pin_mode( expander, 5, MCP23008_PIN_OUTPUT );
     g_mcp23008_set_pin_mode( expander, 6, MCP23008_PIN_OUTPUT );
     g_mcp23008_set_pin_mode( expander, 7, MCP23008_PIN_OUTPUT );
-
-    // Turn on the switches
-    g_mcp23008_set_pin_state( expander, 0, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 1, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 2, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 3, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 4, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 5, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 6, 1 );
-    sleep(1);
-    g_mcp23008_set_pin_state( expander, 7, 1 );
-
 }
 
 

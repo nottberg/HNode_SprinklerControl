@@ -195,6 +195,12 @@ g_mcp23008_init (GMCP23008 *sb)
     priv->i2cAddress  = 0x20;
     priv->i2cBusIndex = 0;
 
+    // Set default pin values -- all inputs with pull-ups disabled.
+    // Current OLAT (output) value is polled, not set.
+    priv->direction    = 0xFF;
+    priv->pullup       = 0;
+    priv->currentState = 0;
+
     // Initilize the ObjID value
     priv->dispose_has_run = FALSE;
 
@@ -306,11 +312,6 @@ g_mcp23008_start(GMCP23008 *MCP23008)
 	class = G_MCP23008_GET_CLASS (MCP23008);
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
-    // Set default pin values -- all inputs with pull-ups disabled.
-    // Current OLAT (output) value is polled, not set.
-    priv->direction = 0xFF;
-    priv->pullup = 0;
-
     // Build the device string
     sprintf( devfn, "/dev/i2c-%d", priv->i2cBusIndex );
   
@@ -335,7 +336,7 @@ g_mcp23008_start(GMCP23008 *MCP23008)
     priv->i2cActive = TRUE;
 
     // Clear all of the outputs initially.
-    g_mcp23008_set_port_state( MCP23008, 0 );
+    g_mcp23008_set_port_state( MCP23008, priv->currentState );
 
     // Init the IO direction and pullup settings
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
@@ -380,6 +381,9 @@ g_mcp23008_set_port_mode( GMCP23008 *MCP23008, guint mode )
 
     printf( "set_port_mode: 0x%x\n", priv->direction );
 
+    if( priv->i2cActive == FALSE )
+        return TRUE;
+
     // Update the register
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
 
@@ -395,6 +399,9 @@ g_mcp23008_get_port_mode( GMCP23008 *MCP23008 )
 	
     class = G_MCP23008_GET_CLASS (MCP23008);
     priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    if( priv->i2cActive == FALSE )
+        return 0;
 
     // Update the register
     priv->direction = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_IODIR );
@@ -421,6 +428,9 @@ g_mcp23008_set_pin_mode(GMCP23008 *MCP23008, int pin, int mode )
         priv->direction &= ~(1 << pin);
     }
 
+    if( priv->i2cActive == FALSE )
+        return TRUE;
+
     // Update the register
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_IODIR, priv->direction );
 
@@ -440,6 +450,9 @@ g_mcp23008_set_port_pullup(GMCP23008 *MCP23008, guint pullup )
 
     printf( "set_port_pullup: 0x%x\n", priv->pullup );
 
+    if( priv->i2cActive == FALSE )
+        return TRUE;
+
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
 
     return FALSE;
@@ -454,6 +467,9 @@ g_mcp23008_get_port_pullup( GMCP23008 *MCP23008 )
 	
 	class = G_MCP23008_GET_CLASS (MCP23008);
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    if( priv->i2cActive == FALSE )
+        return 0;
 
     // Update the register
     priv->pullup = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_GPPU );
@@ -479,6 +495,9 @@ g_mcp23008_set_pin_pullup(GMCP23008 *MCP23008, int pin, int enable )
         priv->pullup &= ~(1 << pin);
     }
 
+    if( priv->i2cActive == FALSE )
+        return TRUE;
+
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_GPPU, priv->pullup );
 
     return FALSE;
@@ -493,6 +512,9 @@ g_mcp23008_get_port_state( GMCP23008 *MCP23008 )
 	class = G_MCP23008_GET_CLASS (MCP23008);
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
+    if( priv->i2cActive == FALSE )
+        return 0;
+
     priv->currentState = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_GPIO );
 
     return priv->currentState;
@@ -506,6 +528,9 @@ g_mcp23008_check_pin_state(GMCP23008 *MCP23008, int pin )
 	
 	class = G_MCP23008_GET_CLASS (MCP23008);
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
+
+    if( priv->i2cActive == FALSE )
+        return TRUE;
 
     priv->currentState = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_GPIO );
 
@@ -524,6 +549,9 @@ g_mcp23008_set_port_state(GMCP23008 *MCP23008, guint value )
     int new;
 
     priv->currentState = value;
+
+    if( priv->i2cActive == FALSE )
+        return TRUE;
 
     i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
 
@@ -558,6 +586,10 @@ g_mcp23008_set_pin_state(GMCP23008 *MCP23008, guint8 pin, guint8 value )
     if( new != priv->currentState )
     {
         priv->currentState = new;
+
+        if( priv->i2cActive == FALSE )
+            return TRUE;
+
         i2c_smbus_write_byte_data( priv->i2cdev, MCP23008_OLAT, new );
     }
 
