@@ -343,6 +343,9 @@ g_mcp23008_start(GMCP23008 *MCP23008)
 
     printf( "Initial Value Read: %d\n", priv->currentState );
 
+    // Clear all of the outputs initially.
+    g_mcp23008_set_port_state( MCP23008, 0 );
+
     return FALSE;
 }
 
