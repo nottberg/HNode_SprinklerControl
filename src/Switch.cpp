@@ -3,6 +3,10 @@
 Switch::Switch( SwitchDevice *parentPtr )
 {
     parent = parentPtr;
+    
+    mapped     = false;
+    controlled = false;
+    switchable = false;
 }
 
 Switch::~Switch()
@@ -90,5 +94,58 @@ Switch::setStateOff()
     return parent->setState( this, 0 );
 }
 
+void 
+Switch::setMapped()
+{
+    mapped = true;
+}
+
+void 
+Switch::clearMapped()
+{
+    mapped = false;
+}
+
+bool 
+Switch::isMapped()
+{
+    return mapped;
+}
+
+void 
+Switch::setControlled()
+{
+    controlled = true;
+}
+
+void 
+Switch::clearControlled()
+{
+    controlled = false;
+}
+
+bool 
+Switch::isControlled()
+{
+    return controlled;
+}
+
+void 
+Switch::setSwitchable()
+{
+    switchable = true;
+}
+
+void 
+Switch::clearSwitchable()
+{
+    switchable = false;
+}
+
+bool 
+Switch::isSwitchable()
+{
+    return switchable;
+}
 
 

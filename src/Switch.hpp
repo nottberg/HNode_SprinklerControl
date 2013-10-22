@@ -22,6 +22,18 @@ class Switch
         std::string  name;
         std::string  desc;
 
+        // This switch has an entry in the mapping
+        // configuration file.
+        bool         mapped;
+
+        // This switch is controlled by a higher level
+        // object. (i.e. a irrigation zone controlling a valve)
+        bool         controlled;
+
+        // This switch can be turned on and off, as opposed
+        // to being a read only input.
+        bool         switchable;
+
     public:
         Switch( SwitchDevice *parentPtr );
        ~Switch();
@@ -38,8 +50,19 @@ class Switch
         void setDescription( std::string descStr );
         std::string getDescription();
 
-        bool isStateOn();
+        void setMapped();
+        void clearMapped();
+        bool isMapped();
 
+        void setControlled();
+        void clearControlled();
+        bool isControlled();
+
+        void setSwitchable();
+        void clearSwitchable();
+        bool isSwitchable();
+
+        bool isStateOn();
         bool setStateOn();
         bool setStateOff();
 };

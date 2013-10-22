@@ -64,6 +64,7 @@ SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
     std::string idStr;
     std::string nameStr;
     std::string descStr;
+    std::string tmpStr;
 
     Switch *swObj;
 
@@ -83,6 +84,9 @@ SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
         return true;
     }
 
+    // Indicate that this switch object had a mapping entry
+    swObj->setMapped();
+
     // Get the id string for this switch
     if( getAttribute( switchElem, "id", idStr ) == false )
     {
@@ -93,6 +97,15 @@ SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
     if( getAttribute( switchElem, "name", nameStr ) == false )
     {
         swObj->setName( nameStr );
+    }
+
+    // Get the name string for this switch
+    if( getAttribute( switchElem, "controlled", tmpStr ) == false )
+    {
+        if( tmpStr == "yes" )
+        {
+            swObj->setControlled();
+        }
     }
 
     // Get the description string.
