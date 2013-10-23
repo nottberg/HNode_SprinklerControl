@@ -12,12 +12,20 @@ class Zone
 {
     private:
 
-        Switch *ioPin;
+        std::vector<Switch *> valveList;
+
+        std::string id;
+        std::string name;
+        std::string desc;
+
+        std::string diagramOutlinePath;
+        std::string diagramActivePath;
 
     public:
         Zone();
        ~Zone();
 
+        void setID( std::string idValue );
 };
 
 class ZoneManager
@@ -25,9 +33,10 @@ class ZoneManager
     private:
         std::string cfgPath;
 
-        std::vector<Zone> ioList;
+        std::vector<Zone *> zoneList;
 
-        std::vector<I2CExpander> ioExpanderList;
+        bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
+        bool addZone( xmlDocPtr doc, xmlNode *devElem );
 
     public:
         ZoneManager();

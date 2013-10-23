@@ -100,11 +100,11 @@ SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
     }
 
     // Get the name string for this switch
-    if( getAttribute( switchElem, "controlled", tmpStr ) == false )
+    if( getAttribute( switchElem, "switchable", tmpStr ) == false )
     {
         if( tmpStr == "yes" )
         {
-            swObj->setControlled();
+            swObj->setSwitchable();
         }
     }
 

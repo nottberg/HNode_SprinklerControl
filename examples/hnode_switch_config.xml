@@ -3,28 +3,28 @@
        <i2c-expander type="mcp23008" id="irrigation1">
            <i2c-addr devnum="0" busaddr="0x20"/>
            <switch-map>
-               <switch index="0" id="exp1_valve1" name="valve1" controlled="yes">
+               <switch index="0" id="exp1_valve1" name="valve1" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 1</desc>
                </switch>
-               <switch index="1" id="exp1_valve2" name="valve2" controlled="yes">
+               <switch index="1" id="exp1_valve2" name="valve2" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 2</desc>
                </switch>
-               <switch index="2" id="exp1_valve3" name="valve3" controlled="yes">
+               <switch index="2" id="exp1_valve3" name="valve3" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 3</desc>
                </switch>
-               <switch index="3" id="exp1_valve4" name="valve4" controlled="yes">
+               <switch index="3" id="exp1_valve4" name="valve4" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 4</desc>
                </switch>
-               <switch index="4" id="exp1_valve5" name="valve5" controlled="yes">
+               <switch index="4" id="exp1_valve5" name="valve5" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 5</desc>
                </switch>
-               <switch index="5" id="exp1_valve6" name="valve6" controlled="yes">
+               <switch index="5" id="exp1_valve6" name="valve6" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 6</desc>
                </switch>
-               <switch index="6" id="exp1_valve7" name="valve7" controlled="yes">
+               <switch index="6" id="exp1_valve7" name="valve7" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 7</desc>
                </switch>
-               <switch index="7" id="exp1_valve8" name="valve8" controlled="yes">
+               <switch index="7" id="exp1_valve8" name="valve8" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 8</desc>
                </switch>
            </switch-map>
@@ -32,28 +32,28 @@
        <i2c-expander type="mcp23008" id="irrigation2">
            <i2c-addr devnum="0" busaddr="0x27"/>
            <switch-map>
-               <switch index="0" id="exp2_valve1" name="valve9" controlled="yes">
+               <switch index="0" id="exp2_valve1" name="valve9" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 9</desc>
                </switch>
-               <switch index="1" id="exp2_valve2" name="valve10" controlled="yes">
+               <switch index="1" id="exp2_valve2" name="valve10" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 10</desc>
                </switch>
-               <switch index="2" id="exp2_valve3" name="valve11" controlled="yes">
+               <switch index="2" id="exp2_valve3" name="valve11" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 11</desc>
                </switch>
-               <switch index="3" id="exp2_valve4" name="valve12" controlled="yes">
+               <switch index="3" id="exp2_valve4" name="valve12" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 12</desc>
                </switch>
-               <switch index="4" id="exp2_valve5" name="valve13" controlled="yes">
+               <switch index="4" id="exp2_valve5" name="valve13" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 13</desc>
                </switch>
-               <switch index="5" id="exp2_valve6" name="valve14" controlled="yes">
+               <switch index="5" id="exp2_valve6" name="valve14" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 14</desc>
                </switch>
-               <switch index="6" id="exp2_valve7" name="valve15" controlled="yes">
+               <switch index="6" id="exp2_valve7" name="valve15" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 15</desc>
                </switch>
-               <switch index="7" id="exp2_valve8" name="valve16" controlled="yes">
+               <switch index="7" id="exp2_valve8" name="valve16" switchable="yes">
                    <desc>Valve Control for Sprinkler Zone 16</desc>
                </switch>
            </switch-map>
