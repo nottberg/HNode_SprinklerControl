@@ -57,6 +57,32 @@ SwitchDevice::getSwitchByIndex(int Index)
     return &SwitchList[ Index ];
 }
 
+bool
+SwitchDevice::setCapabilitiesFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
+{
+    xmlNode *capList;
+
+    // Find the switch capabilities list
+    //for( )
+    //{
+
+//    }
+
+    // Parse any capabilities
+
+#if 0
+    // Get the name string for this switch
+    if( getAttribute( switchElem, "switchable", tmpStr ) == false )
+    {
+        if( tmpStr == "yes" )
+        {
+            swObj->setCapOnOff();
+        }
+    }
+#endif    
+
+}
+
 bool 
 SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
 {
@@ -99,20 +125,14 @@ SwitchDevice::setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem )
         swObj->setName( nameStr );
     }
 
-    // Get the name string for this switch
-    if( getAttribute( switchElem, "switchable", tmpStr ) == false )
-    {
-        if( tmpStr == "yes" )
-        {
-            swObj->setSwitchable();
-        }
-    }
-
     // Get the description string.
     if( getChildContent( switchElem, "desc", descStr ) == false )
     {
         swObj->setDescription( descStr );
     }
+
+    // Get capabilities data
+    setCapabilitiesFromConfiguration( doc, switchElem );
 
     // Done
     return false;

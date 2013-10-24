@@ -32,7 +32,7 @@ class Switch
 
         // This switch can be turned on and off, as opposed
         // to being a read only input.
-        bool         switchable;
+        bool         capOnOff;
 
     public:
         Switch( SwitchDevice *parentPtr );
@@ -58,9 +58,9 @@ class Switch
         void clearControlled();
         bool isControlled();
 
-        void setSwitchable();
-        void clearSwitchable();
-        bool isSwitchable();
+        void setCapOnOff();
+        void clearCapOnOff();
+        bool hasCapOnOff();
 
         bool isStateOn();
         bool setStateOn();
@@ -79,6 +79,7 @@ class SwitchDevice
         bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
 
         bool setSwitchFromConfiguration( xmlDocPtr doc, xmlNode *switchElem );
+        bool setCapabilitiesFromConfiguration( xmlDocPtr doc, xmlNode *switchElem );
 
     public:
 

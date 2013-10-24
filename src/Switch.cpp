@@ -6,7 +6,7 @@ Switch::Switch( SwitchDevice *parentPtr )
     
     mapped     = false;
     controlled = false;
-    switchable = false;
+    capOnOff   = false;
 }
 
 Switch::~Switch()
@@ -131,21 +131,21 @@ Switch::isControlled()
 }
 
 void 
-Switch::setSwitchable()
+Switch::setCapOnOff()
 {
-    switchable = true;
+    capOnOff = true;
 }
 
 void 
-Switch::clearSwitchable()
+Switch::clearCapOnOff()
 {
-    switchable = false;
+    capOnOff = false;
 }
 
 bool 
-Switch::isSwitchable()
+Switch::hasCapOnOff()
 {
-    return switchable;
+    return capOnOff;
 }
 
 
