@@ -185,3 +185,76 @@ SwitchResource::restPut( RESTRequest *request )
     }
 }
 
+SwitchActivityLogResource::SwitchActivityLogResource()
+{
+    setURLPattern( "/switches/{switchid}/activity", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+}
+
+SwitchActivityLogResource::~SwitchActivityLogResource()
+{
+}
+
+void 
+SwitchActivityLogResource::setSwitchManager( SwitchManager *swMgr )
+{
+    swManager = swMgr;
+}
+
+void 
+SwitchActivityLogResource::restGet( RESTRequest *request )
+{
+    std::string swID;
+    std::string rspData;
+    Switch *swObj;
+
+    if( request->getParameter( "switchid", swID ) )
+    {
+        printf("Failed to look up switchid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL SwitchID: %s\n", swID.c_str() );
+
+    swObj = swManager->getSwitchByID( swID );
+
+    if( swObj == NULL )
+    {
+        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+        request->sendResponse();
+        return;
+    }
+
+    rspData = "<switch-log id=\"";
+    rspData += swID;
+    rspData += "\">";
+
+    rspData += "<event>";
+    rspData += "<timestamp>1383143803</timestamp>";
+    rspData += "<sequence>0</sequence>";
+    rspData += "<msg>Switched to On.</msg>";
+    rspData += "<origin>192.168.1.2</origin>";
+    rspData += "<old-state>off</old-state>";
+    rspData += "<new-state>on</new-state>";
+    rspData += "</event>";
+
+    rspData += "<event>";
+    rspData += "<timestamp>1383143843</timestamp>";
+    rspData += "<sequence>0</sequence>";
+    rspData += "<msg>Switched to Off.</msg>";
+    rspData += "<origin>192.168.1.2</origin>";
+    rspData += "<old-state>on</old-state>";
+    rspData += "<new-state>off</new-state>";
+    rspData += "</event>";
+
+    rspData += "</switch-log>";
+
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->appendData( rspData.c_str(), rspData.size() );
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+

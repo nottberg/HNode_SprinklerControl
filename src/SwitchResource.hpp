@@ -33,4 +33,18 @@ class SwitchResource : public RESTResource
         virtual void restPut( RESTRequest *request );
 };
 
+class SwitchActivityLogResource : public RESTResource
+{
+    private:
+        SwitchManager *swManager;
+
+    public:
+        SwitchActivityLogResource();
+       ~SwitchActivityLogResource();
+
+        void setSwitchManager( SwitchManager *swMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
 #endif //__SWITCHRESOURCE_H__

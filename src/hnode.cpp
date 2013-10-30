@@ -76,8 +76,9 @@ typedef struct x10NodeContext
 
     SwitchManager switchManager;
 
-    SwitchListResource switchListResource;
-    SwitchResource switchResource;
+    SwitchListResource         switchListResource;
+    SwitchResource             switchResource;
+    SwitchActivityLogResource  switchActivityResource;
 }CONTEXT;
 
 static struct termios saved_io;
@@ -293,9 +294,11 @@ hnode_start_rest_daemon(CONTEXT *Context)
     // Init the REST resources.
     Context->switchListResource.setSwitchManager( &Context->switchManager );
     Context->switchResource.setSwitchManager( &Context->switchManager );
+    Context->switchActivityResource.setSwitchManager( &Context->switchManager );
 
     Context->Rest.registerResource( &(Context->switchListResource) );
     Context->Rest.registerResource( &(Context->switchResource) );
+    Context->Rest.registerResource( &(Context->switchActivityResource) );
 
     Context->Rest.start();
 
