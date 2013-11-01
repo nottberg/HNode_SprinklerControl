@@ -231,8 +231,8 @@ SwitchActivityLogResource::restGet( RESTRequest *request )
     rspData += "\">";
 
     rspData += "<event>";
-    rspData += "<timestamp>1383143803</timestamp>";
-    rspData += "<sequence>0</sequence>";
+    rspData += "<tStamp>1383143803</tStamp>";
+    rspData += "<rStamp>400</rStamp>";
     rspData += "<msg>Switched to On.</msg>";
     rspData += "<origin>192.168.1.2</origin>";
     rspData += "<old-state>off</old-state>";
@@ -240,8 +240,8 @@ SwitchActivityLogResource::restGet( RESTRequest *request )
     rspData += "</event>";
 
     rspData += "<event>";
-    rspData += "<timestamp>1383143843</timestamp>";
-    rspData += "<sequence>0</sequence>";
+    rspData += "<tStamp>1383143843</tStamp>";
+    rspData += "<rStamp>500</rStamp>";
     rspData += "<msg>Switched to Off.</msg>";
     rspData += "<origin>192.168.1.2</origin>";
     rspData += "<old-state>on</old-state>";
