@@ -168,7 +168,7 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
                 {
                      Switch *swObj = swmgr->getSwitchByIndex( SwitchID );
                      if( swObj )
-                         swObj->setStateOn();
+                         swObj->setStateOn("HNode UDP Switch Interface");
                     //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 1 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_ON, 1);
                 }
@@ -178,7 +178,7 @@ hnode_switch_rx(GHNodePktSrc *sb, GHNodePacket *Packet, gpointer data)
                 {
                      Switch *swObj = swmgr->getSwitchByIndex( SwitchID );
                      if( swObj )
-                         swObj->setStateOff();
+                         swObj->setStateOff("HNode UDP Switch Interface");
                     //g_mcp23008_set_pin_state(Context->gpio, SwitchID, 0 );
                     //g_ilink_send_cmd(Context->ILink, 'M', (SwitchID + 1), ILINK_FUNC_OFF, 1);
                 }

@@ -159,12 +159,12 @@ SwitchResource::restPut( RESTRequest *request )
     if( stateStr == "on" )
     {
         printf( "Turn Switch On: %s\n", swID.c_str() );
-        result = swObj->setStateOn();
+        result = swObj->setStateOn("REST Switch Interface");
     }
     else if( stateStr == "off" )
     {
         printf( "Turn Switch Off: %s\n", swID.c_str() );
-        result = swObj->setStateOff();
+        result = swObj->setStateOff("REST Switch Interface");
     }
     else
     {
@@ -230,23 +230,19 @@ SwitchActivityLogResource::restGet( RESTRequest *request )
     rspData += swID;
     rspData += "\">";
 
-    rspData += "<event>";
-    rspData += "<tStamp>1383143803</tStamp>";
-    rspData += "<rStamp>400</rStamp>";
-    rspData += "<msg>Switched to On.</msg>";
-    rspData += "<origin>192.168.1.2</origin>";
-    rspData += "<old-state>off</old-state>";
-    rspData += "<new-state>on</new-state>";
-    rspData += "</event>";
+    for( int Index = 0; Index < swObj->getLogEntryCount(); Index++ )
+    {
+        SwitchLogEntry *entry = swObj->getLogEntry( Index );
 
-    rspData += "<event>";
-    rspData += "<tStamp>1383143843</tStamp>";
-    rspData += "<rStamp>500</rStamp>";
-    rspData += "<msg>Switched to Off.</msg>";
-    rspData += "<origin>192.168.1.2</origin>";
-    rspData += "<old-state>on</old-state>";
-    rspData += "<new-state>off</new-state>";
-    rspData += "</event>";
+        rspData += "<event>";
+        rspData += "<tStamp>" + entry->getEpochTimeString() + "</tStamp>";
+        rspData += "<rStamp>" + entry->getRelativeTimeString() + "</rStamp>";
+        rspData += "<msg>" + entry->getMessage() + "</msg>";
+        rspData += "<origin>" + entry->getOrigin() + "</origin>";
+        rspData += "<old-state>" + entry->getStartState() + "</old-state>";
+        rspData += "<new-state>" + entry->getEndState() + "</new-state>";
+        rspData += "</event>";
+    }
 
     rspData += "</switch-log>";
 

@@ -11,6 +11,32 @@
 
 class SwitchDevice;
 
+class SwitchLogEntry
+{
+    private:
+        unsigned long epochTime;
+        unsigned int  relativeTime;
+        std::string   message;
+        std::string   origin;
+        std::string   startState;
+        std::string   endState;
+
+    public:
+        SwitchLogEntry();
+       ~SwitchLogEntry();
+
+        void createEntry( std::string msg, std::string origin, std::string sState, std::string eState );
+
+        unsigned long getEpochTime();
+        unsigned int  getRelativeTime();
+        std::string   getEpochTimeString();
+        std::string   getRelativeTimeString();
+        std::string   getMessage();
+        std::string   getOrigin();
+        std::string   getStartState();
+        std::string   getEndState();
+};
+
 class Switch
 {
     private:
@@ -33,6 +59,9 @@ class Switch
         // This switch can be turned on and off, as opposed
         // to being a read only input.
         bool         capOnOff;
+
+        // An in memory copy of the switch log entries.
+        std::list<SwitchLogEntry *> logList; 
 
     public:
         Switch( SwitchDevice *parentPtr );
@@ -63,8 +92,12 @@ class Switch
         bool hasCapOnOff();
 
         bool isStateOn();
-        bool setStateOn();
-        bool setStateOff();
+        bool setStateOn( std::string origin );
+        bool setStateOff( std::string origin );
+
+        unsigned int getLogEntryCount();
+        SwitchLogEntry* getLogEntry( unsigned int Index );
+  
 };
 
 class SwitchDevice
