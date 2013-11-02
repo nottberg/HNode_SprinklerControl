@@ -37,6 +37,7 @@
 #include "SwitchResource.hpp"
 
 #include "ZoneManager.hpp"
+#include "ZoneResource.hpp"
 
 guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
 
@@ -79,6 +80,10 @@ typedef struct x10NodeContext
     SwitchListResource         switchListResource;
     SwitchResource             switchResource;
     SwitchActivityLogResource  switchActivityResource;
+
+    ZoneListResource         zoneListResource;
+    ZoneResource             zoneResource;
+
 }CONTEXT;
 
 static struct termios saved_io;
@@ -299,6 +304,12 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->Rest.registerResource( &(Context->switchListResource) );
     Context->Rest.registerResource( &(Context->switchResource) );
     Context->Rest.registerResource( &(Context->switchActivityResource) );
+
+    Context->zoneListResource.setZoneManager( &Context->zoneManager );
+    Context->zoneResource.setZoneManager( &Context->zoneManager );
+
+    Context->Rest.registerResource( &(Context->zoneListResource) );
+    Context->Rest.registerResource( &(Context->zoneResource) );
 
     Context->Rest.start();
 
