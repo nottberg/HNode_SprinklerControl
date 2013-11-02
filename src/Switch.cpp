@@ -174,14 +174,46 @@ Switch::isStateOn()
     return false;
 }
 
+void 
+Switch::initLog()
+{
+
+}
+
+void 
+Switch::persistLog()
+{
+
+}
+
+#define LOG_ENTRY_LIMIT  10
+
+void
+Switch::appendLogEntry( std::string msg, std::string origin, std::string startState, std::string endState )
+{
+    // Allocate a new log entry
+    SwitchLogEntry *logEntry = new SwitchLogEntry();
+
+    // Init it with the data.
+    logEntry->createEntry( msg, origin, startState, endState );
+
+    // Add it to the log entry list.
+    logList.push_front( logEntry );
+
+    // If necessary clip the log to maintain a 
+    // constant number of entries.
+    if( logList.size() > LOG_ENTRY_LIMIT )
+    {
+        logEntry = logList.back();
+        logList.pop_back();
+        delete logEntry;
+    }
+}
+
 bool 
 Switch::setStateOn( std::string origin )
 {
-    SwitchLogEntry *logEntry = new SwitchLogEntry();
-
-    logEntry->createEntry( "Turn Switch On.", origin, "off", "on" );
-
-    logList.push_back( logEntry );
+    appendLogEntry( "Turn Switch On.", origin, "off", "on" );
 
     return parent->setState( this, 1 );
 }
@@ -189,11 +221,7 @@ Switch::setStateOn( std::string origin )
 bool 
 Switch::setStateOff( std::string origin )
 {
-    SwitchLogEntry *logEntry = new SwitchLogEntry();
-
-    logEntry->createEntry( "Turn Switch Off.", origin, "on", "off" );
-
-    logList.push_back( logEntry );
+    appendLogEntry( "Turn Switch Off.", origin, "on", "off" );
 
     return parent->setState( this, 0 );
 }

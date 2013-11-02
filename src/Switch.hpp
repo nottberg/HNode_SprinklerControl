@@ -60,8 +60,15 @@ class Switch
         // to being a read only input.
         bool         capOnOff;
 
+        // Path to the persisted log entries.
+        std::string logPath;
+
         // An in memory copy of the switch log entries.
         std::list<SwitchLogEntry *> logList; 
+
+        void appendLogEntry( std::string msg, std::string origin, std::string startState, std::string endState );
+        void initLog();
+        void persistLog();
 
     public:
         Switch( SwitchDevice *parentPtr );

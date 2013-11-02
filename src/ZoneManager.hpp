@@ -18,14 +18,24 @@ class Zone
         std::string name;
         std::string desc;
 
-        std::string diagramOutlinePath;
-        std::string diagramActivePath;
+        std::string diagramLocate;
+        std::string diagramActive;
 
     public:
         Zone();
        ~Zone();
 
         void setID( std::string idValue );
+        void setName( std::string nameValue );
+        void setDescription( std::string descValue );
+        void setDiagramLocate( std::string filename );
+        void setDiagramActive( std::string filename );
+
+        std::string getID();
+        std::string getName();
+        std::string getDescription();
+        std::string getDiagramLocate();
+        std::string getDiagramActive();
 };
 
 class ZoneManager
@@ -36,6 +46,10 @@ class ZoneManager
         std::vector<Zone *> zoneList;
 
         bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
+        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
+        bool getDiagrams( xmlNode *elem, Zone *zoneObj );
+        bool getValves( xmlNode *elem, Zone *zoneObj );
+
         bool addZone( xmlDocPtr doc, xmlNode *devElem );
 
     public:
@@ -44,6 +58,11 @@ class ZoneManager
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();
+
+        int getZoneCount();
+        Zone *getZoneByIndex( int index );
+
+        Zone *getZoneByID( std::string zoneID );
 
         bool start();
 };

@@ -1,0 +1,25 @@
+<hnode-irrigation-zone-cfg>
+   <zone-list>
+       <zone index="0" id="zone1" name="Zone 1">
+           <desc>East Side Grass</desc>
+           <diagrams>
+               <locate>zone1-locate.svg<locate>
+               <active>zone1-active.svg<active>
+           </diagrams>
+           <valve-list>
+               <switch-ref>expd1_valve1<switch-ref>
+           </valve-list>
+       </zone>
+       <zone index="1" id="zone2" name="Zone 2">
+           <desc>West Side Grass</desc>
+           <diagrams>
+               <locate>zone2-locate.svg<locate>
+               <active>zone2-active.svg<active>
+           </diagrams>
+           <valve-list>
+               <switch-ref>expd1_valve2<switch-ref>
+               <switch-ref>expd1_valve4<switch-ref>
+           </valve-list>
+       </zone>
+   </zone-list>
+</hnode-irrigation-zone-cfg>
