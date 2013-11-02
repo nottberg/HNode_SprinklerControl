@@ -78,7 +78,7 @@ Zone::getDiagramActive()
 
 ZoneManager::ZoneManager()
 {
-
+    cfgPath = "/etc/hnode";
 }
 
 ZoneManager::~ZoneManager()
