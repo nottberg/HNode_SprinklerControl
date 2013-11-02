@@ -315,7 +315,7 @@ ZoneManager::loadConfiguration()
     rootElem = xmlDocGetRootElement( doc );
 
     // Make sure it has the expected root tag
-    if( strcmp( (char *)rootElem->name, "hnode-irr-zone-cfg" ) != 0 )
+    if( strcmp( (char *)rootElem->name, "hnode-irrigation-zone-cfg" ) != 0 )
     {
         fprintf( stderr, "Root tag didn't match expected: %s\n", rootElem->name );
 	    return true;
