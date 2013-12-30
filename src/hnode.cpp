@@ -83,6 +83,7 @@ typedef struct x10NodeContext
 
     ZoneListResource         zoneListResource;
     ZoneResource             zoneResource;
+    ZoneDiagramResource      zoneMapResource;
 
 }CONTEXT;
 
@@ -310,6 +311,7 @@ hnode_start_rest_daemon(CONTEXT *Context)
 
     Context->Rest.registerResource( &(Context->zoneListResource) );
     Context->Rest.registerResource( &(Context->zoneResource) );
+    Context->Rest.registerResource( &(Context->zoneMapResource) );
 
     Context->Rest.start();
 
