@@ -1,3 +1,8 @@
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <cerrno>
+
 #include <stdio.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -35,6 +40,12 @@ Zone::setDescription( std::string descValue )
 }
 
 void 
+Zone::setMapPathID( std::string pathID )
+{
+    mapPathID = pathID;
+}
+
+void 
 Zone::setDiagramLocate( std::string filename )
 {
     diagramLocate = filename;
@@ -65,15 +76,52 @@ Zone::getDescription()
 }
 
 std::string 
-Zone::getDiagramLocate()
+Zone::getMapPathID()
 {
-    return diagramLocate;
+    return mapPathID;
 }
 
-std::string 
-Zone::getDiagramActive()
+
+bool 
+Zone::getDiagramLocate( std::string &diagramData )
 {
-    return diagramActive;
+    std::ifstream in;
+
+    in.open( diagramLocate.c_str(), std::ios::in | std::ios::binary );
+
+    if( !in )
+    {
+        return true;
+    }
+
+    in.seekg( 0, std::ios::end );
+    diagramData.resize( in.tellg() );
+    in.seekg( 0, std::ios::beg );
+    in.read( &diagramData[0], diagramData.size() );
+    in.close();
+
+    return false;
+}
+
+bool
+Zone::getDiagramActive( std::string &diagramData )
+{
+    std::ifstream in;
+
+    in.open( diagramActive.c_str(), std::ios::in | std::ios::binary );
+
+    if( !in )
+    {
+        return true;
+    }
+
+    in.seekg( 0, std::ios::end );
+    diagramData.resize( in.tellg() );
+    in.seekg( 0, std::ios::beg );
+    in.read( &diagramData[0], diagramData.size() );
+    in.close();
+
+    return false;
 }
 
 ZoneManager::ZoneManager()
@@ -184,14 +232,14 @@ ZoneManager::getDiagrams( xmlNode *elem, Zone *zoneObj )
         if( strcmp( (char *)curElem->name, "locate" ) == 0 ) 
         {
             contentValue = xmlNodeGetContent( curElem );
-            filename = (char*)contentValue;
+            filename = cfgPath + "/irrigation/zone_diagram/" + (char *)contentValue;
             zoneObj->setDiagramLocate( filename );
             xmlFree( contentValue );
         }
         else if( strcmp( (char *)curElem->name, "active" ) == 0 ) 
         {
             contentValue = xmlNodeGetContent( curElem );
-            filename = (char*)contentValue;
+            filename = cfgPath + "/irrigation/zone_diagram/" + (char *)contentValue;
             zoneObj->setDiagramActive( filename );
             xmlFree( contentValue );
         }
@@ -281,8 +329,14 @@ ZoneManager::addZone( xmlDocPtr doc, xmlNode *zoneElem )
         zoneObj->setDescription( tmpStr );
     }
 
+    // Get the map path.
+    if( getChildContent( zoneElem, "map-path-id", tmpStr ) == false )
+    {
+        zoneObj->setMapPathID( tmpStr );
+    }
+
     // 
-    getDiagrams( zoneElem, zoneObj );
+    //getDiagrams( zoneElem, zoneObj );
 
     //
     getValves( zoneElem, zoneObj ); 

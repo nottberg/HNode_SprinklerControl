@@ -17,6 +17,7 @@ class Zone
         std::string id;
         std::string name;
         std::string desc;
+        std::string mapPathID;
 
         std::string diagramLocate;
         std::string diagramActive;
@@ -28,14 +29,18 @@ class Zone
         void setID( std::string idValue );
         void setName( std::string nameValue );
         void setDescription( std::string descValue );
+        void setMapPathID( std::string pathID );
         void setDiagramLocate( std::string filename );
         void setDiagramActive( std::string filename );
 
         std::string getID();
         std::string getName();
         std::string getDescription();
-        std::string getDiagramLocate();
-        std::string getDiagramActive();
+        std::string getMapPathID();
+
+        bool getDiagramLocate( std::string &diagramData );
+        bool getDiagramActive( std::string &diagramData );
+
 };
 
 class ZoneManager

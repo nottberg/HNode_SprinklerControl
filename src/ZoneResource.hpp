@@ -33,4 +33,18 @@ class ZoneResource : public RESTResource
         virtual void restPut( RESTRequest *request );
 };
 
+class ZoneDiagramResource : public RESTResource
+{
+    private:
+        ZoneManager *zoneManager;
+
+    public:
+        ZoneDiagramResource();
+       ~ZoneDiagramResource();
+
+        void setZoneManager( ZoneManager *swMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
 #endif //__ZONERESOURCE_H__
