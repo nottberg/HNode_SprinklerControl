@@ -186,7 +186,7 @@ ZoneResource::restPut( RESTRequest *request )
 
 ZoneDiagramResource::ZoneDiagramResource()
 {
-    setURLPattern( "/zones/map", (REST_RMETHOD_T)(REST_RMETHOD_GET) ); 
+    setURLPattern( "/maps/zone", (REST_RMETHOD_T)(REST_RMETHOD_GET) ); 
 }
 
 ZoneDiagramResource::~ZoneDiagramResource()
@@ -208,6 +208,8 @@ ZoneDiagramResource::restGet( RESTRequest *request )
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
 
+    printf( "Zone Diagram Resource GET\n" );
+
     // Open the file with the map svg
     std::ifstream in( "/etc/hnode/irrigation/map/zone_map.svg", std::ios::in | std::ios::binary );
 
@@ -218,6 +220,8 @@ ZoneDiagramResource::restGet( RESTRequest *request )
         request->sendResponse();
         return;
     }
+
+    printf( "Zone Diagram Resource -- Reading file\n" );
 
     // Determine the length of the data, 
     // and preallocate space in the string
