@@ -77,10 +77,43 @@ ScheduleDateTime::addHours( long hourValue )
     time = time + hours( hourValue );
 }
 
+void 
+ScheduleDateTime::subSeconds( long secValue )
+{
+    time = time - seconds( secValue );
+}
+
+void 
+ScheduleDateTime::subMinutes( long minValue )
+{
+    printf("subMinutes: %s\n", to_iso_string( minutes( minValue ) ).c_str());
+    time = time - minutes( minValue );
+}
+
+void 
+ScheduleDateTime::subHours( long hourValue )
+{
+    time = time - hours( hourValue );
+}
+
+void 
+ScheduleDateTime::replaceTimeOfDay( ScheduleDateTime &replaceTime )
+{
+    ptime newTime( time.date(), replaceTime.time.time_of_day() );
+
+    time = newTime; 
+}
+
 bool 
 ScheduleDateTime::isBefore( ScheduleDateTime &cmpTime )
 {
     return (time <= cmpTime.time);
+}
+
+bool 
+ScheduleDateTime::isAfter( ScheduleDateTime &cmpTime )
+{
+    return (time >= cmpTime.time);
 }
 
 std::string
@@ -89,11 +122,27 @@ ScheduleDateTime::getSimpleString()
     return to_simple_string( time );
 }
 
+long
+ScheduleDateTime::getDayOfWeek()
+{
+    return time.date().day_of_week();
+}
+
 std::string
 ScheduleDateTime::getISOString()
 {
     return to_iso_string( time );
 } 
+
+ScheduleDuration::ScheduleDuration()
+{
+    //td 
+}
+
+ScheduleDuration::~ScheduleDuration()
+{
+
+}
 
 ScheduleEvent::ScheduleEvent()
 {
@@ -475,7 +524,7 @@ ScheduleEventRule::setReferenceTime( ScheduleDateTime &time )
 void 
 ScheduleEventRule::getReferenceTime( ScheduleDateTime &time )
 {
-    time.setTime( refTime );
+    time = refTime;
 }
 
 void 
@@ -506,6 +555,10 @@ void
 ScheduleEventRule::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime )
 {
     ScheduleDateTime eventTime;
+
+    // Don't add new events if this rule already has events
+    // scheduled.
+
 
     // Initial Time
     eventTime.setTime( curTime );
@@ -562,15 +615,52 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     // Check if our event has fired.
     switch( type )
     {
-        case SER_TYPE_DAILY:
+        // Execute on specific days of the week.
+        case SER_TYPE_DAY:
+        {
+            // If we are in the right day, then proceed
+            if( refTime.getDayOfWeek() == curTime.getDayOfWeek() )
+            {
+                ScheduleDateTime startTime;
+                ScheduleDateTime prestartTime;
+
+                // We are in the ballpark so calculate the local startTime
+                // based on the curTime
+                startTime.setTime( curTime );
+                startTime.replaceTimeOfDay( refTime );
+
+                // Schedule the event a couple of minutes before start time.
+                prestartTime.setTime( startTime );
+                prestartTime.subMinutes( 2 ); 
+
+                // Schedule events a bit before their actual start times.
+                if( prestartTime.isBefore( curTime ) && refTime.isAfter( curTime ) )
+                {
+                    // Create the events
+                    createZoneEvents( activeEvents, eventTime );
+                 
+                    // Remember that we created the events already
+                    eventsPending = true;
+                }
+
+                // After the start time has passed then reset us so that
+                // future events can be processed
+                if( refTime.isAfter( curTime ) )
+                {
+                    // Free us up to schedule future events
+                    eventsPending = false;
+                }
+            }
+        }
         break;
 
-        case SER_TYPE_WEEKLY:
-        break;
-
+        // Execute on an interval away from the 
+        // start time.
         case SER_TYPE_INTERVAL:
-        break;
+        {
 
+        }
+        break;
     }
 
 #if 0

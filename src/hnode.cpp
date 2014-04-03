@@ -9,7 +9,8 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <errno.h> 
+#include <errno.h>
+#include <stdio.h> 
 #include <glib.h>
 
 #include <avahi-client/client.h>
@@ -39,9 +40,14 @@
 #include "ZoneManager.hpp"
 #include "ZoneResource.hpp"
 
-guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
+#include "ScheduleManager.hpp"
+//#include "ScheduleResource.hpp"
+
+//guint8 gUID[16] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0xfe, 0xff};
+guint8 gIrrigationSignature[4] = {0x10, 0x26, 0x26, 0x10};
 
 static gint wait_time = 0;
+static gint instance_id = 0;
 static gint debug_period = 10000;
 static gint event_period = 10000;
 static gint up_period = 4000;
@@ -50,18 +56,15 @@ static gboolean debug = FALSE;
 static gboolean event = FALSE;
 static gboolean updown = FALSE;
 
-static GOptionEntry entries[] = 
-{
-  { "device", 'd', 0, G_OPTION_ARG_INT, &wait_time, "The device path for the i2c port.", "N" },
-  { "print", 0, 0, G_OPTION_ARG_INT, &event_period, "Turn on printing of rx and tx to standard out", "N" },
-  { NULL }
-};
 
-typedef struct x10NodeContext
+typedef struct IrrigationNodeContext
 {
     //GILink    *ILink;
     //GMCP23008 *gpio;
     GHNode    *HNode;
+
+    bool      hasInstanceID;
+    guint32   instanceID;
 
     GHNodePktSrc    *SwitchSource;
 
@@ -84,6 +87,9 @@ typedef struct x10NodeContext
     ZoneListResource         zoneListResource;
     ZoneResource             zoneResource;
     ZoneDiagramResource      zoneMapResource;
+
+    ScheduleManager          scheduleManager;
+//    ScheduleResource         scheduleResource;
 
 }CONTEXT;
 
@@ -280,6 +286,7 @@ hnode_load_configuration(CONTEXT *Context)
     // Load the configuration for the switches
     Context->switchManager.loadConfiguration();
     Context->zoneManager.loadConfiguration();
+    Context->scheduleManager.loadConfiguration();
 
     return false;
 }
@@ -290,7 +297,7 @@ hnode_start_hardware_interface(CONTEXT *Context)
     // Load the configuration for the switches
     Context->switchManager.start();
     Context->zoneManager.start();
-
+    
     return false;
 }
 
@@ -318,6 +325,80 @@ hnode_start_rest_daemon(CONTEXT *Context)
     return false;
 }
 
+gboolean
+hnode_heartbeat( CONTEXT *Context )
+{
+    printf("hnode_heartbeat - start: 0x%x\n", Context);
+     
+    // Get the current time
+    ScheduleDateTime curTime;
+    curTime.getCurrentTime();
+
+    // Process any pertinent events
+    Context->scheduleManager.processCurrentEvents( curTime );
+
+    // Wait for the next timeout
+    return TRUE;
+}
+void
+
+hnode_get_unique_uid( CONTEXT *Context )
+{
+    char ethStr[64];
+    FILE *pFile;
+    guint8 uid[16];
+
+    // Init to something other than zeros
+    for( int idx = 0; idx < sizeof(uid); idx++ )
+    {
+        uid[idx] = idx;
+    }
+
+    // Try to get the first network interface address as unique
+    pFile = fopen( "/sys/class/net/eth0/address", "r" );
+
+    if( pFile != NULL )
+    {
+        fscanf(pFile, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &uid[0], &uid[1], &uid[2], &uid[3], &uid[4], &uid[5], &uid[6]);
+        fclose( pFile );
+    }
+
+    // Add a magic number for this type of hnode
+    for( int idx = 0; idx < 4; idx++ )
+    {
+        uid[7+idx] = gIrrigationSignature[idx];
+    }
+
+    // Handle any instance ID customization
+    if( Context->hasInstanceID )
+    {
+        uid[12] = (Context->instanceID >> 24) & 0xFF;
+        uid[13] = (Context->instanceID >> 16) & 0xFF;
+        uid[14] = (Context->instanceID >>  8) & 0xFF;
+        uid[15] = Context->instanceID & 0xFF;
+    }
+
+    // Debug dump
+    for( int idx = 0; idx < sizeof(uid); idx++ )
+    {
+        printf( "%2.2x ", uid[idx] );
+    }
+    printf("\n");
+
+   
+    // Set the unique id
+    g_hnode_set_uid(Context->HNode, uid);
+
+}
+
+static GOptionEntry entries[] = 
+{
+  { "device", 'd', 0, G_OPTION_ARG_INT, &wait_time, "The device path for the i2c port.", "N" },
+  { "print", 0, 0, G_OPTION_ARG_INT, &event_period, "Turn on printing of rx and tx to standard out", "N" },
+  { "instance-id", 'i', 0, G_OPTION_ARG_INT, &instance_id, "If running more than one instance on a node give each a unique ID", "N" },
+  { NULL }
+};
+
 int
 main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 {
@@ -337,6 +418,14 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     cmdline_context = g_option_context_new ("- a hnode implementation for raspberry pi sprinkler controller.");
     g_option_context_add_main_entries (cmdline_context, entries, NULL); // GETTEXT_PACKAGE);
     g_option_context_parse (cmdline_context, &argc, &argv, &error);
+
+    // Init the instance id, if present.
+    Context.hasInstanceID = false;
+    if( instance_id )
+    {
+        Context.hasInstanceID = true;
+        Context.instanceID    = instance_id;
+    }
 
     // Create the GLIB main loop 
     loop = g_main_loop_new (NULL, FALSE);
@@ -397,7 +486,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 
     // Setup the HNode
     g_hnode_set_version(Context.HNode, 1, 0, 0);
-    g_hnode_set_uid(Context.HNode, gUID);
+    hnode_get_unique_uid( &Context );
     g_hnode_set_name_prefix(Context.HNode, (guint8*)"SprinklerControl");
 
     //g_hnode_enable_config_support(HNode);
@@ -418,6 +507,9 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 
     // Start up the server object
     g_hnode_start(Context.HNode);
+
+    // Setup the periodic timer for handling timed events
+    g_timeout_add_seconds( 1, (GSourceFunc) hnode_heartbeat, &Context );
 
     // Send a command    
     //g_ilink_send_cmd(ILink, 'M', 1, ILINK_FUNC_ON, 1);

@@ -41,12 +41,33 @@ class ScheduleDateTime
         long getMinute();
         long getSecond();
 
+        long getDayOfWeek();
+
         void addSeconds( long seconds );
         void addMinutes( long minutes );
         void addHours( long hours );
 
-        bool isBefore( ScheduleDateTime &time );
+        void subSeconds( long seconds );
+        void subMinutes( long minutes );
+        void subHours( long hours );
 
+        void replaceTimeOfDay( ScheduleDateTime &time );
+
+        bool isBefore( ScheduleDateTime &time );
+        bool isAfter( ScheduleDateTime &time ); 
+};
+
+class ScheduleDuration
+{
+    private:
+
+    protected:
+        time_duration td;
+
+    public:
+
+        ScheduleDuration();
+       ~ScheduleDuration();
 };
 
 class ScheduleAction
@@ -187,7 +208,7 @@ typedef enum ScheduleEventRuleZoneEventPolicy
 typedef enum ScheduleEventRuleType 
 {
     SER_TYPE_NOTSET     = 0,
-    SER_TYPE_DAILY      = 1,
+    SER_TYPE_DAY        = 1,
     SER_TYPE_WEEKLY     = 2,
     SER_TYPE_INTERVAL   = 3,
 }SER_OCURRENCE_TYPE;
@@ -213,6 +234,7 @@ class ScheduleEventRule
         SER_ZONE_EVENT_POLICY zonePolicy;
 
         bool fireManually;
+        bool eventsPending;
 
         void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
