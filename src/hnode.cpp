@@ -285,7 +285,11 @@ hnode_load_configuration(CONTEXT *Context)
 {
     // Load the configuration for the switches
     Context->switchManager.loadConfiguration();
+
+    Context->zoneManager.setSwitchManager( &Context->switchManager );
     Context->zoneManager.loadConfiguration();
+
+    Context->scheduleManager.setZoneManager( &Context->zoneManager );
     Context->scheduleManager.loadConfiguration();
 
     return false;

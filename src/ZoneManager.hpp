@@ -7,6 +7,7 @@
 #include <map>
 
 #include "I2CExpander.hpp"
+#include "SwitchManager.hpp"
 
 class Zone
 {
@@ -41,6 +42,11 @@ class Zone
         bool getDiagramLocate( std::string &diagramData );
         bool getDiagramActive( std::string &diagramData );
 
+        void setStateOn( std::string origin );
+        void setStateOff( std::string origin );
+
+        void clearSwitchList();
+        void addSwitch( Switch *swObj );
 };
 
 class ZoneManager
@@ -49,6 +55,8 @@ class ZoneManager
         std::string cfgPath;
 
         std::vector<Zone *> zoneList;
+
+        SwitchManager *switchManager;
 
         bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
         bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
@@ -61,6 +69,8 @@ class ZoneManager
         ZoneManager();
        ~ZoneManager();
 
+        void setSwitchManager( SwitchManager *switchManager );
+
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();
 
@@ -70,6 +80,11 @@ class ZoneManager
         Zone *getZoneByID( std::string zoneID );
 
         bool start();
+
+/*
+        void turnOnZoneById( std::string zoneID );
+        void turnOffZoneById( std::string zoneID );
+*/
 };
 
 #endif // __ZONE_H__

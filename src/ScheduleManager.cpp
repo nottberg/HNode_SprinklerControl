@@ -134,19 +134,71 @@ ScheduleDateTime::getISOString()
     return to_iso_string( time );
 } 
 
-ScheduleDuration::ScheduleDuration()
+void 
+ScheduleDateTime::setTimeFromISOString( std::string isoTime )
+{
+    time = from_iso_string( isoTime );
+}
+
+ScheduleTimeDuration::ScheduleTimeDuration()
 {
     //td 
 }
 
-ScheduleDuration::~ScheduleDuration()
+ScheduleTimeDuration::~ScheduleTimeDuration()
 {
 
 }
 
+void
+ScheduleTimeDuration::setFromString( std::string timeStr )
+{
+    td = duration_from_string( timeStr );
+}
+
+long 
+ScheduleTimeDuration::asTotalSeconds()
+{
+    return td.total_seconds();
+}
+
+ScheduleTimePeriod::ScheduleTimePeriod()
+{
+    //td 
+}
+
+ScheduleTimePeriod::~ScheduleTimePeriod()
+{
+
+}
+
+void
+ScheduleTimePeriod::setFromStartAndEnd( ScheduleDateTime &start, ScheduleDateTime &end )
+{
+    //td 
+}
+
+ScheduleTimeIterator::ScheduleTimeIterator()
+{
+    ti = NULL; 
+}
+
+ScheduleTimeIterator::~ScheduleTimeIterator()
+{
+    if( ti )
+        delete ti;
+}
+
+void
+ScheduleTimeIterator::setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval )
+{
+    ti = new time_iterator( start.time, interval.td );
+}
+
 ScheduleEvent::ScheduleEvent()
 {
-    state = SESTATE_IDLE;
+    state     = SESTATE_IDLE;
+    actionObj = NULL;
 }
 
 ScheduleEvent::~ScheduleEvent()
@@ -206,39 +258,9 @@ ScheduleEvent::getEndTime( ScheduleDateTime &time )
 }
 
 void 
-ScheduleEvent::setStartAction( ScheduleAction &action )
+ScheduleEvent::setAction( ScheduleAction *action )
 {
-    startAction = action;
-}
-
-void 
-ScheduleEvent::getStartAction( ScheduleAction &action )
-{
-    action = startAction;
-}
-
-void 
-ScheduleEvent::setPollAction( ScheduleAction &action )
-{
-    pollAction = action;
-}
-
-void 
-ScheduleEvent::getPollAction( ScheduleAction &action )
-{
-    action = pollAction;
-}
-
-void 
-ScheduleEvent::setEndAction( ScheduleAction &action )
-{
-    endAction = action;
-}
-
-void 
-ScheduleEvent::getEndAction( ScheduleAction &action )
-{
-    action = endAction;
+    actionObj = action;
 }
 
 void 
@@ -275,6 +297,11 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
         {
             state = SESTATE_COMPLETE;
             printf( "processCurrent - %s:%s - Completing\n", getId().c_str(), getTitle().c_str() );               
+
+            if( actionObj != NULL )
+            {
+                actionObj->complete( curTime );
+            }
         }
     }
 
@@ -284,7 +311,13 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
         if( state == SESTATE_READY )
         {
             state = SESTATE_RUNNING;
-            printf( "processCurrent - %s:%s - Starting\n", getId().c_str(), getTitle().c_str() );               
+            printf( "processCurrent - %s:%s - Starting\n", getId().c_str(), getTitle().c_str() );   
+
+            if( actionObj != NULL )
+            {
+                actionObj->start( curTime );
+            }
+            
         }
     } 
 
@@ -299,6 +332,12 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
     if( state == SESTATE_COMPLETE )
     {
         printf( "processCurrent - %s:%s - Completed\n", getId().c_str(), getTitle().c_str() );               
+    }
+
+    // Let the action perform polling steps.
+    if( actionObj != NULL )
+    {
+        actionObj->poll( curTime );
     }
 
     // No state change.
@@ -350,6 +389,72 @@ ScheduleAction::~ScheduleAction()
 
 }
 
+void 
+ScheduleAction::start( ScheduleDateTime &curTime )
+{
+
+}
+
+void 
+ScheduleAction::poll( ScheduleDateTime &curTime )
+{
+
+}
+
+void 
+ScheduleAction::complete( ScheduleDateTime &curTime )
+{
+
+}
+
+ZoneAction::ZoneAction()
+{
+    //std::vector<std::string> zoneIDList;
+}
+
+ZoneAction::~ZoneAction()
+{
+}
+
+void 
+ZoneAction::clearZoneList()
+{
+    zoneList.clear();
+}
+
+void 
+ZoneAction::addZone( Zone *zone )
+{
+    zoneList.push_back( zone );
+}
+
+void 
+ZoneAction::start( ScheduleDateTime &curTime )
+{
+    printf( "ZoneAction::start\n" );
+    // Search through the switch list for the right ID
+    for( std::vector<Zone *>::iterator it = zoneList.begin() ; it != zoneList.end(); ++it)
+    {
+        (*it)->setStateOn( "Schedule Event" );
+    }    
+}
+
+void 
+ZoneAction::poll( ScheduleDateTime &curTime )
+{
+}
+
+void 
+ZoneAction::complete( ScheduleDateTime &curTime )
+{
+    printf( "ZoneAction::complete\n" );
+    // Search through the switch list for the right ID
+    for( std::vector<Zone *>::iterator it = zoneList.begin() ; it != zoneList.end(); ++it)
+    {
+        (*it)->setStateOff( "Schedule Event" );
+    }    
+}
+
 ScheduleRecurrenceRule::ScheduleRecurrenceRule()
 {
 
@@ -368,6 +473,36 @@ ScheduleZoneRule::ScheduleZoneRule()
 ScheduleZoneRule::~ScheduleZoneRule()
 {
 
+}
+
+void 
+ScheduleZoneRule::setZone( Zone *zonePtr )
+{
+    zone = zonePtr;
+}
+
+Zone * 
+ScheduleZoneRule::getZone()
+{
+    return zone;
+}
+
+std::string 
+ScheduleZoneRule::getZoneID()
+{
+    return zone->getID();
+}
+
+void 
+ScheduleZoneRule::setDuration( ScheduleTimeDuration &td )
+{
+    duration = td;
+}
+
+ScheduleTimeDuration 
+ScheduleZoneRule::getDuration()
+{
+    return duration;
 }
 
 ScheduleEventList::ScheduleEventList()
@@ -434,8 +569,9 @@ ScheduleEventList::reapEvents()
 
 ScheduleEventRule::ScheduleEventRule()
 {
-    enabled      = false;
-    fireManually = false;
+    enabled       = false;
+    fireManually  = false;
+    eventsPending = false;
 }
 
 ScheduleEventRule::~ScheduleEventRule()
@@ -480,17 +616,29 @@ ScheduleEventRule::getID()
 }
 
 void 
-ScheduleEventRule::setTitle( std::string titleValue )
+ScheduleEventRule::setName( std::string nameValue )
 {
-    title = titleValue;
+    name = nameValue;
 }
 
 std::string 
-ScheduleEventRule::getTitle()
+ScheduleEventRule::getName()
 {
-    return title;
+    return name;
 }
-        
+ 
+void 
+ScheduleEventRule::setDescription( std::string descValue )
+{
+    desc = descValue;
+}
+
+std::string 
+ScheduleEventRule::getDescription()
+{
+    return desc;
+}
+       
 void 
 ScheduleEventRule::setURL( std::string urlValue )
 {
@@ -542,19 +690,26 @@ ScheduleEventRule::getZoneEventPolicy()
 void 
 ScheduleEventRule::clearZoneList()
 {
-    zoneIDList.clear();
+    zoneRuleList.clear();
 }
 
 void 
-ScheduleEventRule::addZoneId( std::string zoneId )
+ScheduleEventRule::addZoneRule( Zone *zone, ScheduleTimeDuration &td )
 {
-    zoneIDList.push_back( zoneId );
+    ScheduleZoneRule rule;
+
+    rule.setZone( zone );
+    rule.setDuration( td );
+
+    zoneRuleList.push_back( rule );
 }
 
 void 
 ScheduleEventRule::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime )
 {
     ScheduleDateTime eventTime;
+
+    printf( "ScheduleEventRule -- start createZoneEvents\n");
 
     // Don't add new events if this rule already has events
     // scheduled.
@@ -563,23 +718,36 @@ ScheduleEventRule::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     // Initial Time
     eventTime.setTime( curTime );
 
+    printf( "ScheduleEventRule -- zone rule count: %d\n", zoneRuleList.size() );
+
     // Go through the zone list and schedule an event for each one
-    for( std::vector<std::string>::iterator it = zoneIDList.begin(); it != zoneIDList.end(); ++it )
+    for( std::vector<ScheduleZoneRule>::iterator it = zoneRuleList.begin(); it != zoneRuleList.end(); ++it )
     {
         ScheduleEvent *event = new ScheduleEvent;
 
+        std::string eventName = name + "-" + it->getZoneID() + "-" + eventTime.getSimpleString();
+
         // Copy over identifying data
         event->setId( id );
-        event->setTitle( title );
+        event->setTitle( eventName );
 
         // Set the start time
         event->setStartTime( eventTime );
     
         // FIX-ME calulate zone watering duration.
-        eventTime.addSeconds(30);
+        printf("eventDuration: %d\n", it->getDuration().asTotalSeconds() );
+        eventTime.addSeconds( it->getDuration().asTotalSeconds() );
 
         // Set the end time.
         event->setEndTime( eventTime );
+
+        // Add a second of padding between events
+        eventTime.addSeconds( 1 );
+
+        // Create the zone action object
+        ZoneAction *action = new ZoneAction();
+        action->addZone( it->getZone() );
+        event->setAction( action );
 
         // Mark ready and queue for execution.
         event->setReady();
@@ -592,6 +760,10 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
 {
     char tmpStr[64];
     ScheduleDateTime eventTime;
+
+    printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    printf( "ScheduleEventRule -- type: %d\n", type);
 
     // If the event was fired manually,
     // then ignore the start time and
@@ -618,6 +790,8 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         // Execute on specific days of the week.
         case SER_TYPE_DAY:
         {
+            printf( "ScheduleEventRule -- dow - %d - %d\n", refTime.getDayOfWeek(), curTime.getDayOfWeek() );
+
             // If we are in the right day, then proceed
             if( refTime.getDayOfWeek() == curTime.getDayOfWeek() )
             {
@@ -629,24 +803,37 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
                 startTime.setTime( curTime );
                 startTime.replaceTimeOfDay( refTime );
 
+                // Use start time in this case
+                eventTime.setTime( startTime );
+
                 // Schedule the event a couple of minutes before start time.
                 prestartTime.setTime( startTime );
                 prestartTime.subMinutes( 2 ); 
 
+                printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
+                printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
+                printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
+                printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
+
                 // Schedule events a bit before their actual start times.
-                if( prestartTime.isBefore( curTime ) && refTime.isAfter( curTime ) )
+                if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
                 {
-                    // Create the events
-                    createZoneEvents( activeEvents, eventTime );
+                    if( eventsPending == false )
+                    {
+                        // Create the events
+                        createZoneEvents( activeEvents, eventTime );
                  
-                    // Remember that we created the events already
-                    eventsPending = true;
+                        // Remember that we created the events already
+                        eventsPending = true;
+                    }
                 }
 
                 // After the start time has passed then reset us so that
                 // future events can be processed
-                if( refTime.isAfter( curTime ) )
+                if( startTime.isBefore( curTime ) )
                 {
+                    printf( "ScheduleEventRule -- clear eventsPending\n" );
+
                     // Free us up to schedule future events
                     eventsPending = false;
                 }
@@ -658,6 +845,15 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         // start time.
         case SER_TYPE_INTERVAL:
         {
+            // Back up one interval.
+
+            // Find where the reference time falls 
+            // between the previous interval and
+            // current time.  
+
+            // Using the localized reference time,
+            // check if the current time falls
+            // within the interval.
 
         }
         break;
@@ -697,14 +893,18 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
 ScheduleManager::ScheduleManager()
 {
     cfgPath = "/etc/hnode";  
-
-    ScheduleEventRule *rule = new ScheduleEventRule;
-    eventRuleList.push_back( rule );
+    zoneMgr = NULL;
 }
 
 ScheduleManager::~ScheduleManager()
 {
 
+}
+
+void
+ScheduleManager::setZoneManager( ZoneManager *zMgr )
+{
+    zoneMgr = zMgr;
 }
 
 void
@@ -714,16 +914,229 @@ ScheduleManager::setConfigurationPath( std::string cfgPathStr )
 }
 
 bool
+ScheduleManager::getAttribute( xmlNode *elem, std::string attrName, std::string &result )
+{
+    xmlChar *attrValue;
+    
+    // Start with a clear result
+    result.clear();
+
+    // Get the type attribute
+    attrValue = xmlGetProp( elem, (xmlChar *)attrName.c_str() );
+
+    if( attrValue == NULL )
+    {
+        return true;
+    }    
+
+    result = (char*)attrValue;
+
+    xmlFree( attrValue );
+
+    return false;
+}
+
+bool
+ScheduleManager::getChildContent( xmlNode *elem, std::string childName, std::string &result )
+{
+    xmlChar *contentValue;
+    xmlNode *curElem;
+    xmlNode *childElem;
+
+    // Start with a clear result
+    result.clear();
+
+    // Find the address element
+    childElem = NULL;
+    for( curElem = elem->children; curElem; curElem = curElem->next ) 
+    {
+        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, childName.c_str() ) == 0) ) 
+        {
+            childElem = curElem;
+            break;
+        }
+    }
+ 
+    if(childElem == NULL )
+    {
+        return true;
+    }
+
+    // Get the type attribute
+    contentValue = xmlNodeGetContent( childElem );
+
+    result = (char*)contentValue;
+
+    xmlFree( contentValue );
+
+    return false;
+}
+
+bool 
+ScheduleManager::parseActionList( xmlDocPtr doc, xmlNode *ruleElem, ScheduleEventRule *ruleObj )
+{
+    xmlNode *curElem;
+    xmlNode *listElem;
+    std::string tmpStr;
+   
+    printf( "ScheduleManager - start parseActionList\n" );
+
+    // How to handle zones.
+    ruleObj->setZoneEventPolicy( SER_ZEP_SEQUENCIAL );
+
+    // Parse the elements under the rule list
+    listElem = NULL;
+    for( curElem = ruleElem->children; curElem; curElem = curElem->next )
+    {
+        // We are only interested in the elements at this level
+        if( curElem->type != XML_ELEMENT_NODE )
+            continue;
+
+        // Check for an i2c expander
+        if( strcmp( (char *)curElem->name, "zone-rule-list" ) == 0 )
+        {
+            listElem = curElem;
+        }
+    }
+
+    // Make sure we found a list element
+    if( listElem == NULL )
+    {
+        return true;
+    }
+
+    // Parse the elements under the rule list
+    for( curElem = listElem->children; curElem; curElem = curElem->next )
+    {
+        // We are only interested in the elements at this level
+        if( curElem->type != XML_ELEMENT_NODE )
+            continue;
+
+        // Check for an i2c expander
+        if( strcmp( (char *)curElem->name, "zone-rule" ) == 0 )
+        {
+            std::string zoneid;
+            Zone *zone;
+            ScheduleTimeDuration td;
+            
+            // Get the zone id
+            if( getChildContent( curElem, "zoneid", tmpStr ) == false )
+            {
+                printf( "ScheduleManager - zoneid: %s\n", tmpStr.c_str() );
+                zone = zoneMgr->getZoneByID( tmpStr );
+            }
+
+            // Get the zone duration
+            if( getChildContent( curElem, "duration", tmpStr ) == false )
+            {
+                printf( "ScheduleManager - duration: %s\n", tmpStr.c_str() );
+
+                td.setFromString( tmpStr );
+            }
+
+            printf( "ScheduleManager - add zone rule\n" );
+
+            ruleObj->addZoneRule( zone, td );
+        }
+    }
+
+    return false;
+}
+
+bool 
+ScheduleManager::addRule( xmlDocPtr doc, xmlNode *ruleElem )
+{
+    xmlNode *gpioElem;
+    xmlNode *curElem;
+    xmlChar *attrValue;
+
+    ScheduleEventRule *ruleObj;
+
+    std::string tmpStr;
+    std::string idStr;
+
+    printf( "ScheduleManager - starting rule parse\n" );
+
+    // Allocate a 
+    ruleObj = new ScheduleEventRule;
+
+    // Grab the required id attribute
+    if( getAttribute( ruleElem, "id", idStr ) )
+    {
+        return true;
+    }   
+
+    printf( "ScheduleManager - rule id: %s\n", idStr.c_str() );
+    ruleObj->setID( idStr );
+
+    // Grab the required id attribute
+    if( getAttribute( ruleElem, "name", tmpStr ) )
+    {
+        return true;
+    }   
+
+    printf( "ScheduleManager - rule name: %s\n", tmpStr.c_str() );
+    ruleObj->setName( tmpStr );
+
+    // Get the rule type
+    if( getAttribute( ruleElem, "type", tmpStr ) )
+    {
+        return true;
+    }
+
+    printf( "ScheduleManager - rule type: %s\n", tmpStr.c_str() );
+
+    // Check if it is a recurring day type.
+    if( tmpStr == "day" )
+    {
+        printf( "ScheduleManager - found day-of-week type rule\n" );
+
+        // Assign the rule its type
+        ruleObj->setOcurrenceType( SER_TYPE_DAY );
+
+        // Get the reference time
+        if( getChildContent( ruleElem, "reftime", tmpStr ) == true )
+        {
+            return true;
+        }
+
+        printf( "ScheduleManager - dow-rule - reftime: %s\n", tmpStr.c_str() );
+
+        // Assign the reference time.
+        ScheduleDateTime time;
+        time.setTimeFromISOString( tmpStr );
+        ruleObj->setReferenceTime( time );
+        
+        printf( "ScheduleManager - dow-rule - reftime: %s\n", time.getISOString().c_str() );
+
+        // Process zone list
+        parseActionList( doc, ruleElem, ruleObj );
+    }
+
+    // Get the description string.
+    if( getChildContent( ruleElem, "desc", tmpStr ) == false )
+    {
+        ruleObj->setDescription( tmpStr );
+    }
+
+    printf( "ScheduleManager - push rule\n" );
+
+    // Add the expander object to the list
+    eventRuleList.push_back( ruleObj );
+
+}
+
+bool
 ScheduleManager::loadConfiguration()
 {
     xmlDocPtr   doc;
     xmlNode    *rootElem;
-    xmlNode    *zoneListElem;
+    xmlNode    *ruleListElem;
     xmlNode    *curElem;
 
     std::string filePath;
-#if 0
-    filePath = cfgPath + "/irrigation/zone_config.xml";
+
+    filePath = cfgPath + "/irrigation/schedule_config.xml";
 
     doc = xmlReadFile( filePath.c_str(), NULL, 0 );
     if (doc == NULL) 
@@ -736,48 +1149,48 @@ ScheduleManager::loadConfiguration()
     rootElem = xmlDocGetRootElement( doc );
 
     // Make sure it has the expected root tag
-    if( strcmp( (char *)rootElem->name, "hnode-irrigation-zone-cfg" ) != 0 )
+    if( strcmp( (char *)rootElem->name, "hnode-irrigation-schedule-cfg" ) != 0 )
     {
         fprintf( stderr, "Root tag didn't match expected: %s\n", rootElem->name );
 	    return true;
     } 
 
-    // Find the device list element
-    zoneListElem = NULL;
+    // Find the schedule rule list element
+    ruleListElem = NULL;
     for( curElem = rootElem->children; curElem; curElem = curElem->next ) 
     {
-        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, "zone-list" ) == 0) ) 
+        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, "rule-list" ) == 0) ) 
         {
-            printf("zone-list found\n");
-            zoneListElem = curElem;
+            printf("rule-list found\n");
+            ruleListElem = curElem;
             break;
         }
     }
 
-    if( zoneListElem == NULL )
+    if( ruleListElem == NULL )
     {
-        fprintf( stderr, "Could not find zone-list element\n" );
+        fprintf( stderr, "Could not find rule-list element\n" );
 	    return true;
     } 
 
-    // Parse the elements under the zone list
-    for( curElem = zoneListElem->children; curElem; curElem = curElem->next )
+    // Parse the elements under the rule list
+    for( curElem = ruleListElem->children; curElem; curElem = curElem->next )
     {
         // We are only interested in the elements at this level
         if( curElem->type != XML_ELEMENT_NODE )
             continue;
 
         // Check for an i2c expander
-        if( strcmp( (char *)curElem->name, "zone" ) == 0 )
+        if( strcmp( (char *)curElem->name, "rule" ) == 0 )
         {
-            addZone( doc, curElem );
+            addRule( doc, curElem );
         }
     }
 
 
     // Free the config document
     xmlFreeDoc(doc);
-#endif
+
     return false;
 }
 

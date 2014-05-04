@@ -124,14 +124,57 @@ Zone::getDiagramActive( std::string &diagramData )
     return false;
 }
 
+void 
+Zone::clearSwitchList()
+{
+    valveList.clear();
+}
+
+void 
+Zone::addSwitch( Switch *swObj )
+{
+    valveList.push_back( swObj );
+}
+
+void 
+Zone::setStateOn( std::string origin )
+{
+    printf( "Zone::setStateOn: %s\n", name.c_str() );
+
+    // Search through the switch list for the right ID
+    for( std::vector<Switch *>::iterator it = valveList.begin() ; it != valveList.end(); ++it)
+    {
+        (*it)->setStateOn( origin );
+    }    
+}
+
+void 
+Zone::setStateOff( std::string origin )
+{
+    printf( "Zone::setStateOff: %s\n", name.c_str() );
+
+    // Search through the switch list for the right ID
+    for( std::vector<Switch *>::iterator it = valveList.begin() ; it != valveList.end(); ++it)
+    {
+        (*it)->setStateOff( origin );
+    }
+}
+
 ZoneManager::ZoneManager()
 {
     cfgPath = "/etc/hnode";
+    switchManager = NULL;
 }
 
 ZoneManager::~ZoneManager()
 {
 
+}
+
+void 
+ZoneManager::setSwitchManager( SwitchManager *sMgr )
+{
+    switchManager = sMgr;
 }
 
 void
@@ -283,7 +326,8 @@ ZoneManager::getValves( xmlNode *elem, Zone *zoneObj )
             contentValue = xmlNodeGetContent( curElem );
             result = (char*)contentValue;
 
-            //zoneObj->setDiagramLocate( filename );
+            Switch *swObj = switchManager->getSwitchByID( result );
+            zoneObj->addSwitch( swObj );
 
             xmlFree( contentValue );
         }
@@ -449,4 +493,29 @@ ZoneManager::getZoneByID( std::string zoneID )
     return zoneObj;
 }
 
+/*
+void 
+ZoneManager::turnOnZoneById( std::string zoneID )
+{
+    Zone *zone = getZoneByID( zoneID );
 
+    if( zone )
+    {
+        zone->setStateOn( 
+        Switch *swObj = switchManager->getSwitchByID( zone-> );
+
+        swObj->setStateOn( "zoneManager" ); 
+    }
+}
+
+void 
+ZoneManager::turnOffZoneById( std::string zoneID )
+{
+    Zone *zone = getZoneByID( zoneID );
+
+    if( zone )
+    {
+
+    }
+}
+*/

@@ -9,14 +9,23 @@
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp" 
 
+#include "ZoneManager.hpp"
+
 using namespace boost::posix_time;
 using namespace boost::gregorian;
 
 // Forward Declaration
 class ScheduleEventRule;
+class ScheduleTimeDuration;
+class ScheduleTimePeriod;
+class ScheduleTimeIterator;
 
 class ScheduleDateTime
 {
+    friend class ScheduleTimeDuration;
+    friend class ScheduleTimePeriod;
+    friend class ScheduleTimeIterator;
+
     private:
         //ptime time;
         //date dt;
@@ -36,6 +45,8 @@ class ScheduleDateTime
 
         std::string getSimpleString();
         std::string getISOString();
+
+        void setTimeFromISOString( std::string isoTime );
 
         long getHour();
         long getMinute();
@@ -57,8 +68,11 @@ class ScheduleDateTime
         bool isAfter( ScheduleDateTime &time ); 
 };
 
-class ScheduleDuration
+class ScheduleTimeDuration
 {
+    friend class ScheduleTimePeriod;
+    friend class ScheduleTimeIterator;
+
     private:
 
     protected:
@@ -66,19 +80,75 @@ class ScheduleDuration
 
     public:
 
-        ScheduleDuration();
-       ~ScheduleDuration();
+        ScheduleTimeDuration();
+       ~ScheduleTimeDuration();
+
+        void setFromString( std::string timeStr );
+
+        long asTotalSeconds();
+};
+
+class ScheduleTimePeriod
+{
+    private:
+
+    protected:
+        time_period *tp;
+
+    public:
+
+        ScheduleTimePeriod();
+       ~ScheduleTimePeriod();
+
+        void setFromStartAndEnd( ScheduleDateTime &start, ScheduleDateTime &end );
+};
+
+class ScheduleTimeIterator
+{
+    private:
+
+    protected:
+        time_iterator *ti;
+
+    public:
+
+        ScheduleTimeIterator();
+       ~ScheduleTimeIterator();
+
+        void setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval );
 };
 
 class ScheduleAction
 {
     private:
-        std::vector<std::string> zoneIDList;
 
     public:
 
         ScheduleAction();
        ~ScheduleAction();
+
+        virtual void start( ScheduleDateTime &curTime );
+        virtual void poll( ScheduleDateTime &curTime );
+        virtual void complete( ScheduleDateTime &curTime );
+};
+
+class ZoneAction : public ScheduleAction
+{
+    private:
+        
+        std::vector<Zone *> zoneList;
+
+    public:
+
+        ZoneAction();
+       ~ZoneAction();
+
+        void clearZoneList();
+        void addZone( Zone *zone );
+
+        virtual void start( ScheduleDateTime &curTime );
+        virtual void poll( ScheduleDateTime &curTime );
+        virtual void complete( ScheduleDateTime &curTime );
 };
 
 typedef enum ScheduleEventExecState
@@ -106,9 +176,7 @@ class ScheduleEvent
         ScheduleDateTime   end;
         ScheduleDateTime   recycle;
        
-        ScheduleAction     startAction;
-        ScheduleAction     pollAction;
-        ScheduleAction     endAction;
+        ScheduleAction    *actionObj;
 
     public:
         ScheduleEvent();
@@ -126,14 +194,7 @@ class ScheduleEvent
         void setEndTime( ScheduleDateTime &time );
         void getEndTime( ScheduleDateTime &time );
 
-        void setStartAction( ScheduleAction &action );
-        void getStartAction( ScheduleAction &action );
-
-        void setPollAction( ScheduleAction &action );
-        void getPollAction( ScheduleAction &action );
-
-        void setEndAction( ScheduleAction &action );
-        void getEndAction( ScheduleAction &action );
+        void setAction( ScheduleAction *action );
 
         void setReady();
         SESTATE getState();
@@ -175,12 +236,20 @@ class ScheduleRecurrenceRule
 class ScheduleZoneRule
 {
     private:
-        std::string   zoneID;
-        unsigned int  duration;
+        Zone                 *zone;
+        ScheduleTimeDuration  duration;
 
     public:
         ScheduleZoneRule();
        ~ScheduleZoneRule();
+
+        void setZone( Zone *zone );
+        Zone *getZone();
+        std::string getZoneID();
+
+        void setDuration( ScheduleTimeDuration &td );
+        ScheduleTimeDuration getDuration();
+        
 };
 
 class ScheduleEventList
@@ -222,12 +291,13 @@ class ScheduleEventRule
         SER_OCURRENCE_TYPE type;
 
         std::string      id;
-        std::string      title;
+        std::string      name;
+        std::string      desc;
 
         std::string      url;
 
         //std::vector<ScheduleRecurrenceRule> recurrenceList;
-        std::vector<std::string> zoneIDList;
+        std::vector<ScheduleZoneRule> zoneRuleList;
 
         ScheduleDateTime refTime;
 
@@ -251,9 +321,12 @@ class ScheduleEventRule
         void setID( std::string idValue );
         std::string getID();
 
-        void setTitle( std::string titleValue );
-        std::string getTitle();
-        
+        void setName( std::string nameValue );
+        std::string getName();
+    
+        void setDescription( std::string descValue );
+        std::string getDescription();
+    
         void setURL( std::string urlValue );
         std::string getURL();
 
@@ -267,7 +340,7 @@ class ScheduleEventRule
         SER_ZONE_EVENT_POLICY getZoneEventPolicy();
 
         void clearZoneList();
-        void addZoneId( std::string zoneId );
+        void addZoneRule( Zone *zone, ScheduleTimeDuration &td );
 
         void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
@@ -282,9 +355,18 @@ class ScheduleManager
 
         ScheduleEventList activeEvents;
 
+        ZoneManager *zoneMgr;
+
+        bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
+        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
+        bool parseActionList( xmlDocPtr doc, xmlNode *ruleElem, ScheduleEventRule *ruleObj );
+        bool addRule( xmlDocPtr doc, xmlNode *ruleElem );
+
     public:
         ScheduleManager();
        ~ScheduleManager();
+
+        void setZoneManager( ZoneManager *zoneMgr );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();
