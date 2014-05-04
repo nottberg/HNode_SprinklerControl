@@ -332,7 +332,7 @@ hnode_start_rest_daemon(CONTEXT *Context)
 gboolean
 hnode_heartbeat( CONTEXT *Context )
 {
-    printf("hnode_heartbeat - start: 0x%x\n", Context);
+    //printf("hnode_heartbeat - start: 0x%x\n", Context);
      
     // Get the current time
     ScheduleDateTime curTime;

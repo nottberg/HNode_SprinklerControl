@@ -86,7 +86,7 @@ ScheduleDateTime::subSeconds( long secValue )
 void 
 ScheduleDateTime::subMinutes( long minValue )
 {
-    printf("subMinutes: %s\n", to_iso_string( minutes( minValue ) ).c_str());
+    //printf("subMinutes: %s\n", to_iso_string( minutes( minValue ) ).c_str());
     time = time - minutes( minValue );
 }
 
@@ -278,7 +278,7 @@ ScheduleEvent::getState()
 bool 
 ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
 {
-    printf( "processCurrent - %s:%s - %s - %s - %s -%s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
+    //printf( "processCurrent - %s:%s - %s - %s - %s -%s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
 
     if( recycle.isBefore( curTime ) )
     {
@@ -286,6 +286,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
         if( state == SESTATE_COMPLETE )
         {
             state = SESTATE_RECYCLE;
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
             printf( "processCurrent - %s:%s - Recycle\n", getId().c_str(), getTitle().c_str() );               
         }   
     }
@@ -296,6 +297,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
         if( state == SESTATE_RUNNING )
         {
             state = SESTATE_COMPLETE;
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
             printf( "processCurrent - %s:%s - Completing\n", getId().c_str(), getTitle().c_str() );               
 
             if( actionObj != NULL )
@@ -311,6 +313,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
         if( state == SESTATE_READY )
         {
             state = SESTATE_RUNNING;
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
             printf( "processCurrent - %s:%s - Starting\n", getId().c_str(), getTitle().c_str() );   
 
             if( actionObj != NULL )
@@ -325,20 +328,21 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
     if( state == SESTATE_RUNNING )
     {
         state = SESTATE_RUNNING;
-        printf( "processCurrent - %s:%s - Running\n", getId().c_str(), getTitle().c_str() );               
+        //printf( "processCurrent - %s:%s - Running\n", getId().c_str(), getTitle().c_str() ); 
+
+        // Let the action perform polling steps.
+        if( actionObj != NULL )
+        {
+            actionObj->poll( curTime );
+        }      
     }
 
     // This event should be started
-    if( state == SESTATE_COMPLETE )
-    {
-        printf( "processCurrent - %s:%s - Completed\n", getId().c_str(), getTitle().c_str() );               
-    }
+    //if( state == SESTATE_COMPLETE )
+    //{
+    //    printf( "processCurrent - %s:%s - Completed\n", getId().c_str(), getTitle().c_str() );               
+    //}
 
-    // Let the action perform polling steps.
-    if( actionObj != NULL )
-    {
-        actionObj->poll( curTime );
-    }
 
     // No state change.
     return false;
@@ -761,15 +765,17 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     char tmpStr[64];
     ScheduleDateTime eventTime;
 
-    printf( "ScheduleEventRule -- start updateActiveEvents\n");
-    printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
-    printf( "ScheduleEventRule -- type: %d\n", type);
+    //printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    //printf( "ScheduleEventRule -- type: %d\n", type);
 
     // If the event was fired manually,
     // then ignore the start time and
     // just schedule the events
     if( fireManually )
     {
+        printf( "ScheduleEventRule -- manual start: %s\n", name.c_str() );
+
         // Create the events
         createZoneEvents( activeEvents, eventTime );
 
@@ -790,7 +796,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         // Execute on specific days of the week.
         case SER_TYPE_DAY:
         {
-            printf( "ScheduleEventRule -- dow - %d - %d\n", refTime.getDayOfWeek(), curTime.getDayOfWeek() );
+            //printf( "ScheduleEventRule -- dow - %d - %d\n", refTime.getDayOfWeek(), curTime.getDayOfWeek() );
 
             // If we are in the right day, then proceed
             if( refTime.getDayOfWeek() == curTime.getDayOfWeek() )
@@ -810,16 +816,18 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
                 prestartTime.setTime( startTime );
                 prestartTime.subMinutes( 2 ); 
 
-                printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
-                printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
-                printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
-                printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
+                //printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
+                //printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
+                //printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
+                //printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
 
                 // Schedule events a bit before their actual start times.
                 if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
                 {
                     if( eventsPending == false )
                     {
+                        printf( "ScheduleEventRule -- time start: %s\n", name.c_str() );
+
                         // Create the events
                         createZoneEvents( activeEvents, eventTime );
                  
@@ -832,7 +840,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
                 // future events can be processed
                 if( startTime.isBefore( curTime ) )
                 {
-                    printf( "ScheduleEventRule -- clear eventsPending\n" );
+                    //printf( "ScheduleEventRule -- clear eventsPending\n" );
 
                     // Free us up to schedule future events
                     eventsPending = false;
@@ -1197,13 +1205,28 @@ ScheduleManager::loadConfiguration()
 void 
 ScheduleManager::processCurrentEvents( ScheduleDateTime &curTime )
 {
-    printf( "processCurrentEvents: %s\n", curTime.getSimpleString().c_str() );
-    printf( "processCurrentEvents: %s\n", curTime.getISOString().c_str() );
-    printf( "hour: %d\n", curTime.getHour() );
-    printf( "minutes: %d\n", curTime.getMinute() );
-    printf( "seconds: %d\n", curTime.getSecond() );
+    //printf( "processCurrentEvents: %s\n", curTime.getSimpleString().c_str() );
+    //printf( "processCurrentEvents: %s\n", curTime.getISOString().c_str() );
+    //printf( "hour: %d\n", curTime.getHour() );
+    //printf( "minutes: %d\n", curTime.getMinute() );
+    //printf( "seconds: %d\n", curTime.getSecond() );
 
-    time_duration ztd = seconds(10);
+    if( activeEvents.getEventCount() > 0 )
+    {
+        if( curTime.getSecond() % 10 == 0 )
+        {
+            printf( "processCurrentEvents - active: %d periodic: %s\n", activeEvents.getEventCount(), curTime.getISOString().c_str() );
+        }
+    }
+    else
+    {
+        if( curTime.getMinute() == 30 )
+        {
+            printf( "processCurrentEvents - periodic: %s\n", curTime.getISOString().c_str() );
+        }
+    }
+
+    time_duration ztd = seconds(10);    
 
     // Check if the rules are going to generate any new events.
     for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin(); it != eventRuleList.end(); ++it )
@@ -1211,7 +1234,7 @@ ScheduleManager::processCurrentEvents( ScheduleDateTime &curTime )
         (*it)->updateActiveEvents( activeEvents, curTime );
     }
 
-    printf( "ActiveEventCount: %d\n", activeEvents.getEventCount() );
+    //printf( "ActiveEventCount: %d\n", activeEvents.getEventCount() );
 
     // Do processing for active rules
     for( unsigned int index = 0; index < activeEvents.getEventCount(); ++index )
