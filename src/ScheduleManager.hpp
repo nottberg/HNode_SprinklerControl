@@ -208,6 +208,22 @@ class ScheduleEvent
         bool isRecyclable();
 };
 
+class ScheduleEventList
+{
+    private:
+        std::vector<ScheduleEvent *> eventList;
+
+    public:
+        ScheduleEventList();
+       ~ScheduleEventList();
+     
+        void addEvent( ScheduleEvent *event );
+        void reapEvents();
+
+        unsigned int getEventCount();
+        ScheduleEvent *getEvent( unsigned int index );
+};
+
 class ScheduleRecurrenceRule
 {
     private:
@@ -233,7 +249,7 @@ class ScheduleRecurrenceRule
        ~ScheduleRecurrenceRule();
 };
 
-class ScheduleZoneRule
+class ScheduleZoneRule : public ScheduleAction
 {
     private:
         Zone                 *zone;
@@ -250,22 +266,9 @@ class ScheduleZoneRule
         void setDuration( ScheduleTimeDuration &td );
         ScheduleTimeDuration getDuration();
         
-};
-
-class ScheduleEventList
-{
-    private:
-        std::vector<ScheduleEvent *> eventList;
-
-    public:
-        ScheduleEventList();
-       ~ScheduleEventList();
-     
-        void addEvent( ScheduleEvent *event );
-        void reapEvents();
-
-        unsigned int getEventCount();
-        ScheduleEvent *getEvent( unsigned int index );
+        virtual void start( ScheduleDateTime &curTime );
+        virtual void poll( ScheduleDateTime &curTime );
+        virtual void complete( ScheduleDateTime &curTime );
 };
 
 typedef enum ScheduleEventRuleZoneEventPolicy 
@@ -273,6 +276,33 @@ typedef enum ScheduleEventRuleZoneEventPolicy
     SER_ZEP_NOTSET     = 0,
     SER_ZEP_SEQUENCIAL = 1,
 }SER_ZONE_EVENT_POLICY;
+
+class ScheduleZoneGroup
+{
+    private:
+        std::string id;
+
+        std::vector< ScheduleZoneRule > zoneList;
+
+        SER_ZONE_EVENT_POLICY zonePolicy;
+
+    public:
+        ScheduleZoneGroup();
+       ~ScheduleZoneGroup();
+
+        void setID( std::string idValue );
+        std::string getID();        
+
+        void setZoneEventPolicy( SER_ZONE_EVENT_POLICY eventPolicy );
+        SER_ZONE_EVENT_POLICY getZoneEventPolicy();
+
+        void clearZoneList();
+        void addZone( Zone *zone );
+
+        void setZoneDuration( std::string zoneID, ScheduleTimeDuration &td );
+
+        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
+};
 
 typedef enum ScheduleEventRuleType 
 {
@@ -297,16 +327,15 @@ class ScheduleEventRule
         std::string      url;
 
         //std::vector<ScheduleRecurrenceRule> recurrenceList;
-        std::vector<ScheduleZoneRule> zoneRuleList;
+        //std::vector<ScheduleZoneRule> zoneRuleList;
+        ScheduleZoneGroup *zoneGroup;
+        ScheduleDateTime  refTime;
 
-        ScheduleDateTime refTime;
-
-        SER_ZONE_EVENT_POLICY zonePolicy;
 
         bool fireManually;
         bool eventsPending;
 
-        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
+        //void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
     public:
         ScheduleEventRule();
@@ -336,11 +365,10 @@ class ScheduleEventRule
         void setReferenceTime( ScheduleDateTime &time );
         void getReferenceTime( ScheduleDateTime &time );
 
-        void setZoneEventPolicy( SER_ZONE_EVENT_POLICY eventPolicy );
-        SER_ZONE_EVENT_POLICY getZoneEventPolicy();
+        //void clearZoneList();
+        //void addZoneRule( Zone *zone, ScheduleTimeDuration &td );
 
-        void clearZoneList();
-        void addZoneRule( Zone *zone, ScheduleTimeDuration &td );
+        void setZoneGroup( ScheduleZoneGroup *zg );
 
         void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
@@ -356,17 +384,22 @@ class ScheduleManager
         ScheduleEventList activeEvents;
 
         ZoneManager *zoneMgr;
+        std::vector<ScheduleZoneGroup *> zoneGroupList;
 
         bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
         bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
         bool parseActionList( xmlDocPtr doc, xmlNode *ruleElem, ScheduleEventRule *ruleObj );
         bool addRule( xmlDocPtr doc, xmlNode *ruleElem );
+        bool addZoneGroup( xmlDocPtr doc, xmlNode *zgElem );
+        bool parseZoneRuleList( xmlDocPtr doc, xmlNode *zgElem, ScheduleZoneGroup *zgObj );
 
     public:
         ScheduleManager();
        ~ScheduleManager();
 
         void setZoneManager( ZoneManager *zoneMgr );
+
+        ScheduleZoneGroup *getZoneGroupByID( std::string zgID );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();

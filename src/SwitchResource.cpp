@@ -30,7 +30,7 @@ SwitchListResource::restGet( RESTRequest *request )
 
     rspData = "<hnode-swlist>";
 
-    printf( "SwitchListResource: swManager - 0x%x\n", swManager );
+    printf( "SwitchListResource: swManager - 0x%lx\n", (unsigned long) swManager );
 
     if( swManager )
     {

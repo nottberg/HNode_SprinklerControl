@@ -32,7 +32,7 @@ ZoneListResource::restGet( RESTRequest *request )
 
     rspData = "<hnode-zonelist>";
 
-    printf( "ZoneListResource: zoneManager - 0x%x\n", zoneManager );
+    printf( "ZoneListResource: zoneManager - 0x%lx\n", (unsigned long) zoneManager );
 
     if( zoneManager )
     {

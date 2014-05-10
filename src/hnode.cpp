@@ -363,7 +363,7 @@ hnode_get_unique_uid( CONTEXT *Context )
 
     if( pFile != NULL )
     {
-        fscanf(pFile, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &uid[0], &uid[1], &uid[2], &uid[3], &uid[4], &uid[5], &uid[6]);
+        fscanf(pFile, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &uid[0], &uid[1], &uid[2], &uid[3], &uid[4], &uid[5]);
         fclose( pFile );
     }
 

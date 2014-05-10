@@ -72,7 +72,7 @@ SwitchLogEntry::getEpochTimeString()
     char tmpStr[64];
     std::string rtnStr;
 
-    sprintf(tmpStr, "%d", epochTime);
+    sprintf(tmpStr, "%d", (int)epochTime);
 
     rtnStr = tmpStr;
 
