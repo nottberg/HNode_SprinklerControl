@@ -337,6 +337,11 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->schRuleListResource.setScheduleManager( &Context->scheduleManager );
     Context->schRuleResource.setScheduleManager( &Context->scheduleManager );
 
+    Context->Rest.registerResource( &(Context->schZGListResource) );
+    Context->Rest.registerResource( &(Context->schZGResource) );
+    Context->Rest.registerResource( &(Context->schRuleListResource) );
+    Context->Rest.registerResource( &(Context->schRuleResource) );
+
     Context->calEventResource.setScheduleManager( &Context->scheduleManager );
 
     Context->Rest.registerResource( &(Context->calEventResource) );

@@ -155,6 +155,8 @@ RESTDaemon::newRequest( RESTRequest *request, const char *upload_data, size_t *u
     {
         response = MHD_create_response_from_buffer( 0, 0, MHD_RESPMEM_MUST_COPY );
 
+        printf("WARN: No handler found for url!");
+
         if( response )
         {
             ret = MHD_queue_response( request->getConnection(), MHD_HTTP_BAD_REQUEST, response );
