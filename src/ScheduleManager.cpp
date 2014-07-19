@@ -78,6 +78,12 @@ ScheduleDateTime::addHours( long hourValue )
 }
 
 void 
+ScheduleDateTime::addDays( long dayValue )
+{
+    time = time + days( dayValue );
+}
+
+void 
 ScheduleDateTime::subSeconds( long secValue )
 {
     time = time - seconds( secValue );
@@ -94,6 +100,12 @@ void
 ScheduleDateTime::subHours( long hourValue )
 {
     time = time - hours( hourValue );
+}
+
+void 
+ScheduleDateTime::subDays( long dayValue )
+{
+    time = time - days( dayValue );
 }
 
 void 
@@ -134,6 +146,11 @@ ScheduleDateTime::getISOString()
     return to_iso_string( time );
 } 
 
+std::string
+ScheduleDateTime::getExtendedISOString()
+{
+    return to_iso_extended_string( time );
+} 
 void 
 ScheduleDateTime::setTimeFromISOString( std::string isoTime )
 {
@@ -590,6 +607,38 @@ ScheduleZoneGroup::setZoneDuration( std::string zoneID, ScheduleTimeDuration &td
             it->setDuration( td );
         }
     }
+}
+
+unsigned int 
+ScheduleZoneGroup::getZoneRuleCount()
+{
+    return zoneList.size();
+}
+
+ScheduleZoneRule *
+ScheduleZoneGroup::getZoneRuleByIndex( unsigned int index )
+{
+    if( index > zoneList.size() )
+        return NULL;
+
+    return &zoneList[ index ];
+}
+
+ScheduleZoneRule *
+ScheduleZoneGroup::getZoneRuleByID( std::string zgID )
+{
+    ScheduleZoneRule *zgObj = NULL;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleZoneRule>::iterator it = zoneList.begin() ; it != zoneList.end(); ++it )
+    {
+        if( zgID == (it)->getZoneID() )
+        {
+            zgObj = &(*it);
+        }
+    }
+
+    return zgObj;
 }
 
 void 
@@ -1189,6 +1238,21 @@ ScheduleManager::parseActionList( xmlDocPtr doc, xmlNode *ruleElem, ScheduleEven
     return false;
 }
 
+unsigned int 
+ScheduleManager::getZoneGroupCount()
+{
+    return zoneGroupList.size();
+}
+
+ScheduleZoneGroup *
+ScheduleManager::getZoneGroupByIndex( unsigned int index )
+{
+    if( index > zoneGroupList.size() )
+        return NULL;
+
+    return zoneGroupList[ index ];
+}
+
 ScheduleZoneGroup *
 ScheduleManager::getZoneGroupByID( std::string zgID )
 {
@@ -1204,6 +1268,38 @@ ScheduleManager::getZoneGroupByID( std::string zgID )
     }
 
     return zgObj;
+}
+
+unsigned int 
+ScheduleManager::getEventRuleCount()
+{
+    return eventRuleList.size();
+}
+
+ScheduleEventRule *
+ScheduleManager::getEventRuleByIndex( unsigned int index )
+{
+    if( index > eventRuleList.size() )
+        return NULL;
+
+    return eventRuleList[ index ];
+}
+
+ScheduleEventRule *
+ScheduleManager::getEventRuleByID( std::string erID )
+{
+    ScheduleEventRule *erObj = NULL;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin() ; it != eventRuleList.end(); ++it)
+    {
+        if( erID == (*it)->getID() )
+        {
+            erObj = *it;
+        }
+    }
+
+    return erObj;
 }
 
 bool 
@@ -1626,7 +1722,20 @@ ScheduleManager::getActiveEvents()
 ScheduleEventList *
 ScheduleManager::getEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime )
 {
+    ScheduleEventList *eventList = new ScheduleEventList();
+    ScheduleDateTime curTime; 
 
+    // Walk through the times at minute intervals
+    for( curTime.setTime( startTime ); curTime.isBefore( endTime ); curTime.addMinutes(1) )
+    {
+        // Check if the rules are going to generate any new events.
+        for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin(); it != eventRuleList.end(); ++it )
+        {
+            (*it)->updateActiveEvents( *eventList, curTime );
+        }
+    }
+
+    return eventList;
 }
 
 void 

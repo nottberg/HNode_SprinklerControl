@@ -1,50 +1,105 @@
-#ifndef __ZONERESOURCE_H__
-#define __ZONERESOURCE_H__
+#ifndef __SCHEDULERESOURCE_H__
+#define __SCHEDULERESOURCE_H__
 
 #include "REST/REST.hpp"
-#include "ZoneManager.hpp"
+#include "ScheduleManager.hpp"
 
-class ZoneListResource : public RESTResource
+class ScheduleZoneGroupListResource : public RESTResource
 {
     private:
-        ZoneManager *zoneManager;
+        ScheduleManager *schManager;
 
     public:
-        ZoneListResource();
-       ~ZoneListResource();
+        ScheduleZoneGroupListResource();
+       ~ScheduleZoneGroupListResource();
 
-        void setZoneManager( ZoneManager *swMgr );
+        void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
 };
 
-class ZoneResource : public RESTResource
+class ScheduleZoneGroupResource : public RESTResource
 {
     private:
-        ZoneManager *zoneManager;
+        ScheduleManager *schManager;
 
     public:
-        ZoneResource();
-       ~ZoneResource();
+        ScheduleZoneGroupResource();
+       ~ScheduleZoneGroupResource();
 
-        void setZoneManager( ZoneManager *swMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPut( RESTRequest *request );
-};
-
-class ZoneDiagramResource : public RESTResource
-{
-    private:
-        ZoneManager *zoneManager;
-
-    public:
-        ZoneDiagramResource();
-       ~ZoneDiagramResource();
-
-        void setZoneManager( ZoneManager *swMgr );
+        void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
 };
 
-#endif //__ZONERESOURCE_H__
+class ScheduleZoneRuleListResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleZoneRuleListResource();
+       ~ScheduleZoneRuleListResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
+class ScheduleZoneRuleResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleZoneRuleResource();
+       ~ScheduleZoneRuleResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
+class ScheduleRuleListResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleRuleListResource();
+       ~ScheduleRuleListResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
+class ScheduleRuleResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleRuleResource();
+       ~ScheduleRuleResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
+class ScheduleCalendarEventResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleCalendarEventResource();
+       ~ScheduleCalendarEventResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+};
+
+#endif //__SCHEDULERESOURCE_H__

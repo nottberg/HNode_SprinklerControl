@@ -45,6 +45,7 @@ class ScheduleDateTime
 
         std::string getSimpleString();
         std::string getISOString();
+        std::string getExtendedISOString();
 
         void setTimeFromISOString( std::string isoTime );
 
@@ -57,10 +58,12 @@ class ScheduleDateTime
         void addSeconds( long seconds );
         void addMinutes( long minutes );
         void addHours( long hours );
+        void addDays( long days );
 
         void subSeconds( long seconds );
         void subMinutes( long minutes );
         void subHours( long hours );
+        void subDays( long days );
 
         void replaceTimeOfDay( ScheduleDateTime &time );
 
@@ -298,8 +301,11 @@ class ScheduleZoneGroup
 
         void clearZoneList();
         void addZone( Zone *zone );
-
         void setZoneDuration( std::string zoneID, ScheduleTimeDuration &td );
+
+        unsigned int getZoneRuleCount();
+        ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
+        ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
         void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 };
@@ -399,7 +405,13 @@ class ScheduleManager
 
         void setZoneManager( ZoneManager *zoneMgr );
 
+        unsigned int getZoneGroupCount();
+        ScheduleZoneGroup *getZoneGroupByIndex( unsigned int index );
         ScheduleZoneGroup *getZoneGroupByID( std::string zgID );
+
+        unsigned int getEventRuleCount();
+        ScheduleEventRule *getEventRuleByIndex( unsigned int index );
+        ScheduleEventRule *getEventRuleByID( std::string erID );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();

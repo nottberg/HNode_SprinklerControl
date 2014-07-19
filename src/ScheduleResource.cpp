@@ -4,47 +4,51 @@
 #include <cerrno>
 
 #include "REST/REST.hpp"
-#include "ZoneManager.hpp"
-#include "ZoneResource.hpp"
+#include "ScheduleManager.hpp"
+#include "ScheduleResource.hpp"
 
-ZoneListResource::ZoneListResource()
+
+
+ScheduleZoneGroupListResource::ScheduleZoneGroupListResource()
 {
-    setURLPattern( "/zones", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/zone-groups", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
 }
 
-ZoneListResource::~ZoneListResource()
+ScheduleZoneGroupListResource::~ScheduleZoneGroupListResource()
 {
 
 }
 
 void
-ZoneListResource::setZoneManager( ZoneManager *zoneMgr )
+ScheduleZoneGroupListResource::setScheduleManager( ScheduleManager *schMgr )
 {
-    zoneManager = zoneMgr;
+    schManager = schMgr;
 }
 
 void 
-ZoneListResource::restGet( RESTRequest *request )
+ScheduleZoneGroupListResource::restGet( RESTRequest *request )
 {
     std::string rspData;
 
-    std::cout << "ZoneListResource::restGet" << std::endl;
+    std::cout << "ScheduleZoneGroupListResource::restGet" << std::endl;
 
-    rspData = "<hnode-zonelist>";
+    rspData = "<hnode-schedule-zg-id-list>";
 
-    printf( "ZoneListResource: zoneManager - 0x%x\n", zoneManager );
-
-    if( zoneManager )
+    if( schManager )
     {
-        for( int index = 0; index < zoneManager->getZoneCount(); index++ )
+        printf( "ZoneGroup count: %d\n", schManager->getZoneGroupCount() );
+
+        for( unsigned int index = 0; index < schManager->getZoneGroupCount(); index++ )
         {
-            Zone *zoneObj = zoneManager->getZoneByIndex( index );
-            printf( "Output Zone: %d\n", index );
-            rspData += "<zoneid>" + zoneObj->getID() + "</zoneid>";
+            ScheduleZoneGroup *zgObj = schManager->getZoneGroupByIndex( index );
+
+            rspData += "<id>";
+            rspData += zgObj->getID();
+            rspData += "</id>";
         }
     }
 
-    rspData += "</hnode-zonelist>"; 
+    rspData += "</hnode-schedule-zg-id-list>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
     rspRep->appendData( rspData.c_str(), rspData.size() );
@@ -53,65 +57,63 @@ ZoneListResource::restGet( RESTRequest *request )
     request->sendResponse();
 }
 
-ZoneResource::ZoneResource()
+
+ScheduleZoneGroupResource::ScheduleZoneGroupResource()
 {
-    setURLPattern( "/zones/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_PUT) ); 
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
 }
 
-ZoneResource::~ZoneResource()
+ScheduleZoneGroupResource::~ScheduleZoneGroupResource()
 {
 
 }
 
 void
-ZoneResource::setZoneManager( ZoneManager *zoneMgr )
+ScheduleZoneGroupResource::setScheduleManager( ScheduleManager *schMgr )
 {
-    zoneManager = zoneMgr;
+    schManager = schMgr;
 }
 
 void 
-ZoneResource::restGet( RESTRequest *request )
+ScheduleZoneGroupResource::restGet( RESTRequest *request )
 {
-    std::string zoneID;
+    std::string zgID;
     std::string rspData;
-    Zone *zoneObj;
+    ScheduleZoneGroup *zgObj;
 
-    if( request->getParameter( "zoneid", zoneID ) )
+    if( request->getParameter( "zonegroupid", zgID ) )
     {
-        printf("Failed to look up zoneid parameter\n");
+        printf("Failed to look up zonegroupid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
     }
 
-    printf( "URL ZoneID: %s\n", zoneID.c_str() );
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    zoneObj = zoneManager->getZoneByID( zoneID );
+    zgObj = schManager->getZoneGroupByID( zgID );
 
-    if( zoneObj == NULL )
+    if( zgObj == NULL )
     {
         request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
         request->sendResponse();
         return;
     }
 
-    rspData = "<zone id=\"";
-    rspData += zoneID;
+    rspData = "<schedule-zone-group id=\"";
+    rspData += zgID;
     rspData += "\">";
 
+/*
     rspData += "<name>";
-    rspData += zoneObj->getName();
+    rspData += zgObj->getName();
     rspData += "</name>";
 
     rspData += "<desc>";
-    rspData += zoneObj->getDescription();
+    rspData += zgObj->getDescription();
     rspData += "</desc>";
-
-    rspData += "<map-path-id>";
-    rspData += zoneObj->getMapPathID();
-    rspData += "</map-path-id>";
-
-    rspData += "</zone>";
+*/
+    rspData += "</schedule-zone-group>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
     rspRep->appendData( rspData.c_str(), rspData.size() );
@@ -120,15 +122,107 @@ ZoneResource::restGet( RESTRequest *request )
     request->sendResponse();
 }
 
-void 
-ZoneResource::restPut( RESTRequest *request )
+ScheduleZoneRuleListResource::ScheduleZoneRuleListResource()
 {
-    std::string zoneID;
-    std::string stateStr;
-    Zone *zoneObj;
-    bool result = true;
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+}
 
-    if( request->getParameter( "zoneid", zoneID ) )
+ScheduleZoneRuleListResource::~ScheduleZoneRuleListResource()
+{
+
+}
+
+void
+ScheduleZoneRuleListResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleZoneRuleListResource::restGet( RESTRequest *request )
+{
+    std::string zgID;
+    std::string rspData;
+    ScheduleZoneGroup *zgObj;
+
+    if( request->getParameter( "zonegroupid", zgID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
+
+    zgObj = schManager->getZoneGroupByID( zgID );
+
+    if( zgObj == NULL )
+    {
+        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+        request->sendResponse();
+        return;
+    }
+
+    rspData = "<schedule-zone-rule-list id=\"";
+    rspData += zgID;
+    rspData += "\">";
+
+    for( unsigned int index = 0; index < zgObj->getZoneRuleCount(); index++ )
+    {
+        ScheduleZoneRule *zrObj = zgObj->getZoneRuleByIndex( index );
+
+        rspData += "<id>";
+        rspData += zrObj->getZoneID();
+        rspData += "</id>";
+    }
+    
+    rspData += "</schedule-zone-rule-list>";
+
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->appendData( rspData.c_str(), rspData.size() );
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+
+ScheduleZoneRuleResource::ScheduleZoneRuleResource()
+{
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+}
+
+ScheduleZoneRuleResource::~ScheduleZoneRuleResource()
+{
+
+}
+
+void
+ScheduleZoneRuleResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleZoneRuleResource::restGet( RESTRequest *request )
+{
+    std::string zgID;
+    std::string zoneID;
+    std::string rspData;
+    ScheduleZoneGroup *zgObj;
+    ScheduleZoneRule  *zoneRule;
+
+    if( request->getParameter( "zonegroupid", zgID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
+
+    if( request->getParameter( "zoneid", zgID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -138,107 +232,275 @@ ZoneResource::restPut( RESTRequest *request )
 
     printf( "URL ZoneID: %s\n", zoneID.c_str() );
 
-    zoneObj = zoneManager->getZoneByID( zoneID );
+    zgObj = schManager->getZoneGroupByID( zgID );
 
-    if( zoneObj == NULL )
+    if( zgObj == NULL )
     {
         request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
         request->sendResponse();
         return;
-    }    
+    }
 
-    if( request->getParameter( "state", stateStr ) )
+    zoneRule = zgObj->getZoneRuleByID( zoneID );
+
+    if( zoneRule == NULL )
     {
-        printf("Failed to find 'state' parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
         request->sendResponse();
         return;
     }
 
-    if( stateStr == "on" )
-    {
-        printf( "Turn Zone On: %s\n", zoneID.c_str() );
-        //result = zoneObj->setStateOn("REST Zone Interface");
-    }
-    else if( stateStr == "off" )
-    {
-        printf( "Turn Zone Off: %s\n", zoneID.c_str() );
-        //result = zoneObj->setStateOff("REST Zone Interface");
-    }
-    else
-    {
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
+    rspData = "<schedule-zone-rule id=\"";
+    rspData += zoneID;
+    rspData += "\">";
 
-    if( result == true )
-    {
-        request->setResponseCode( REST_HTTP_RCODE_INTERNAL_ERROR );
-        request->sendResponse(); 
-    }
-    else
-    {
-        request->setResponseCode( REST_HTTP_RCODE_OK );
-        request->sendResponse();
-    }
+    rspData += "<duration>";
+    rspData += zoneRule->getDuration().asTotalSeconds();
+    rspData += "</duration>";
+/*
+    rspData += "<desc>";
+    rspData += zgObj->getDescription();
+    rspData += "</desc>";
+*/
+    rspData += "</schedule-zone-rule>";
+
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->appendData( rspData.c_str(), rspData.size() );
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
 }
 
-ZoneDiagramResource::ZoneDiagramResource()
+
+
+
+
+
+ScheduleRuleListResource::ScheduleRuleListResource()
 {
-    setURLPattern( "/maps/zone", (REST_RMETHOD_T)(REST_RMETHOD_GET) ); 
+    setURLPattern( "/schedule/rules", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
 }
 
-ZoneDiagramResource::~ZoneDiagramResource()
+ScheduleRuleListResource::~ScheduleRuleListResource()
 {
 
 }
 
 void
-ZoneDiagramResource::setZoneManager( ZoneManager *zoneMgr )
+ScheduleRuleListResource::setScheduleManager( ScheduleManager *schMgr )
 {
-    zoneManager = zoneMgr;
+    schManager = schMgr;
 }
 
 void 
-ZoneDiagramResource::restGet( RESTRequest *request )
+ScheduleRuleListResource::restGet( RESTRequest *request )
 {
     std::string rspData;
-    Zone *zoneObj;
+
+    std::cout << "ScheduleRuleListResource::restGet" << std::endl;
+
+    rspData = "<hnode-schedule-rule-id-list>";
+
+    if( schManager )
+    {
+        printf( "Event Rule count: %d\n", schManager->getEventRuleCount() );
+
+        for( unsigned int index = 0; index < schManager->getEventRuleCount(); index++ )
+        {
+            ScheduleEventRule *erObj = schManager->getEventRuleByIndex( index );
+
+            rspData += "<id>";
+            rspData += erObj->getID();
+            rspData += "</id>";
+        }
+    }
+
+    rspData += "</hnode-schedule-rule-id-list>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->appendData( rspData.c_str(), rspData.size() );
 
-    printf( "Zone Diagram Resource GET\n" );
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
 
-    // Open the file with the map svg
-    std::ifstream in( "/etc/hnode/irrigation/map/zone_map.svg", std::ios::in | std::ios::binary );
 
-    // Return an error if the open failed.
-    if( !in )
+
+ScheduleRuleResource::ScheduleRuleResource()
+{
+    setURLPattern( "/schedule/rules/{ruleid}", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+}
+
+ScheduleRuleResource::~ScheduleRuleResource()
+{
+
+}
+
+void
+ScheduleRuleResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleRuleResource::restGet( RESTRequest *request )
+{
+    std::string erID;
+    std::string rspData;
+    ScheduleEventRule *erObj;
+
+    if( request->getParameter( "ruleid", erID ) )
+    {
+        printf("Failed to look up ruleid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL EventRuleID: %s\n", erID.c_str() );
+
+    erObj = schManager->getEventRuleByID( erID );
+
+    if( erObj == NULL )
     {
         request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
         request->sendResponse();
         return;
     }
 
-    printf( "Zone Diagram Resource -- Reading file\n" );
+    rspData = "<schedule-event-rule id=\"";
+    rspData += erID;
+    rspData += "\">";
 
-    // Determine the length of the data, 
-    // and preallocate space in the string
-    in.seekg(0, std::ios::end);
-    rspData.resize(in.tellg());
+/*
+    rspData += "<name>";
+    rspData += zgObj->getName();
+    rspData += "</name>";
 
-    // Back up and read the data
-    in.seekg(0, std::ios::beg);
-    in.read(&rspData[0], rspData.size());
+    rspData += "<desc>";
+    rspData += zgObj->getDescription();
+    rspData += "</desc>";
+*/
+    rspData += "</schedule-event-rule>";
 
-    // Close file
-    in.close();
-
-    // Send the data back to the requestor    
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
     rspRep->appendData( rspData.c_str(), rspData.size() );
+
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
 
+
+
+
+
+
+
+
+
+
+ScheduleCalendarEventResource::ScheduleCalendarEventResource()
+{
+    setURLPattern( "/calendar/events", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+}
+
+ScheduleCalendarEventResource::~ScheduleCalendarEventResource()
+{
+
+}
+
+void
+ScheduleCalendarEventResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleCalendarEventResource::restGet( RESTRequest *request )
+{
+    std::string rspData;
+
+#if 0
+    if( request->getParameter( "startTime", zoneID ) )
+    {
+        printf("Failed to look up zoneid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    if( request->getParameter( "endTime", zoneID ) )
+    {
+        printf("Failed to look up zoneid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+#endif
+
+    std::cout << "ScheduleCalendarResource::restGet" << std::endl;
+
+    rspData = "<hnode-schedule-event-list>";
+
+    printf( "ScheduleCalendarResource: schManager - 0x%x\n", schManager );
+
+    ScheduleDateTime startTime;
+    startTime.getCurrentTime();
+    startTime.subDays( 15 );
+
+    ScheduleDateTime endTime;
+    endTime.getCurrentTime();
+    endTime.addDays( 15 );
+
+    if( schManager )
+    {
+        ScheduleEventList *eventList;
+
+        eventList = schManager->getEventsForPeriod( startTime, endTime );
+
+        if( eventList != NULL )
+        {
+            printf( "EventList count: %d\n", eventList->getEventCount() );
+
+            for( int indx = 0; indx < eventList->getEventCount(); indx++ )
+            {
+                ScheduleEvent *event = eventList->getEvent( indx );
+
+                rspData += "<schedule-event>";
+
+                rspData += "<id>";
+                rspData += event->getId();
+                rspData += "</id>";
+       
+                rspData += "<title>";
+                rspData += event->getTitle();
+                rspData += "</title>";
+
+                ScheduleDateTime eventTime;
+
+                event->getStartTime( eventTime );
+                rspData += "<start-time>";
+                rspData += eventTime.getExtendedISOString();
+                rspData += "</start-time>";
+
+                event->getEndTime( eventTime );
+                rspData += "<end-time>";
+                rspData += eventTime.getExtendedISOString();
+                rspData += "</end-time>";
+
+                rspData += "</schedule-event>";
+            }
+
+            schManager->freeScheduleEventList( eventList );
+        }
+    }
+
+    rspData += "</hnode-schedule-event-list>"; 
+
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->appendData( rspData.c_str(), rspData.size() );
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
 

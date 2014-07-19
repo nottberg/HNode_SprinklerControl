@@ -24,6 +24,7 @@ SET( HNODE_SPRINKLER_CTRL_SRC
      ${CMAKE_SOURCE_DIR}/src/ZoneManager.cpp
      ${CMAKE_SOURCE_DIR}/src/ZoneResource.cpp
      ${CMAKE_SOURCE_DIR}/src/ScheduleManager.cpp
+     ${CMAKE_SOURCE_DIR}/src/ScheduleResource.cpp
 )
 
 SET(Boost_USE_STATIC_LIBS OFF)
