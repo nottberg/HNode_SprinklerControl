@@ -139,6 +139,7 @@ RESTResource::linkRequest( RESTRequest *request )
                 if( elem->isMatch( t ) == false )
                 {
                     std::cout << "Process Request Result -- mismatched element" << std::endl;
+                    std::cout << "Mismatch element: " << elem->getMatchElement() << "." << index <<std::endl;
                     return false;
                 }
             break;
