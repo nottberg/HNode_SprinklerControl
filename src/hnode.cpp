@@ -517,7 +517,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
     
     //guint16 EndPointIndex, guint16 AssociatedEPIndex, guint8 *MimeTypeStr, guint16 Port, guint8 MajorVersion, guint8 MinorVersion, guint16 MicroVersion)
     g_hnode_set_endpoint(Context.HNode, 0, 0, (guint8*)"hnode-switch-interface", Context.SwitchPort, 1, 0, 0);	
-    g_hnode_set_endpoint(Context.HNode, 1, 1, (guint8*)"hnode-irrigation-rest", 8888, 1, 0, 0);	
+    g_hnode_set_endpoint(Context.HNode, 1, 1, (guint8*)"hnode-irrigation-rest", REST_DAEMON_DEFAULT_PORT, 1, 0, 0);	
 
     hnode_load_configuration( &Context );
 

@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <microhttpd.h>
 
+#define REST_DAEMON_DEFAULT_PORT 8200
+
 class RESTRepresentation
 {
     private:

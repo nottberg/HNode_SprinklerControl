@@ -11,7 +11,6 @@
 
 #include "REST.hpp"
 
-#define PORT 8200
 #define POSTBUFFERSIZE 512
 #define MAXNAMESIZE 20
 #define MAXANSWERSIZE 512
@@ -54,7 +53,7 @@ RESTDaemon::~RESTDaemon()
 int 
 RESTDaemon::start()
 {
-    daemon = MHD_start_daemon( MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &connection_request, this, MHD_OPTION_NOTIFY_COMPLETED, request_completed, this, MHD_OPTION_END );
+    daemon = MHD_start_daemon( MHD_USE_SELECT_INTERNALLY, REST_DAEMON_DEFAULT_PORT, NULL, NULL, &connection_request, this, MHD_OPTION_NOTIFY_COMPLETED, request_completed, this, MHD_OPTION_END );
 
     if( NULL == daemon )
         return 1;
