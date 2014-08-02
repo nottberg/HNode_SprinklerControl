@@ -95,6 +95,9 @@ typedef struct IrrigationNodeContext
     ScheduleRuleListResource      schRuleListResource;
     ScheduleRuleResource          schRuleResource;
 
+    ScheduleZoneRuleListResource  schZoneRuleListResource; 
+    ScheduleZoneRuleResource      schZoneRuleResource;
+
     ScheduleCalendarEventResource calEventResource;
 
 //    ScheduleResource         scheduleResource;
@@ -300,6 +303,8 @@ hnode_load_configuration(CONTEXT *Context)
     Context->scheduleManager.setZoneManager( &Context->zoneManager );
     Context->scheduleManager.loadConfiguration();
 
+    Context->scheduleManager.saveConfiguration();
+
     return false;
 }
 
@@ -341,6 +346,12 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->Rest.registerResource( &(Context->schZGResource) );
     Context->Rest.registerResource( &(Context->schRuleListResource) );
     Context->Rest.registerResource( &(Context->schRuleResource) );
+
+    Context->schZoneRuleListResource.setScheduleManager( &Context->scheduleManager );
+    Context->schZoneRuleResource.setScheduleManager( &Context->scheduleManager );
+
+    Context->Rest.registerResource( &(Context->schZoneRuleListResource) );
+    Context->Rest.registerResource( &(Context->schZoneRuleResource) );
 
     Context->calEventResource.setScheduleManager( &Context->scheduleManager );
 

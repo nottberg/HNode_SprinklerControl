@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/encoding.h>
+#include <libxml/xmlwriter.h>
 
 #include <string.h>
 
@@ -171,6 +173,12 @@ void
 ScheduleTimeDuration::setFromString( std::string timeStr )
 {
     td = duration_from_string( timeStr );
+}
+
+std::string
+ScheduleTimeDuration::getISOString()
+{
+    return to_iso_string( td );
 }
 
 long 
@@ -642,7 +650,7 @@ ScheduleZoneGroup::getZoneRuleByID( std::string zgID )
 }
 
 void 
-ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime )
+ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime )
 {
     ScheduleDateTime eventTime;
 
@@ -650,6 +658,7 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
 
     // Initial Time
     eventTime.setTime( curTime );
+    rearmTime.setTime( curTime );
 
     printf( "ScheduleZoneGroup -- zone rule count: %d\n", (int)zoneList.size() );
 
@@ -677,6 +686,13 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         // Add a second of padding between events
         eventTime.addSeconds( 1 );
 
+        // Track the latest end time so that
+        // the rule can be rearmed at that point.
+        if( eventTime.isAfter( rearmTime ) )
+        {
+            rearmTime.setTime( eventTime );
+        }
+
         // Create the zone action object
         event->setAction( &(*it) );
 
@@ -685,6 +701,179 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         activeEvents.addEvent( event ); 
     }
 }
+
+ScheduleTimeTrigger::ScheduleTimeTrigger()
+{
+//    std::string      id;
+//    SER_TT_SCOPE     scope;
+//    ScheduleDateTime refTime;
+}
+
+ScheduleTimeTrigger::~ScheduleTimeTrigger()
+{
+
+}
+
+void 
+ScheduleTimeTrigger::setID( std::string idValue )
+{
+    id = idValue;
+}
+
+std::string 
+ScheduleTimeTrigger::getID()
+{
+    return id;
+}
+
+void 
+ScheduleTimeTrigger::setScope( SER_TT_SCOPE scopeValue )
+{
+    scope = scopeValue;
+}
+
+SER_TT_SCOPE 
+ScheduleTimeTrigger::getScope()
+{
+    return scope;
+}
+
+std::string 
+ScheduleTimeTrigger::getScopeStr()
+{
+
+}
+
+void 
+ScheduleTimeTrigger::setRefTime( ScheduleDateTime &refTimeValue )
+{
+    refTime.setTime( refTimeValue );
+}
+
+ScheduleDateTime 
+ScheduleTimeTrigger::getRefTime()
+{
+    return refTime;
+}
+
+ScheduleTriggerGroup::ScheduleTriggerGroup()
+{
+// std::string id;
+// std::vector< ScheduleTimeTrigger > timeList;
+}
+
+ScheduleTriggerGroup::~ScheduleTriggerGroup()
+{
+
+}
+
+void 
+ScheduleTriggerGroup::setID( std::string idValue )
+{
+    id = idValue;
+}
+
+std::string 
+ScheduleTriggerGroup::getID()
+{
+    return id;
+}
+
+void 
+ScheduleTriggerGroup::clearTimeTriggerList()
+{
+    timeList.clear();
+}
+
+void 
+ScheduleTriggerGroup::addTimeTrigger( std::string id, SER_TT_SCOPE scope, ScheduleDateTime& refTime )
+{
+    ScheduleTimeTrigger ttObj;
+ 
+    ttObj.setID( id );
+    ttObj.setRefTime( refTime );
+    ttObj.setScope( scope );
+
+    timeList.push_back( ttObj );
+}
+
+void 
+ScheduleTriggerGroup::removeTimeTrigger( std::string id )
+{
+
+}
+
+unsigned int 
+ScheduleTriggerGroup::getTimeTriggerCount()
+{
+    return timeList.size();
+}
+
+ScheduleTimeTrigger *
+ScheduleTriggerGroup::getTimeTriggerByIndex( unsigned int index )
+{
+    if( index > timeList.size() )
+        return NULL;
+
+    return &timeList[ index ];
+}
+
+ScheduleTimeTrigger *
+ScheduleTriggerGroup::getTimeTriggerByID( std::string ttID )
+{
+    ScheduleTimeTrigger *ttObj = NULL;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleTimeTrigger>::iterator it = timeList.begin() ; it != timeList.end(); ++it )
+    {
+        if( ttID == (it)->getID() )
+        {
+            ttObj = &(*it);
+        }
+    }
+
+    return ttObj;
+}
+
+bool 
+ScheduleTriggerGroup::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+{
+    ScheduleDateTime startTime;
+    ScheduleDateTime prestartTime;
+    ScheduleDateTime refTime;
+
+    // Tmp get the refTime.
+    refTime = timeList[0].getRefTime();
+
+    // If we are not in the right day, then exit
+    if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+        return false;
+
+    // We are in the ballpark so calculate the local startTime
+    // based on the curTime
+    startTime.setTime( curTime );
+    startTime.replaceTimeOfDay( refTime );
+
+    // Schedule the event a couple of minutes before start time.
+    prestartTime.setTime( startTime );
+    prestartTime.subMinutes( 2 ); 
+
+    //printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
+    //printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
+    //printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
+    //printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
+
+    // Schedule events a bit before their actual start times.
+    if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+    {
+        eventTime.setTime( startTime );
+        return true;
+    }
+
+    return false;
+}
+
+
 
 ScheduleEventList::ScheduleEventList()
 {
@@ -753,6 +942,8 @@ ScheduleEventRule::ScheduleEventRule()
     enabled       = false;
     fireManually  = false;
     eventsPending = false;
+
+    triggerGroup = NULL;
 }
 
 ScheduleEventRule::~ScheduleEventRule()
@@ -832,6 +1023,7 @@ ScheduleEventRule::getURL()
     return url;
 }
 
+/*
 void 
 ScheduleEventRule::setOcurrenceType( SER_OCURRENCE_TYPE typeValue )
 {
@@ -843,23 +1035,67 @@ ScheduleEventRule::getOcurrenceType()
 {
     return type;
 }
+*/
 
+#if 0
 void 
 ScheduleEventRule::setReferenceTime( ScheduleDateTime &time )
 {
-    refTime.setTime( time );
+    ScheduleTriggerGroup* ttObj = new ScheduleTriggerGroup;
+
+    std::string idStr = getID();
+    idStr += "tmpTG";
+
+    std::cout << "setRefTime idStr: " << idStr << std::endl;
+
+    ttObj->setID( idStr );
+    ttObj->addTimeTrigger( SER_TT_SCOPE_DAY, time );
+
+    triggerGroup = ttObj;
 }
 
 void 
 ScheduleEventRule::getReferenceTime( ScheduleDateTime &time )
 {
-    time = refTime;
+    ScheduleTimeTrigger *ttObj;
+
+    if( triggerGroup == NULL )
+        return;
+
+    ttObj = triggerGroup->getTimeTriggerByIndex( 0 );
+
+    time = ttObj->getRefTime();
 }
+#endif
 
 void 
 ScheduleEventRule::setZoneGroup( ScheduleZoneGroup *zgObj )
 {
     zoneGroup = zgObj;
+}
+
+std::string 
+ScheduleEventRule::getZoneGroupID()
+{
+    if( zoneGroup == NULL )
+        return "";
+
+    return zoneGroup->getID();
+}
+
+void 
+ScheduleEventRule::setTriggerGroup( ScheduleTriggerGroup *tgObj )
+{
+    triggerGroup = tgObj;
+}
+
+std::string 
+ScheduleEventRule::getTriggerGroupID()
+{
+    if( triggerGroup == NULL )
+        return "";
+
+    return triggerGroup->getID();
 }
 
 #if 0
@@ -955,6 +1191,13 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
     //printf( "ScheduleEventRule -- type: %d\n", type);
 
+    // Only check the rule if it is enabled.
+    if( enabled == false )
+    {
+        // Skip the rule, it wasn't enabled
+        return;
+    }
+
     // If the event was fired manually,
     // then ignore the start time and
     // just schedule the events
@@ -963,7 +1206,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         printf( "ScheduleEventRule -- manual start: %s\n", name.c_str() );
 
         // Create the events
-        zoneGroup->createZoneEvents( activeEvents, eventTime );
+        zoneGroup->createZoneEvents( activeEvents, eventTime, rearmTime );
 
         // Clear the manual fire flag, since we only wanted to 
         // trigger it once.
@@ -973,114 +1216,36 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         return;
     }
 
-    // Copy over the current time in case we need to do some math.
-    eventTime.setTime( curTime );
-
-    // Check if our event has fired.
-    switch( type )
+    // Make sure we have what we need for scheduling
+    if( ( triggerGroup == NULL ) || ( zoneGroup == NULL ) )
     {
-        // Execute on specific days of the week.
-        case SER_TYPE_DAY:
-        {
-            //printf( "ScheduleEventRule -- dow - %d - %d\n", refTime.getDayOfWeek(), curTime.getDayOfWeek() );
-
-            // If we are in the right day, then proceed
-            if( refTime.getDayOfWeek() == curTime.getDayOfWeek() )
-            {
-                ScheduleDateTime startTime;
-                ScheduleDateTime prestartTime;
-
-                // We are in the ballpark so calculate the local startTime
-                // based on the curTime
-                startTime.setTime( curTime );
-                startTime.replaceTimeOfDay( refTime );
-
-                // Use start time in this case
-                eventTime.setTime( startTime );
-
-                // Schedule the event a couple of minutes before start time.
-                prestartTime.setTime( startTime );
-                prestartTime.subMinutes( 2 ); 
-
-                //printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
-                //printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
-                //printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
-                //printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
-
-                // Schedule events a bit before their actual start times.
-                if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
-                {
-                    if( eventsPending == false )
-                    {
-                        printf( "ScheduleEventRule -- time start: %s\n", name.c_str() );
-
-                        // Create the events
-                        zoneGroup->createZoneEvents( activeEvents, eventTime );
-                 
-                        // Remember that we created the events already
-                        eventsPending = true;
-                    }
-                }
-
-                // After the start time has passed then reset us so that
-                // future events can be processed
-                if( startTime.isBefore( curTime ) )
-                {
-                    //printf( "ScheduleEventRule -- clear eventsPending\n" );
-
-                    // Free us up to schedule future events
-                    eventsPending = false;
-                }
-            }
-        }
-        break;
-
-        // Execute on an interval away from the 
-        // start time.
-        case SER_TYPE_INTERVAL:
-        {
-            // Back up one interval.
-
-            // Find where the reference time falls 
-            // between the previous interval and
-            // current time.  
-
-            // Using the localized reference time,
-            // check if the current time falls
-            // within the interval.
-
-        }
-        break;
+        return;
     }
 
-#if 0
-    // See if we should schedule things
-    if( ( ( curTime.getMinute() % 2 ) == 0 ) && ( curTime.getSecond() == 0 ) )
+    // If we already have events pending then
+    // don't try to schedule them again.
+    if( eventsPending == true )
     {
-
-
-        for( int zoneIndx = 0; zoneIndx < 4; zoneIndx++ )
+        // Check if we should rearm for next trigger
+        if( rearmTime.isBefore( curTime ) )
         {
-            ScheduleEvent *event = new ScheduleEvent;
-
-            sprintf( tmpStr, "%s.%d", curTime.getISOString().c_str(), zoneIndx ); 
-            event->setId( tmpStr );
-
-            sprintf( tmpStr, "Water Zone %d", zoneIndx ); 
-            event->setTitle( tmpStr );
-
-            event->setStartTime( eventTime );
-            
-            eventTime.addSeconds(30);
-
-            event->setEndTime( eventTime );
-
-            event->setReady();
-
-            activeEvents.addEvent( event ); 
+            // Rearm and check for event trigger
+            eventsPending = false;
+        }
+        else
+        {
+            // Rule has not been rearmed after previous
+            // event generation, so no further processing.
+            return;
         }
     }
-#endif
+
+    // Check if this rule triggered
+    if( triggerGroup->checkForTrigger( curTime, eventTime ) )
+    {
+        zoneGroup->createZoneEvents( activeEvents, eventTime, rearmTime );
+        eventsPending = true;
+    }
 
 }
 
@@ -1271,6 +1436,38 @@ ScheduleManager::getZoneGroupByID( std::string zgID )
 }
 
 unsigned int 
+ScheduleManager::getTriggerGroupCount()
+{
+    return triggerGroupList.size();
+}
+
+ScheduleTriggerGroup *
+ScheduleManager::getTriggerGroupByIndex( unsigned int index )
+{
+    if( index > triggerGroupList.size() )
+        return NULL;
+
+    return triggerGroupList[ index ];
+}
+
+ScheduleTriggerGroup *
+ScheduleManager::getTriggerGroupByID( std::string tgID )
+{
+    ScheduleTriggerGroup *tgObj = NULL;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleTriggerGroup *>::iterator it = triggerGroupList.begin() ; it != triggerGroupList.end(); ++it)
+    {
+        if( tgID == (*it)->getID() )
+        {
+            tgObj = *it;
+        }
+    }
+
+    return tgObj;
+}
+
+unsigned int 
 ScheduleManager::getEventRuleCount()
 {
     return eventRuleList.size();
@@ -1337,55 +1534,60 @@ ScheduleManager::addRule( xmlDocPtr doc, xmlNode *ruleElem )
     printf( "ScheduleManager - rule name: %s\n", tmpStr.c_str() );
     ruleObj->setName( tmpStr );
 
-    // Get the rule type
-    if( getAttribute( ruleElem, "type", tmpStr ) )
+    // See if this rule is enabled or not, if enabled attribute
+    // is not provided then assume it is enabled for compatibility
+    // reasons
+    if( getAttribute( ruleElem, "enabled", tmpStr ) )
+    {
+        // The attribute was not found
+        ruleObj->setEnabled();
+    }
+    else
+    {
+        // Set state according to 
+        // configuration file.
+        if( tmpStr == "true" )
+            ruleObj->setEnabled();
+        else
+            ruleObj->clearEnabled();
+    }
+
+    // Get the reference time
+    if( getChildContent( ruleElem, "zone-group-ref", tmpStr ) == true )
     {
         return true;
     }
 
-    printf( "ScheduleManager - rule type: %s\n", tmpStr.c_str() );
+    printf( "ScheduleManager - zone-group-ref: %s\n", tmpStr.c_str() );
 
-    // Check if it is a recurring day type.
-    if( tmpStr == "day" )
+    // Lookup the zone group by name
+    ScheduleZoneGroup *zg = getZoneGroupByID( tmpStr );
+
+    if( zg != NULL )
     {
-        printf( "ScheduleManager - found day-of-week type rule\n" );
+        printf( "ScheduleManager - ZGObj: %lx\n", (unsigned long) zg );
 
-        // Assign the rule its type
-        ruleObj->setOcurrenceType( SER_TYPE_DAY );
+        // Process zone list
+        ruleObj->setZoneGroup( zg );
+    }
 
-        // Get the reference time
-        if( getChildContent( ruleElem, "reftime", tmpStr ) == true )
-        {
-            return true;
-        }
+    // Get the reference time
+    if( getChildContent( ruleElem, "trigger-group-ref", tmpStr ) == true )
+    {
+        return true;
+    }
 
-        printf( "ScheduleManager - dow-rule - reftime: %s\n", tmpStr.c_str() );
+    printf( "ScheduleManager - trigger-group-ref: %s\n", tmpStr.c_str() );
 
-        // Assign the reference time.
-        ScheduleDateTime time;
-        time.setTimeFromISOString( tmpStr );
-        ruleObj->setReferenceTime( time );
-        
-        printf( "ScheduleManager - dow-rule - reftime: %s\n", time.getISOString().c_str() );
+    // Lookup the zone group by name
+    ScheduleTriggerGroup *tg = getTriggerGroupByID( tmpStr );
 
-        // Get the reference time
-        if( getChildContent( ruleElem, "zone-group-ref", tmpStr ) == true )
-        {
-            return true;
-        }
+    if( tg != NULL )
+    {
+        printf( "ScheduleManager - TGObj: %lx\n", (unsigned long) tg );
 
-        printf( "ScheduleManager - zone-group-ref: %s\n", tmpStr.c_str() );
-
-        // Lookup the zone group by name
-        ScheduleZoneGroup *zg = getZoneGroupByID( tmpStr );
-
-        if( zg != NULL )
-        {
-            printf( "ScheduleManager - ZGObj: %lx\n", (unsigned long) zg );
-
-            // Process zone list
-            ruleObj->setZoneGroup( zg );
-        }
+        // Process zone list
+        ruleObj->setTriggerGroup( tg );
     }
 
     // Get the description string.
@@ -1559,6 +1761,81 @@ ScheduleManager::addZoneGroup( xmlDocPtr doc, xmlNode *zgElem )
 
 }
 
+bool 
+ScheduleManager::addTriggerGroup( xmlDocPtr doc, xmlNode *tgElem )
+{
+    xmlNode *curElem;
+    xmlChar *attrValue;
+    xmlNode *listElem;
+
+    ScheduleTriggerGroup *tgObj;
+
+    std::string tmpStr;
+    std::string idStr;
+
+    printf( "ScheduleManager - add Trigger Group\n" );
+
+    // Allocate a 
+    tgObj = new ScheduleTriggerGroup;
+
+    // Grab the required id attribute
+    if( getAttribute( tgElem, "id", idStr ) )
+    {
+        return true;
+    }   
+
+    printf( "ScheduleManager - tg id: %s\n", idStr.c_str() );
+    tgObj->setID( idStr );
+  
+    printf( "ScheduleManager - start parseTriggerList\n" );
+
+    // Parse the elements under the rule list
+    listElem = NULL;
+    for( curElem = tgElem->children; curElem; curElem = curElem->next )
+    {
+        // We are only interested in the elements at this level
+        if( curElem->type != XML_ELEMENT_NODE )
+            continue;
+
+        // Check for an i2c expander
+        if( strcmp( (char *)curElem->name, "day-time-trigger" ) == 0 )
+        {
+            idStr = "";
+
+            // Grab the required id attribute
+            if( getAttribute( curElem, "id", tmpStr ) == false )
+            {
+                idStr = tmpStr;
+            }
+ 
+            // Get the reference time
+            if( getChildContent( curElem, "reftime", tmpStr ) == false )
+            {
+                printf( "ScheduleManager - dow-trigger - reftime: %s\n", tmpStr.c_str() );
+
+                // Assign the reference time.
+                ScheduleDateTime time;
+                time.setTimeFromISOString( tmpStr );
+                    
+                printf( "ScheduleManager - dow-trigger - reftime: %s\n", time.getISOString().c_str() );
+                printf( "ScheduleManager - add time trigger\n" );
+                printf( "tgObj: 0x%lx\n", tgObj );
+                printf( "ScheduleManager - trigger group id: %s\n", tgObj->getID().c_str() );
+
+                tgObj->addTimeTrigger( idStr, SER_TT_SCOPE_DAY, time );
+            }
+
+        }
+    }
+
+    printf( "tgObj: 0x%lx\n", tgObj );
+    printf( "ScheduleManager - add trigger group: %s\n", tgObj->getID().c_str() );
+
+    // Add the expander object to the list
+    triggerGroupList.push_back( tgObj );
+
+}
+
 bool
 ScheduleManager::loadConfiguration()
 {
@@ -1566,6 +1843,7 @@ ScheduleManager::loadConfiguration()
     xmlNode    *rootElem;
     xmlNode    *ruleListElem;
     xmlNode    *zgListElem;
+    xmlNode    *tgListElem;
     xmlNode    *curElem;
 
     std::string filePath;
@@ -1589,7 +1867,7 @@ ScheduleManager::loadConfiguration()
 	    return true;
     } 
 
-    // Find the schedule rule list element
+    // Find the zone group list element
     zgListElem = NULL;
     for( curElem = rootElem->children; curElem; curElem = curElem->next ) 
     {
@@ -1610,10 +1888,39 @@ ScheduleManager::loadConfiguration()
             if( curElem->type != XML_ELEMENT_NODE )
                 continue;
 
-            // Check for an i2c expander
+            // Check for an zone group
             if( strcmp( (char *)curElem->name, "zone-group" ) == 0 )
             {
                 addZoneGroup( doc, curElem );
+            }
+        }
+    }
+
+    // Find the trigger group list element
+    tgListElem = NULL;
+    for( curElem = rootElem->children; curElem; curElem = curElem->next ) 
+    {
+        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, "trigger-group-list" ) == 0) ) 
+        {
+            printf("trigger-group-list found\n");
+            tgListElem = curElem;
+            break;
+        }
+    }
+
+    if( tgListElem != NULL )
+    {
+        // Parse the elements under the rule list
+        for( curElem = tgListElem->children; curElem; curElem = curElem->next )
+        {
+            // We are only interested in the elements at this level
+            if( curElem->type != XML_ELEMENT_NODE )
+                continue;
+
+            // Check for a trigger group
+            if( strcmp( (char *)curElem->name, "trigger-group" ) == 0 )
+            {
+                addTriggerGroup( doc, curElem );
             }
         }
     }
@@ -1653,6 +1960,302 @@ ScheduleManager::loadConfiguration()
 
     // Free the config document
     xmlFreeDoc(doc);
+
+    return false;
+}
+
+#define MY_ENCODING "ISO-8859-1"
+
+
+bool
+ScheduleManager::saveZoneGroup( ScheduleZoneGroup *zgObj )
+{
+    int rc;
+
+    // Start an element named zone-group. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "zone-group" );
+    if( rc < 0 ) 
+        return true;
+
+    // Add the id attribute
+    rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "id", BAD_CAST zgObj->getID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named zone-rule-list. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "zone-rule-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Parse the elements under the rule list
+    for( int indx = 0; indx < zgObj->getZoneRuleCount(); indx++ )
+    {
+        ScheduleZoneRule *zoneRule = zgObj->getZoneRuleByIndex( indx );
+
+        // Start an element named zone-rule. 
+        rc = xmlTextWriterStartElement( writer, BAD_CAST "zone-rule" );
+        if( rc < 0 ) 
+           return true;
+    
+        // Start an element named zoneid. 
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "zoneid", "%s", zoneRule->getZoneID().c_str() );
+        if( rc < 0 ) 
+            return true;
+        
+        // Start an element named duration. 
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "duration", "%s", zoneRule->getDuration().getISOString().c_str() );
+        if( rc < 0 ) 
+            return true;
+
+        // Close the element named zone-rule. 
+        rc = xmlTextWriterEndElement( writer );
+        if( rc < 0 ) 
+            return true;
+    }
+
+    // Close the element named zone-rule-list. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    // Close the element named zone-group. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+}
+
+bool
+ScheduleManager::saveZoneGroupList()
+{
+    int rc;
+
+    // Start an element named zone-group-list as child of hnode-irrigation-schedule-cfg. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "zone-group-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleZoneGroup *>::iterator it = zoneGroupList.begin() ; it != zoneGroupList.end(); ++it)
+    {
+        saveZoneGroup(*it);
+    }
+
+    // Close the element named zone-group-list. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    return false;
+}
+
+bool 
+ScheduleManager::saveTriggerGroup( ScheduleTriggerGroup *tgObj )
+{
+    int rc;
+
+    // Start an element named zone-group. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "trigger-group" );
+    if( rc < 0 ) 
+        return true;
+
+    // Add the id attribute
+    rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "id", BAD_CAST tgObj->getID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+
+    // Parse the elements under the rule list
+    for( int indx = 0; indx < tgObj->getTimeTriggerCount(); indx++ )
+    {
+        ScheduleTimeTrigger *trigger = tgObj->getTimeTriggerByIndex( indx );
+
+        // Start an element named zone-rule-list. 
+        rc = xmlTextWriterStartElement( writer, BAD_CAST "day-time-trigger" );
+        if( rc < 0 ) 
+            return true;
+
+        // Add the id attribute
+        rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "id", BAD_CAST trigger->getID().c_str() );
+        if( rc < 0 ) 
+            return true;
+    
+        // Start an element named zoneid. 
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "reftime", "%s", trigger->getRefTime().getExtendedISOString().c_str() );
+        if( rc < 0 ) 
+            return true;
+
+        // Close the element named zone-rule. 
+        rc = xmlTextWriterEndElement( writer );
+        if( rc < 0 ) 
+            return true;
+    }
+
+    // Close the element named zone-group. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+}
+
+bool 
+ScheduleManager::saveTriggerGroupList()
+{
+    int rc;
+
+    // Start an element named zone-group-list as child of hnode-irrigation-schedule-cfg. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "trigger-group-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleTriggerGroup *>::iterator it = triggerGroupList.begin() ; it != triggerGroupList.end(); ++it)
+    {
+        saveTriggerGroup(*it);
+    }
+
+    // Close the element named zone-group-list. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    return false;
+}
+
+bool 
+ScheduleManager::saveEventRule( ScheduleEventRule *erObj )
+{
+    int rc;
+
+    // Start an element named zone-group. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rule" );
+    if( rc < 0 ) 
+        return true;
+
+    // Add the id attribute
+    rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "id", BAD_CAST erObj->getID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Add the id attribute
+    rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "enabled", BAD_CAST erObj->getEnabled()? BAD_CAST "true": BAD_CAST "false" );
+    if( rc < 0 ) 
+        return true;
+
+    // Add the id attribute
+    rc = xmlTextWriterWriteAttribute( writer, BAD_CAST "name", BAD_CAST erObj->getName().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named zoneid. 
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "desc", "%s", erObj->getDescription().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named zoneid. 
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "zone-group-ref", "%s", erObj->getZoneGroupID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named zoneid. 
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "trigger-group-ref", "%s", erObj->getTriggerGroupID().c_str() );
+    if( rc < 0 ) 
+        return true;
+}
+
+bool 
+ScheduleManager::saveEventRuleList()
+{
+    int rc;
+
+    // Start an element named zone-group-list as child of hnode-irrigation-schedule-cfg. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rule-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin() ; it != eventRuleList.end(); ++it)
+    {
+        saveEventRule(*it);
+    }
+
+    // Close the element named zone-group-list. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    return false;
+}
+
+bool
+ScheduleManager::saveConfiguration()
+{
+    int rc;
+    xmlChar *tmp;
+
+    xmlDocPtr   doc;
+    xmlNode    *rootElem;
+    xmlNode    *ruleListElem;
+    xmlNode    *zgListElem;
+    xmlNode    *tgListElem;
+    xmlNode    *curElem;
+
+    std::string filePath;
+
+    filePath = cfgPath + "/irrigation/test_config.xml";
+
+    // Create a new XmlWriter for filename, with no compression. 
+    writer = xmlNewTextWriterFilename( filePath.c_str(), 0 );
+    if( writer == NULL ) 
+    {
+        printf("testXmlwriterFilename: Error creating the xml writer\n");
+        return true;
+    }
+
+    // Start the document with the xml default for the version,
+    // encoding ISO 8859-1 and the default for the standalone
+    // declaration. 
+    rc = xmlTextWriterStartDocument( writer, NULL, MY_ENCODING, NULL );
+    if( rc < 0 ) 
+    {
+        printf( "testXmlwriterFilename: Error at xmlTextWriterStartDocument\n" );
+        return true;
+    }
+
+    // Start an element named hnode-irrigation-schedule-cfg. Since thist is the first
+    // element, this will be the root element of the document. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "hnode-irrigation-schedule-cfg" );
+    if( rc < 0 ) 
+    {
+        printf("testXmlwriterFilename: Error at xmlTextWriterStartElement\n");
+        return true;
+    }
+
+    if( saveZoneGroupList() == true )
+        return true;
+   
+    if( saveTriggerGroupList() == true )
+        return true;
+
+    if( saveEventRuleList() == true )
+        return true;
+ 
+    // Close the element named hnode-irrigation-schedule-cfg. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+    {
+        printf("testXmlwriterFilename: Error at xmlTextWriterEndElement\n");
+        return true;
+    }
+
+    // Close out the document
+    rc = xmlTextWriterEndDocument( writer );
+    if( rc < 0 ) 
+    {
+        printf("testXmlwriterFilename: Error at xmlTextWriterEndDocument\n");
+        return true;
+    }
+
+    // Write the file
+    xmlFreeTextWriter( writer );
 
     return false;
 }

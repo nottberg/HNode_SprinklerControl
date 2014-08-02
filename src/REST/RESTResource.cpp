@@ -119,6 +119,7 @@ RESTResource::linkRequest( RESTRequest *request )
     BOOST_FOREACH (const std::string& t, tokens) 
     {
         std::cout << "Process Request:" << t << "." << index << std::endl;
+        std::cout << "Process Request - index: " << index << "." << patternElements.size() << std::endl;
 
         // If the request has more elements than the 
         // pattern then this is not a match

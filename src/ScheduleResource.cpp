@@ -222,7 +222,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
 
     printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    if( request->getParameter( "zoneid", zgID ) )
+    if( request->getParameter( "zoneid", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -372,15 +372,33 @@ ScheduleRuleResource::restGet( RESTRequest *request )
     rspData += erID;
     rspData += "\">";
 
-/*
+    rspData += "<enabled>";
+    if( erObj->getEnabled() == true )
+        rspData += "true";
+    else
+        rspData += "false";
+    rspData += "</enabled>";
+
     rspData += "<name>";
-    rspData += zgObj->getName();
+    rspData += erObj->getName();
     rspData += "</name>";
 
     rspData += "<desc>";
-    rspData += zgObj->getDescription();
+    rspData += erObj->getDescription();
     rspData += "</desc>";
-*/
+
+    rspData += "<url>";
+    rspData += erObj->getURL();
+    rspData += "</url>";
+
+    rspData += "<zone-group-id>";
+    rspData += erObj->getZoneGroupID();
+    rspData += "</zone-group-id>";
+
+    rspData += "<trigger-group-id>";
+    rspData += erObj->getTriggerGroupID();
+    rspData += "</trigger-group-id>";
+
     rspData += "</schedule-event-rule>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();

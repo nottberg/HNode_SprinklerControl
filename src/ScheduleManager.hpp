@@ -9,6 +9,9 @@
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp" 
 
+#include <libxml/encoding.h>
+#include <libxml/xmlwriter.h>
+
 #include "ZoneManager.hpp"
 
 using namespace boost::posix_time;
@@ -87,7 +90,8 @@ class ScheduleTimeDuration
        ~ScheduleTimeDuration();
 
         void setFromString( std::string timeStr );
-
+        std::string getISOString();
+  
         long asTotalSeconds();
 };
 
@@ -302,13 +306,20 @@ class ScheduleZoneGroup
         void clearZoneList();
         void addZone( Zone *zone );
         void setZoneDuration( std::string zoneID, ScheduleTimeDuration &td );
+        void removeZone( std::string zoneID );
 
         unsigned int getZoneRuleCount();
         ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
         ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
-        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
+        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime );
 };
+
+typedef enum ScheduleTimeTriggerScope 
+{
+    SER_TT_SCOPE_NOTSET     = 0,
+    SER_TT_SCOPE_DAY        = 1,
+}SER_TT_SCOPE;
 
 typedef enum ScheduleEventRuleType 
 {
@@ -318,13 +329,65 @@ typedef enum ScheduleEventRuleType
     SER_TYPE_INTERVAL   = 3,
 }SER_OCURRENCE_TYPE;
 
+// A time based trigger to cause a schedule rule to be 
+// evaluated
+class ScheduleTimeTrigger
+{
+    private:
+        std::string        id;
+
+        SER_TT_SCOPE       scope;
+        ScheduleDateTime   refTime;
+
+    public:
+        ScheduleTimeTrigger();
+       ~ScheduleTimeTrigger();
+
+        void setID( std::string idValue );
+        std::string getID();        
+
+        void setScope( SER_TT_SCOPE scopeValue );
+        SER_TT_SCOPE getScope();
+        std::string getScopeStr();        
+
+        void setRefTime( ScheduleDateTime &refTimeValue );
+        ScheduleDateTime getRefTime();        
+};
+
+// Manage a set of triggers to cause the event to fire.
+class ScheduleTriggerGroup
+{
+    private:
+        std::string id;
+
+        std::vector< ScheduleTimeTrigger > timeList;
+
+    public:
+        ScheduleTriggerGroup();
+       ~ScheduleTriggerGroup();
+
+        void setID( std::string idValue );
+        std::string getID();        
+
+        void clearTimeTriggerList();
+        void addTimeTrigger( std::string id, SER_TT_SCOPE scope, ScheduleDateTime &refTime );
+        void removeTimeTrigger( std::string id );
+
+        unsigned int getTimeTriggerCount();
+        ScheduleTimeTrigger *getTimeTriggerByIndex( unsigned int index );
+        ScheduleTimeTrigger *getTimeTriggerByID( std::string ruleID );
+
+        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
+
+};
+
 class ScheduleEventRule
 {
     private:
 
         bool enabled;
 
-        SER_OCURRENCE_TYPE type;
+        //SER_OCURRENCE_TYPE type;
 
         std::string      id;
         std::string      name;
@@ -335,11 +398,13 @@ class ScheduleEventRule
         //std::vector<ScheduleRecurrenceRule> recurrenceList;
         //std::vector<ScheduleZoneRule> zoneRuleList;
         ScheduleZoneGroup *zoneGroup;
-        ScheduleDateTime  refTime;
-
+        //ScheduleDateTime  refTime;
+        ScheduleTriggerGroup *triggerGroup;
 
         bool fireManually;
+
         bool eventsPending;
+        ScheduleDateTime rearmTime;
 
         //void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
@@ -365,25 +430,29 @@ class ScheduleEventRule
         void setURL( std::string urlValue );
         std::string getURL();
 
-        void setOcurrenceType( SER_OCURRENCE_TYPE typeValue );
-        SER_OCURRENCE_TYPE getOcurrenceType();
+        //void setOcurrenceType( SER_OCURRENCE_TYPE typeValue );
+        //SER_OCURRENCE_TYPE getOcurrenceType();
 
-        void setReferenceTime( ScheduleDateTime &time );
-        void getReferenceTime( ScheduleDateTime &time );
+        //void setReferenceTime( ScheduleDateTime &time );
+        //void getReferenceTime( ScheduleDateTime &time );
 
         //void clearZoneList();
         //void addZoneRule( Zone *zone, ScheduleTimeDuration &td );
 
         void setZoneGroup( ScheduleZoneGroup *zg );
+        std::string getZoneGroupID();
+
+        void setTriggerGroup( ScheduleTriggerGroup *tg );
+        std::string getTriggerGroupID();
 
         void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
-
 };
 
 class ScheduleManager
 {
     private:
         std::string cfgPath;
+        xmlTextWriterPtr writer;
 
         std::vector<ScheduleEventRule *> eventRuleList;
 
@@ -392,12 +461,22 @@ class ScheduleManager
         ZoneManager *zoneMgr;
         std::vector<ScheduleZoneGroup *> zoneGroupList;
 
+        std::vector<ScheduleTriggerGroup *> triggerGroupList;
+
         bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
         bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
         bool parseActionList( xmlDocPtr doc, xmlNode *ruleElem, ScheduleEventRule *ruleObj );
         bool addRule( xmlDocPtr doc, xmlNode *ruleElem );
         bool addZoneGroup( xmlDocPtr doc, xmlNode *zgElem );
         bool parseZoneRuleList( xmlDocPtr doc, xmlNode *zgElem, ScheduleZoneGroup *zgObj );
+        bool addTriggerGroup( xmlDocPtr doc, xmlNode *tgElem );
+
+        bool saveZoneGroup( ScheduleZoneGroup *zgObj );
+        bool saveZoneGroupList();
+        bool saveTriggerGroup( ScheduleTriggerGroup *tgObj );
+        bool saveTriggerGroupList();
+        bool saveEventRule( ScheduleEventRule *erObj );
+        bool saveEventRuleList();
 
     public:
         ScheduleManager();
@@ -409,12 +488,17 @@ class ScheduleManager
         ScheduleZoneGroup *getZoneGroupByIndex( unsigned int index );
         ScheduleZoneGroup *getZoneGroupByID( std::string zgID );
 
+        unsigned int getTriggerGroupCount();
+        ScheduleTriggerGroup *getTriggerGroupByIndex( unsigned int index );
+        ScheduleTriggerGroup *getTriggerGroupByID( std::string tgID );
+
         unsigned int getEventRuleCount();
         ScheduleEventRule *getEventRuleByIndex( unsigned int index );
         ScheduleEventRule *getEventRuleByID( std::string erID );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();
+        bool saveConfiguration();
 
         void processCurrentEvents( ScheduleDateTime &curTime );
 
