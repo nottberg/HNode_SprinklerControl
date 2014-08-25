@@ -74,13 +74,19 @@ RESTDaemon::sendResponse( RESTRequest *request )
     struct MHD_Response *response;
     RESTRepresentation *payload;
 
+    std::string rspContentType;
+    unsigned long rspLength;
+    unsigned char *rspBufPtr;
+
     payload = request->getOutboundRepresentation();
+    rspBufPtr = payload->getSimpleContentPtr( rspContentType, rspLength );
 
     // Build and send the response
     ret = MHD_NO;
-    printf("Response Content(%ld): %*.*s\n", payload->getLength(), (int)payload->getLength(), (int)payload->getLength(), payload->getBuffer());
+    
+    printf( "Response Content(%ld): %*.*s\n", rspLength, (int)rspLength, (int)rspLength, rspBufPtr );
 
-    response = MHD_create_response_from_buffer( payload->getLength(), payload->getBuffer(), MHD_RESPMEM_MUST_COPY );
+    response = MHD_create_response_from_buffer( rspLength, rspBufPtr, MHD_RESPMEM_MUST_COPY );
 
     if( response )
     {

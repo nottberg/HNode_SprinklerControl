@@ -45,7 +45,7 @@ SwitchListResource::restGet( RESTRequest *request )
     rspData += "</hnode-swlist>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -115,7 +115,7 @@ SwitchResource::restGet( RESTRequest *request )
     rspData += "</switch>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -247,7 +247,7 @@ SwitchActivityLogResource::restGet( RESTRequest *request )
     rspData += "</switch-log>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();

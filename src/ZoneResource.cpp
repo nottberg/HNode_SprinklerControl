@@ -47,7 +47,7 @@ ZoneListResource::restGet( RESTRequest *request )
     rspData += "</hnode-zonelist>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -114,7 +114,7 @@ ZoneResource::restGet( RESTRequest *request )
     rspData += "</zone>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -236,7 +236,8 @@ ZoneDiagramResource::restGet( RESTRequest *request )
     in.close();
 
     // Send the data back to the requestor    
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }

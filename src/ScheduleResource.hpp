@@ -72,6 +72,7 @@ class ScheduleRuleListResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPost( RESTRequest *request );
 };
 
 class ScheduleRuleResource : public RESTResource

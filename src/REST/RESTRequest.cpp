@@ -107,32 +107,19 @@ RESTRequest::getMethod()
 void 
 RESTRequest::clearParameters()
 {
-    reqParams.clear();
+    inRepresentation.clearURIParameters();
 }
 
 void 
 RESTRequest::setParameter( std::string name, std::string value )
 {
-    reqParams.insert( std::pair<std::string, std::string>(name, value) );
+    inRepresentation.addURIParameter( name, value );
 }
 
 bool
 RESTRequest::getParameter( std::string name, std::string &value )
 {
-    std::map<std::string, std::string>::iterator it;
-
-    value.clear();
-
-    it=reqParams.find( name );
-
-    if( it == reqParams.end() )
-    {
-        return true;
-    }   
-
-    value = it->second;
-    
-    return false;
+    return inRepresentation.getURIParameter( name, value );
 }
 
 int
@@ -145,8 +132,19 @@ RESTRequest::processUploadData( const char *upload_data, size_t upload_data_size
 
     if( NULL == postProcessor )
     {
+        if( upload_data_size )
+        {
+            // The data was not in url-encoded form so just store it raw.
+            if( inRepresentation.hasSimpleContent() == false )
+                inRepresentation.setSimpleContent( (unsigned char *)upload_data, upload_data_size );
+            else
+                inRepresentation.appendSimpleContent( (unsigned char *)upload_data, upload_data_size );
+        }
+
         return 0;
     }
+
+    printf( "processUploadData - length: %d \n", upload_data_size );
 
     int result = MHD_post_process( postProcessor, upload_data, upload_data_size );
 
@@ -155,8 +153,11 @@ RESTRequest::processUploadData( const char *upload_data, size_t upload_data_size
     // Attempt to do form data processing.
     if( result == MHD_NO )
     {
-        // The data wansn't in url-encoded form to just store it raw.
-        inRepresentation.appendData( upload_data, upload_data_size );
+        // The data was not in url-encoded form so just store it raw.
+        if( inRepresentation.hasSimpleContent() == false )
+            inRepresentation.setSimpleContent( (unsigned char *)upload_data, upload_data_size );
+        else
+            inRepresentation.appendSimpleContent( (unsigned char *)upload_data, upload_data_size );
     }
 
     return 0;
@@ -172,18 +173,21 @@ RESTRequest::requestHeaderData()
 }
 
 int
-RESTRequest::processDataIteration( enum MHD_ValueKind kind, const char *key,
-                                   const char *filename, const char *content_type,
+RESTRequest::processDataIteration( enum MHD_ValueKind kind, const char *keyValue,
+                                   const char *filenameValue, const char *content_type,
                                    const char *transfer_encoding, const char *data, uint64_t off,
                                    size_t size )
 {
     printf("processDataIteration -- kind: %d\n", kind);
+    std::string key;
+    std::string contentType;
+    std::string filename;
 
-    if( key )
-        printf("processDataIteration -- key: %s\n", key);
+    if( keyValue )
+        printf("processDataIteration -- key: %s\n", keyValue);
 
-    if( filename )
-        printf("processDataIteration -- filename: %s\n", filename);
+    if( filenameValue )
+        printf("processDataIteration -- filename: %s\n", filenameValue);
 
     if( content_type )
         printf("processDataIteration -- content_type: %s\n", content_type);
@@ -194,6 +198,31 @@ RESTRequest::processDataIteration( enum MHD_ValueKind kind, const char *key,
     printf("processDataIteration -- offset: %ld\n", off);
     printf("processDataIteration -- size: %ld\n", size);
 
+    if( keyValue )
+    {
+        key = keyValue;
+      
+        if( content_type )
+            contentType = content_type;
+
+        if( filenameValue )
+        {
+            filename = filenameValue;
+
+            if( off != 0 )
+                inRepresentation.updatePOSTFile( key, data, off, size );
+            else
+                inRepresentation.addPOSTFile( key, filename, contentType, data, off, size );
+        }
+        else
+        {
+            if( off != 0 )
+                inRepresentation.updatePOSTParameter( key, data, off, size );
+            else
+                inRepresentation.addPOSTParameter( key, contentType, data, off, size );
+        }
+    }
+
     return MHD_YES;
 }
 
@@ -201,6 +230,8 @@ int
 RESTRequest::processHeader( enum MHD_ValueKind kind, const char *key, const char *value )
 {
     printf( "processHeaderValue -- kind: %d, key: %s, value: %s\n", kind, key, value );
+
+    inRepresentation.addHTTPHeader( key, value );
 
     return MHD_YES;
 }
@@ -210,7 +241,7 @@ RESTRequest::processUrlArg( enum MHD_ValueKind kind, const char *key, const char
 {
     printf( "processUrlArg -- kind: %d, key: %s, value: %s\n", kind, key, value );
 
-    setParameter( key, value );
+    inRepresentation.addURIParameter( key, value );
 
     return MHD_YES;
 }
@@ -222,6 +253,8 @@ RESTRequest::iterate_post( void *coninfo_cls, enum MHD_ValueKind kind, const cha
                                   size_t size )
 {
     RESTRequest *request = (RESTRequest *) coninfo_cls;
+
+    printf( "iterate_post -- \n" );
 
     return request->processDataIteration( kind, key, filename, content_type, transfer_encoding, data, off, size );
 }

@@ -51,7 +51,7 @@ ScheduleZoneGroupListResource::restGet( RESTRequest *request )
     rspData += "</hnode-schedule-zg-id-list>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -116,7 +116,7 @@ ScheduleZoneGroupResource::restGet( RESTRequest *request )
     rspData += "</schedule-zone-group>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -180,7 +180,7 @@ ScheduleZoneRuleListResource::restGet( RESTRequest *request )
     rspData += "</schedule-zone-rule-list>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -265,7 +265,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
     rspData += "</schedule-zone-rule>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -278,7 +278,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
 
 ScheduleRuleListResource::ScheduleRuleListResource()
 {
-    setURLPattern( "/schedule/rules", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/rules", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
 }
 
 ScheduleRuleListResource::~ScheduleRuleListResource()
@@ -318,12 +318,34 @@ ScheduleRuleListResource::restGet( RESTRequest *request )
     rspData += "</hnode-schedule-rule-id-list>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
 
+void 
+ScheduleRuleListResource::restPost( RESTRequest *request )
+{
+    std::string rspData;
+    RESTRepresentation *inData;
+
+    unsigned long dataLength;
+    std::string contentType;
+    unsigned char *dataBuf;
+
+    std::cout << "ScheduleRuleListResource::restPost" << std::endl;
+
+    inData = request->getInboundRepresentation();
+
+    dataBuf = inData->getSimpleContentPtr( contentType, dataLength );
+
+    std::cout << "Data Length:" << dataLength << std::endl;
+    std::cout << "Data:" << dataBuf << std::endl;
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
 
 
 ScheduleRuleResource::ScheduleRuleResource()
@@ -402,7 +424,7 @@ ScheduleRuleResource::restGet( RESTRequest *request )
     rspData += "</schedule-event-rule>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -516,7 +538,7 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
     rspData += "</hnode-schedule-event-list>"; 
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->appendData( rspData.c_str(), rspData.size() );
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();

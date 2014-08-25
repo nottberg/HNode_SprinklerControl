@@ -13,36 +13,113 @@
 
 #define REST_DAEMON_DEFAULT_PORT 8200
 
-class RESTRepresentation
+typedef enum RestRepDataItemType
+{
+   REST_RDI_TYPE_NOTSET,
+   REST_RDI_TYPE_URI_PARAMETER,
+   REST_RDI_TYPE_HTTP_HEADER,
+   REST_RDI_TYPE_POST_PARAMETER,
+   REST_RDI_TYPE_POST_FILE,
+   REST_RDI_TYPE_COOKIE,
+   REST_RDI_TYPE_SIMPLE_CONTENT,
+}REST_RDI_TYPE_T;
+
+class RESTRepDataItem
 {
     private:
-        unsigned long rspDataBufferLength;
-        unsigned long rspDataLength;
-        unsigned char *rspData;
+        REST_RDI_TYPE_T type;
 
-        std::string   contentType;
-        unsigned long contentLength;
+        std::string     key;
+        std::string     contentType;
 
-        std::map<std::string, std::string> paramMap;
+        std::string     filename;
+        std::string     tmpfilepath;
+
+        unsigned long   bufferLength;
+        unsigned long   dataLength;
+        unsigned char  *bufferPtr;
  
-    public:
-        RESTRepresentation();
-       ~RESTRepresentation();
+        size_t appendDataToBuffer( const char *buffer, size_t length );
+        size_t appendDataToFile( const char *buffer, size_t length );
 
-        void setContentType( std::string contentType );
+    public:
+        RESTRepDataItem();
+       ~RESTRepDataItem();
+ 
+        void setType( REST_RDI_TYPE_T typeValue );
+        REST_RDI_TYPE_T getType();
+
+        void setKey( std::string keyValue );
+        std::string getKey();
+
+        void setContentType( std::string contentTypeValue );
         std::string getContentType();
 
-        void setContentLength( std::string contentType );
-        unsigned long getContentLength();
+        void setFilename( std::string filename );
+        std::string getFilename();
 
-        void addParameter( std::string name, std::string value );
+        void generateTmpFilePath();
+        std::string getTempFilePath();
 
         unsigned long  getLength();
         unsigned char *getBuffer();
 
         void resetData();
-        size_t appendData( const char *buffer, size_t length );
+        size_t addData( unsigned long offset, const char *buffer, size_t length );
 
+        std::string getDataAsStr();
+};
+
+class RESTRepresentation
+{
+    private:
+        std::map<std::string, RESTRepDataItem *> diMap;
+        std::list<RESTRepDataItem *> diList;
+ 
+        RESTRepDataItem *simpleContent;
+
+    public:
+        RESTRepresentation();
+       ~RESTRepresentation();
+
+        // REST_RDI_TYPE_URI_PARAMETER
+        void clearURIParameters();
+        void addURIParameter( std::string name, std::string value );
+        bool getURIParameter( std::string name, std::string &value );
+
+        // REST_RDI_TYPE_HTTP_HEADER
+        void clearHTTPHeaders();
+        void addHTTPHeader( std::string name, std::string value );
+        bool getHTTPHeader( std::string name, std::string &value );
+
+        // REST_RDI_TYPE_POST_PARAMETER
+        void clearPOSTParameters();
+        bool getPOSTParameter( std::string name, std::string &value );
+        void updatePOSTParameter( std::string key, const char* data, unsigned long off, unsigned long size );
+        void addPOSTParameter( std::string key, std::string content_type, const char *data, unsigned long off, unsigned long size );
+
+        // REST_RDI_TYPE_POST_FILE
+        void clearPOSTFile();
+        bool getPOSTFile( std::string name, std::string &filepath );
+        void updatePOSTFile( std::string key, const char* data, unsigned long off, unsigned long size );
+        void addPOSTFile( std::string key, std::string filename, std::string content_type, const char *data, unsigned long off, unsigned long size );
+
+        // REST_RDI_TYPE_COOKIE
+        void clearCookie();
+        void addCookie( std::string name, std::string cookie );
+        bool getCookie( std::string name, std::string &cookie );
+
+        // REST_RDI_TYPE_SIMPLE_CONTENT,
+        void clearSimpleContent();
+
+        void setSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
+        void setSimpleContent( std::string contentType, unsigned char *contentPtr, unsigned long contentLength );
+
+        void appendSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
+
+        bool hasSimpleContent();
+
+        unsigned char* getSimpleContentPtr( std::string &contentType, unsigned long &contentLength );
 };
 
 typedef enum RESTResourceMethodFlags
@@ -94,7 +171,8 @@ class RESTRequest
 
         REST_RMETHOD_T reqMethod;
 
-        std::map<std::string, std::string> reqParams;
+        //std::map<std::string, std::string> reqParams;
+        //std::map<std::string, std::string> headerParams;
 
         REST_HTTP_RCODE_T rspCode;
 
