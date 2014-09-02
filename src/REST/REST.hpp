@@ -18,8 +18,9 @@ typedef enum RestRepDataItemType
    REST_RDI_TYPE_NOTSET,
    REST_RDI_TYPE_URI_PARAMETER,
    REST_RDI_TYPE_HTTP_HEADER,
-   REST_RDI_TYPE_POST_PARAMETER,
-   REST_RDI_TYPE_POST_FILE,
+   REST_RDI_TYPE_QUERY_PARAMETER,
+   REST_RDI_TYPE_ENCODED_PARAMETER,
+   REST_RDI_TYPE_ENCODED_FILE,
    REST_RDI_TYPE_COOKIE,
    REST_RDI_TYPE_SIMPLE_CONTENT,
 }REST_RDI_TYPE_T;
@@ -73,8 +74,11 @@ class RESTRepDataItem
 class RESTRepresentation
 {
     private:
-        std::map<std::string, RESTRepDataItem *> diMap;
-        std::list<RESTRepDataItem *> diList;
+        std::map<std::string, RESTRepDataItem *> uriParam;
+        std::map<std::string, RESTRepDataItem *> queryParam;
+        std::map<std::string, RESTRepDataItem *> httpHeader;
+        std::map<std::string, RESTRepDataItem *> encodedParam;
+        std::map<std::string, RESTRepDataItem *> cookieMap;
  
         RESTRepDataItem *simpleContent;
 
@@ -83,33 +87,46 @@ class RESTRepresentation
        ~RESTRepresentation();
 
         // REST_RDI_TYPE_URI_PARAMETER
+        bool hasURIParameters();
         void clearURIParameters();
         void addURIParameter( std::string name, std::string value );
         bool getURIParameter( std::string name, std::string &value );
 
         // REST_RDI_TYPE_HTTP_HEADER
+        bool hasHTTPHeaders();
         void clearHTTPHeaders();
         void addHTTPHeader( std::string name, std::string value );
         bool getHTTPHeader( std::string name, std::string &value );
 
-        // REST_RDI_TYPE_POST_PARAMETER
-        void clearPOSTParameters();
-        bool getPOSTParameter( std::string name, std::string &value );
-        void updatePOSTParameter( std::string key, const char* data, unsigned long off, unsigned long size );
-        void addPOSTParameter( std::string key, std::string content_type, const char *data, unsigned long off, unsigned long size );
+        // REST_RDI_TYPE_QUERY_PARAMETER
+        bool hasQueryParameters();
+        void clearQueryParameters();
+        void addQueryParameter( std::string name, std::string value );
+        bool getQueryParameter( std::string name, std::string &value );
 
-        // REST_RDI_TYPE_POST_FILE
-        void clearPOSTFile();
-        bool getPOSTFile( std::string name, std::string &filepath );
-        void updatePOSTFile( std::string key, const char* data, unsigned long off, unsigned long size );
-        void addPOSTFile( std::string key, std::string filename, std::string content_type, const char *data, unsigned long off, unsigned long size );
+        // REST_RDI_TYPE_ENCODED_PARAMETER
+        // REST_RDI_TYPE_ENCODED_FILE
+        bool hasEncodedParameters();
+        void clearEncodedParameters();
+
+        void addEncodedParameter( std::string key, std::string contentType, const char *data, unsigned long offset, unsigned long size );
+        void addEncodedFile( std::string key, std::string filename, std::string contentType, const char *data, unsigned long offset, unsigned long size );
+        void updateEncodedData( std::string key, const char* data, unsigned long offset, unsigned long size );
+ 
+        bool getEncodedParamInfo( std::string name, bool &isFile, std::string &contentType, unsigned long &contentLength );
+        bool getEncodedFileInfo( std::string name, std::string &filename, std::string &localpath );
+
+        bool getEncodedDataAsStr( std::string name, std::string &value );
+        unsigned char *getEncodedDataAsPtr( std::string name, unsigned long offset, unsigned long windowLength );
 
         // REST_RDI_TYPE_COOKIE
-        void clearCookie();
+        bool hasCookies();
+        void clearCookies();
         void addCookie( std::string name, std::string cookie );
         bool getCookie( std::string name, std::string &cookie );
 
         // REST_RDI_TYPE_SIMPLE_CONTENT,
+        bool hasSimpleContent();
         void clearSimpleContent();
 
         void setSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
@@ -117,7 +134,6 @@ class RESTRepresentation
 
         void appendSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
 
-        bool hasSimpleContent();
 
         unsigned char* getSimpleContentPtr( std::string &contentType, unsigned long &contentLength );
 };

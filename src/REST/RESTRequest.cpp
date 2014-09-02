@@ -210,16 +210,16 @@ RESTRequest::processDataIteration( enum MHD_ValueKind kind, const char *keyValue
             filename = filenameValue;
 
             if( off != 0 )
-                inRepresentation.updatePOSTFile( key, data, off, size );
+                inRepresentation.updateEncodedData( key, data, off, size );
             else
-                inRepresentation.addPOSTFile( key, filename, contentType, data, off, size );
+                inRepresentation.addEncodedFile( key, filename, contentType, data, off, size );
         }
         else
         {
             if( off != 0 )
-                inRepresentation.updatePOSTParameter( key, data, off, size );
+                inRepresentation.updateEncodedData( key, data, off, size );
             else
-                inRepresentation.addPOSTParameter( key, contentType, data, off, size );
+                inRepresentation.addEncodedParameter( key, contentType, data, off, size );
         }
     }
 

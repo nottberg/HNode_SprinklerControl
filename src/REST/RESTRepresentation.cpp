@@ -166,7 +166,7 @@ RESTRepDataItem::addData( unsigned long offset, const char *buffer, size_t lengt
     // Check if the offset is going to cause problems
 
     // Check if this is a file or in memory buffer.
-    if( type == REST_RDI_TYPE_POST_FILE )
+    if( type == REST_RDI_TYPE_ENCODED_FILE )
     {
         // Add the contents to the temporary file
         return appendDataToFile( buffer, length );
@@ -175,8 +175,6 @@ RESTRepDataItem::addData( unsigned long offset, const char *buffer, size_t lengt
     // Add content to in memory buffer.
     return appendDataToBuffer( buffer, length );
 }
-
-
 
 std::string
 RESTRepDataItem::getDataAsStr()
@@ -187,24 +185,39 @@ RESTRepDataItem::getDataAsStr()
 
 RESTRepresentation::RESTRepresentation()
 {
-//    rspDataBufferLength = 0;
-//    rspDataLength       = 0;
-//    rspData             = NULL;
-
-//    contentLength       = 0;
     simpleContent = NULL;
 }
 
 RESTRepresentation::~RESTRepresentation()
 {
-//    if( rspDataBufferLength )
-//        free( rspData );
+    clearURIParameters();
+    clearQueryParameters();
+    clearHTTPHeaders();
+    clearEncodedParameters();
+    clearCookies();
+    clearSimpleContent();
+}
+
+bool 
+RESTRepresentation::hasURIParameters()
+{
+    if( uriParam.empty() == true )
+        return false;
+
+    return true;
 }
 
 void 
 RESTRepresentation::clearURIParameters()
 {
+    RESTRepDataItem *diPtr;
 
+    for( std::map< std::string, RESTRepDataItem * >::iterator it = uriParam.begin(); it != uriParam.end(); ++it )
+    {
+        delete it->second;
+    }
+
+    uriParam.clear();
 }
 
 void 
@@ -224,9 +237,7 @@ RESTRepresentation::addURIParameter( std::string name, std::string value )
     diPtr->addData( 0, value.c_str(), value.size() );
 
     std::pair<std::string, RESTRepDataItem *> nvpair( name, diPtr );
-    diMap.insert( nvpair );
-
-    diList.push_back( diPtr );
+    uriParam.insert( nvpair );
 }
 
 bool 
@@ -236,9 +247,9 @@ RESTRepresentation::getURIParameter( std::string name, std::string &value )
 
     value.clear();
 
-    it = diMap.find( name );
+    it = uriParam.find( name );
 
-    if( it == diMap.end() )
+    if( it == uriParam.end() )
     {
         return true;
     }   
@@ -248,10 +259,26 @@ RESTRepresentation::getURIParameter( std::string name, std::string &value )
     return false;
 }
 
+bool 
+RESTRepresentation::hasHTTPHeaders()
+{
+    if( httpHeader.empty() == true )
+        return false;
+
+    return true;
+}
+
 void 
 RESTRepresentation::clearHTTPHeaders()
 {
+    RESTRepDataItem *diPtr;
 
+    for( std::map< std::string, RESTRepDataItem * >::iterator it = httpHeader.begin(); it != httpHeader.end(); ++it )
+    {
+        delete it->second;
+    }
+
+    httpHeader.clear();
 }
 
 void 
@@ -271,9 +298,8 @@ RESTRepresentation::addHTTPHeader( std::string name, std::string value )
     diPtr->addData( 0, value.c_str(), value.size() );
 
     std::pair<std::string, RESTRepDataItem *> nvpair( name, diPtr );
-    diMap.insert( nvpair );
+    httpHeader.insert( nvpair );
 
-    diList.push_back( diPtr );
 }
 
 bool 
@@ -283,9 +309,9 @@ RESTRepresentation::getHTTPHeader( std::string name, std::string &value )
 
     value.clear();
 
-    it = diMap.find( name );
+    it = httpHeader.find( name );
 
-    if( it == diMap.end() )
+    if( it == httpHeader.end() )
     {
         return true;
     }   
@@ -295,41 +321,93 @@ RESTRepresentation::getHTTPHeader( std::string name, std::string &value )
     return false;
 }
 
-void 
-RESTRepresentation::clearPOSTParameters()
+bool 
+RESTRepresentation::hasQueryParameters()
 {
+    if( queryParam.empty() == true )
+        return false;
 
+    return true;
+}
+
+void 
+RESTRepresentation::clearQueryParameters()
+{
+    RESTRepDataItem *diPtr;
+
+    for( std::map< std::string, RESTRepDataItem * >::iterator it = queryParam.begin(); it != queryParam.end(); ++it )
+    {
+        delete it->second;
+    }
+
+    queryParam.clear();
+}
+
+void 
+RESTRepresentation::addQueryParameter( std::string name, std::string value )
+{
+    RESTRepDataItem *diPtr;
+
+    diPtr = new RESTRepDataItem();
+    if( diPtr == NULL )
+    {
+        return;
+    }
+
+    diPtr->setType( REST_RDI_TYPE_QUERY_PARAMETER );
+    diPtr->setKey( name );
+
+    diPtr->addData( 0, value.c_str(), value.size() );
+
+    std::pair<std::string, RESTRepDataItem *> nvpair( name, diPtr );
+    queryParam.insert( nvpair );
 }
 
 bool 
-RESTRepresentation::getPOSTParameter( std::string name, std::string &value )
+RESTRepresentation::getQueryParameter( std::string name, std::string &value )
 {
-
-}
-
-void 
-RESTRepresentation::updatePOSTParameter( std::string key, const char* data, unsigned long off, unsigned long size )
-{
-    printf("updatePOSTParameter -- key: %s, off: %ld, size: %ld\n", key.c_str(), off, size);
-
     std::map<std::string, RESTRepDataItem *>::iterator it;
 
-    it = diMap.find( key );
+    value.clear();
 
-    if( it == diMap.end() )
+    it = queryParam.find( name );
+
+    if( it == queryParam.end() )
     {
-        return;
+        return true;
     }   
 
-    RESTRepDataItem *diPtr = it->second;
+    value = it->second->getDataAsStr();
+    
+    return false;
+}
 
-    diPtr->addData( off, (const char*)data, size );
+bool 
+RESTRepresentation::hasEncodedParameters()
+{
+    if( encodedParam.empty() == true )
+        return false;
+
+    return true;
 }
 
 void 
-RESTRepresentation::addPOSTParameter( std::string key, std::string contentType, const char *data, unsigned long off, unsigned long size )
+RESTRepresentation::clearEncodedParameters()
 {
-    printf("updatePOSTParameter -- key: %s, off: %ld, size: %ld, contentType: %s\n", key.c_str(), off, size, contentType.c_str());
+    RESTRepDataItem *diPtr;
+
+    for( std::map< std::string, RESTRepDataItem * >::iterator it = encodedParam.begin(); it != encodedParam.end(); ++it )
+    {
+        delete it->second;
+    }
+
+    encodedParam.clear();
+}
+
+void 
+RESTRepresentation::addEncodedParameter( std::string key, std::string contentType, const char *data, unsigned long offset, unsigned long size )
+{
+    printf("addEncodedParameter -- key: %s, off: %ld, size: %ld, contentType: %s\n", key.c_str(), offset, size, contentType.c_str());
 
     RESTRepDataItem *diPtr;
 
@@ -339,49 +417,19 @@ RESTRepresentation::addPOSTParameter( std::string key, std::string contentType, 
         return;
     }
 
-    diPtr->setType( REST_RDI_TYPE_POST_PARAMETER );
+    diPtr->setType( REST_RDI_TYPE_ENCODED_PARAMETER );
     diPtr->setContentType( contentType );
 
-    diPtr->addData( off, (const char*)data, size );
+    diPtr->addData( offset, (const char*)data, size );
 
-    diList.push_back( diPtr );
+    std::pair<std::string, RESTRepDataItem *> nvpair( key, diPtr );
+    encodedParam.insert( nvpair );
 }
 
 void 
-RESTRepresentation::clearPOSTFile()
+RESTRepresentation::addEncodedFile( std::string key, std::string filename, std::string contentType, const char *data, unsigned long offset, unsigned long size )
 {
-
-}
-
-bool 
-RESTRepresentation::getPOSTFile( std::string name, std::string &filepath )
-{
-
-}
-
-void 
-RESTRepresentation::updatePOSTFile( std::string key, const char* data, unsigned long off, unsigned long size )
-{
-    printf("updatePOSTFile -- key: %s, off: %ld, size: %ld\n", key.c_str(), off, size);
-
-    std::map<std::string, RESTRepDataItem *>::iterator it;
-
-    it = diMap.find( key );
-
-    if( it == diMap.end() )
-    {
-        return;
-    }   
-
-    RESTRepDataItem *diPtr = it->second;
-
-    diPtr->addData( off, (const char*)data, size );
-}
-
-void 
-RESTRepresentation::addPOSTFile( std::string key, std::string filename, std::string contentType, const char *data, unsigned long off, unsigned long size )
-{
-    printf("addPOSTFile -- key: %s, off: %ld, size: %ld, filename: %s, contentType: %s\n", key.c_str(), off, size, filename.c_str(), contentType.c_str());
+    printf("addEncodedFile -- key: %s, off: %ld, size: %ld, filename: %s, contentType: %s\n", key.c_str(), offset, size, filename.c_str(), contentType.c_str());
 
     RESTRepDataItem *diPtr;
 
@@ -391,21 +439,160 @@ RESTRepresentation::addPOSTFile( std::string key, std::string filename, std::str
         return;
     }
 
-    diPtr->setType( REST_RDI_TYPE_POST_FILE );
+    diPtr->setType( REST_RDI_TYPE_ENCODED_FILE );
     diPtr->setContentType( contentType );
 
     diPtr->setFilename( filename );
     diPtr->generateTmpFilePath();
 
-    diPtr->addData( off, (const char*)data, size );
+    diPtr->addData( offset, (const char*)data, size );
 
-    diList.push_back( diPtr );
+    std::pair<std::string, RESTRepDataItem *> nvpair( key, diPtr );
+    encodedParam.insert( nvpair );
 }
 
 void 
-RESTRepresentation::clearCookie()
+RESTRepresentation::updateEncodedData( std::string key, const char* data, unsigned long offset, unsigned long size )
 {
+    printf("updateEncodedData -- key: %s, off: %ld, size: %ld\n", key.c_str(), offset, size);
 
+    std::map<std::string, RESTRepDataItem *>::iterator it;
+
+    it = encodedParam.find( key );
+
+    if( it == encodedParam.end() )
+    {
+        return;
+    }   
+
+    RESTRepDataItem *diPtr = it->second;
+
+    diPtr->addData( offset, (const char*)data, size );
+}
+ 
+bool 
+RESTRepresentation::getEncodedParamInfo( std::string key, bool &isFile, std::string &contentType, unsigned long &contentLength )
+{
+    std::map<std::string, RESTRepDataItem *>::iterator it;
+
+    it = encodedParam.find( key );
+
+    if( it == encodedParam.end() )
+    {
+        return true;
+    }   
+
+    RESTRepDataItem *diPtr = it->second;
+
+    // Check if this is a file.
+    isFile = (diPtr->getType() == REST_RDI_TYPE_ENCODED_FILE) ? true : false;
+
+    // Copy over other data
+    contentType   = diPtr->getContentType();
+    contentLength = diPtr->getLength(); 
+    
+    // Success
+    return false;
+}
+
+bool 
+RESTRepresentation::getEncodedFileInfo( std::string key, std::string &filename, std::string &localpath )
+{
+    std::map<std::string, RESTRepDataItem *>::iterator it;
+
+    it = encodedParam.find( key );
+
+    if( it == encodedParam.end() )
+    {
+        return true;
+    }   
+
+    RESTRepDataItem *diPtr = it->second;
+
+    if( diPtr->getType() != REST_RDI_TYPE_ENCODED_FILE )
+    {
+        return true;
+    }
+
+    // Copy over file info
+    filename  = diPtr->getFilename();
+    localpath = diPtr->getTempFilePath(); 
+
+    return false;
+}
+
+bool 
+RESTRepresentation::getEncodedDataAsStr( std::string key, std::string &value )
+{
+    std::map<std::string, RESTRepDataItem *>::iterator it;
+
+    it = encodedParam.find( key );
+
+    if( it == encodedParam.end() )
+    {
+        return true;
+    }   
+
+    RESTRepDataItem *diPtr = it->second;
+
+    value = diPtr->getDataAsStr();
+
+    return false;
+}
+
+unsigned char *
+RESTRepresentation::getEncodedDataAsPtr( std::string key, unsigned long offset, unsigned long windowLength )
+{
+    std::map<std::string, RESTRepDataItem *>::iterator it;
+    unsigned char *dataPtr;
+
+    it = encodedParam.find( key );
+
+    if( it == encodedParam.end() )
+    {
+        return NULL;
+    }   
+
+    RESTRepDataItem *diPtr = it->second;
+
+    // Bounds Check
+    if( offset > diPtr->getLength() )
+        return NULL;
+
+    // Bounds Check
+    if( (offset + windowLength) > diPtr->getLength() )
+        return NULL;
+
+    // Get the raw pointer
+    dataPtr = diPtr->getBuffer();
+
+    // Move by offset
+    dataPtr += offset;
+
+    // Return the pointer
+    return dataPtr;
+}
+
+bool 
+RESTRepresentation::hasCookies()
+{
+    if( cookieMap.empty() == true )
+        return false;
+
+    return true;
+}
+
+void 
+RESTRepresentation::clearCookies()
+{
+    RESTRepDataItem *diPtr;
+
+    for( std::map< std::string, RESTRepDataItem * >::iterator it = cookieMap.begin(); it != cookieMap.end(); ++it )
+    {
+        delete it->second;
+    }
+
+    cookieMap.clear();
 }
 
 void 
@@ -418,6 +605,15 @@ bool
 RESTRepresentation::getCookie( std::string name, std::string &cookie )
 {
 
+}
+
+bool 
+RESTRepresentation::hasSimpleContent()
+{
+    if( simpleContent != NULL )
+        return true;
+
+    return false;
 }
 
 void 
@@ -471,15 +667,6 @@ RESTRepresentation::appendSimpleContent( unsigned char *contentPtr, unsigned lon
     simpleContent->addData( simpleContent->getLength(), (const char *)contentPtr, contentLength ); 
 }
 
-bool
-RESTRepresentation::hasSimpleContent()
-{
-    if( simpleContent != NULL )
-        return true;
-
-    return false;
-}
-
 unsigned char* 
 RESTRepresentation::getSimpleContentPtr( std::string &contentType, unsigned long &contentLength )
 {
@@ -493,97 +680,4 @@ RESTRepresentation::getSimpleContentPtr( std::string &contentType, unsigned long
     contentLength = simpleContent->getLength();
     return simpleContent->getBuffer();
 }
-
-#if 0
-void 
-RESTRepresentation::setContentType( std::string cType )
-{
-//    contentType = cType;
-}
-
-std::string 
-RESTRepresentation::getContentType()
-{
-//    return contentType;
-}
-
-void 
-RESTRepresentation::setContentLength( std::string contentLength )
-{
-//    contentLength = strtol( contentLength.c_str(), NULL, 0 );
-}
-
-unsigned long 
-RESTRepresentation::getContentLength()
-{
-//    return contentLength;
-}
-
-void 
-RESTRepresentation::addParameter( std::string name, std::string value )
-{
-    std::pair<std::string, std::string> nvpair(name,value);
-    printf( "RESTRepresentation::addParameter -- name: %s, value: %s\n", name.c_str(), value.c_str() );
-
-    //paramMap.insert( nvpair );
-}
-
-unsigned long
-RESTRepresentation::getLength()
-{
-    //return rspDataLength;
-}
-
-unsigned char *
-RESTRepresentation::getBuffer()
-{
-    //return rspData;
-}
-
-void 
-RESTRepresentation::resetData()
-{
-    //rspDataLength = 0;
-}
-
-size_t 
-RESTRepresentation::appendData( const char *buffer, size_t length )
-{
-    unsigned char *tmpBuf;
-    unsigned long  neededBytes;
-
-    printf("RESTRepresentation::appendData -- size: %ld\n", length);
-    
-    // Calculate the number of bytes needed
-    neededBytes = rspDataLength + length;
-
-    // Check if there is already enough space in the buffer
-    if( neededBytes > rspDataBufferLength )
-    {
-        // Buffer needs to be increased in size.  Calculate the size of
-        // new buffer.
-        neededBytes = ( neededBytes & ~(1024) ) + 1024;
- 
-        tmpBuf = (unsigned char *) malloc( neededBytes );
-        rspDataBufferLength = neededBytes;
-
-        if( rspDataLength )
-        {
-            memcpy( tmpBuf, rspData, rspDataLength );
-            free( rspData );
-            rspData = NULL;
-        }
-
-        rspData = tmpBuf;
-    }
-
-    memcpy( &tmpBuf[rspDataLength], buffer, length );
-    rspDataLength += length;
-
-    return 0;
-}
-#endif
-
-
-
 
