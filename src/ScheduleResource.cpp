@@ -81,7 +81,7 @@ ScheduleZoneGroupResource::restGet( RESTRequest *request )
     std::string rspData;
     ScheduleZoneGroup *zgObj;
 
-    if( request->getParameter( "zonegroupid", zgID ) )
+    if( request->getURIParameter( "zonegroupid", zgID ) )
     {
         printf("Failed to look up zonegroupid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -145,7 +145,7 @@ ScheduleZoneRuleListResource::restGet( RESTRequest *request )
     std::string rspData;
     ScheduleZoneGroup *zgObj;
 
-    if( request->getParameter( "zonegroupid", zgID ) )
+    if( request->getURIParameter( "zonegroupid", zgID ) )
     {
         printf("Failed to look up zonegroupid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -212,7 +212,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
     ScheduleZoneGroup *zgObj;
     ScheduleZoneRule  *zoneRule;
 
-    if( request->getParameter( "zonegroupid", zgID ) )
+    if( request->getURIParameter( "zonegroupid", zgID ) )
     {
         printf("Failed to look up zonegroupid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -222,7 +222,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
 
     printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    if( request->getParameter( "zoneid", zoneID ) )
+    if( request->getURIParameter( "zoneid", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -340,10 +340,31 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     dataBuf = inData->getSimpleContentPtr( contentType, dataLength );
 
+    if( contentType != "application/xml" )
+    {
+        // Return unsupported content type
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    // Run the simple content through the xml parser
+
+
+    // Verify the contents
+ 
+
+    // Add a rule record based on the content
+
+
     std::cout << "Data Length:" << dataLength << std::endl;
     std::cout << "Data:" << dataBuf << std::endl;
 
-    request->setResponseCode( REST_HTTP_RCODE_OK );
+    // Build a response, including the new rule id
+
+
+    // Send back the response
+    request->setResponseCode( REST_HTTP_RCODE_CREATED );
     request->sendResponse();
 }
 
@@ -371,7 +392,7 @@ ScheduleRuleResource::restGet( RESTRequest *request )
     std::string rspData;
     ScheduleEventRule *erObj;
 
-    if( request->getParameter( "ruleid", erID ) )
+    if( request->getURIParameter( "ruleid", erID ) )
     {
         printf("Failed to look up ruleid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -430,15 +451,6 @@ ScheduleRuleResource::restGet( RESTRequest *request )
     request->sendResponse();
 }
 
-
-
-
-
-
-
-
-
-
 ScheduleCalendarEventResource::ScheduleCalendarEventResource()
 {
     setURLPattern( "/calendar/events", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
@@ -461,7 +473,7 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
     std::string rspData;
 
 #if 0
-    if( request->getParameter( "startTime", zoneID ) )
+    if( request->getURIParameter( "startTime", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -469,7 +481,7 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
         return;
     }
 
-    if( request->getParameter( "endTime", zoneID ) )
+    if( request->getURIParameter( "endTime", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );

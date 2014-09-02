@@ -146,7 +146,7 @@ RESTResource::linkRequest( RESTRequest *request )
             break;
 
             case REST_RPE_MATCH_PARAM:
-                request->setParameter( elem->getMatchElement(), t );
+                request->setURIParameter( elem->getMatchElement(), t );
             break;
         }
 

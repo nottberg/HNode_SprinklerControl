@@ -224,9 +224,9 @@ class RESTRequest
         void setResponseCode( REST_HTTP_RCODE_T code );
         REST_HTTP_RCODE_T getResponseCode();
 
-        void clearParameters();
-        void setParameter( std::string name, std::string value );
-        bool getParameter( std::string name, std::string &value );
+        void clearURIParameters();
+        void setURIParameter( std::string name, std::string value );
+        bool getURIParameter( std::string name, std::string &value );
 
         int processUploadData( const char *upload_data, size_t upload_data_size );
 

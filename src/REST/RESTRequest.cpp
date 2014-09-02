@@ -105,19 +105,19 @@ RESTRequest::getMethod()
 }
 
 void 
-RESTRequest::clearParameters()
+RESTRequest::clearURIParameters()
 {
     inRepresentation.clearURIParameters();
 }
 
 void 
-RESTRequest::setParameter( std::string name, std::string value )
+RESTRequest::setURIParameter( std::string name, std::string value )
 {
     inRepresentation.addURIParameter( name, value );
 }
 
 bool
-RESTRequest::getParameter( std::string name, std::string &value )
+RESTRequest::getURIParameter( std::string name, std::string &value )
 {
     return inRepresentation.getURIParameter( name, value );
 }
@@ -241,7 +241,7 @@ RESTRequest::processUrlArg( enum MHD_ValueKind kind, const char *key, const char
 {
     printf( "processUrlArg -- kind: %d, key: %s, value: %s\n", kind, key, value );
 
-    inRepresentation.addURIParameter( key, value );
+    inRepresentation.addQueryParameter( key, value );
 
     return MHD_YES;
 }

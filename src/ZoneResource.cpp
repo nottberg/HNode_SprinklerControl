@@ -76,7 +76,7 @@ ZoneResource::restGet( RESTRequest *request )
     std::string rspData;
     Zone *zoneObj;
 
-    if( request->getParameter( "zoneid", zoneID ) )
+    if( request->getURIParameter( "zoneid", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -128,7 +128,7 @@ ZoneResource::restPut( RESTRequest *request )
     Zone *zoneObj;
     bool result = true;
 
-    if( request->getParameter( "zoneid", zoneID ) )
+    if( request->getURIParameter( "zoneid", zoneID ) )
     {
         printf("Failed to look up zoneid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -147,7 +147,7 @@ ZoneResource::restPut( RESTRequest *request )
         return;
     }    
 
-    if( request->getParameter( "state", stateStr ) )
+    if( request->getInboundRepresentation()->getQueryParameter( "state", stateStr ) )
     {
         printf("Failed to find 'state' parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );

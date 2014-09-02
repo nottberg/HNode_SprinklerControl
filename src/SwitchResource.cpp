@@ -74,7 +74,7 @@ SwitchResource::restGet( RESTRequest *request )
     std::string rspData;
     Switch *swObj;
 
-    if( request->getParameter( "switchid", swID ) )
+    if( request->getURIParameter( "switchid", swID ) )
     {
         printf("Failed to look up switchid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -129,7 +129,7 @@ SwitchResource::restPut( RESTRequest *request )
     Switch *swObj;
     bool result = true;
 
-    if( request->getParameter( "switchid", swID ) )
+    if( request->getURIParameter( "switchid", swID ) )
     {
         printf("Failed to look up switchid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -148,7 +148,7 @@ SwitchResource::restPut( RESTRequest *request )
         return;
     }    
 
-    if( request->getParameter( "state", stateStr ) )
+    if( request->getInboundRepresentation()->getQueryParameter( "state", stateStr ) )
     {
         printf("Failed to find 'state' parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -207,7 +207,7 @@ SwitchActivityLogResource::restGet( RESTRequest *request )
     std::string rspData;
     Switch *swObj;
 
-    if( request->getParameter( "switchid", swID ) )
+    if( request->getURIParameter( "switchid", swID ) )
     {
         printf("Failed to look up switchid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
