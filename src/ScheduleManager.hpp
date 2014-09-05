@@ -454,6 +454,8 @@ class ScheduleManager
         std::string cfgPath;
         xmlTextWriterPtr writer;
 
+        unsigned long nextID;
+
         std::vector<ScheduleEventRule *> eventRuleList;
 
         ScheduleEventList activeEvents;
@@ -495,6 +497,12 @@ class ScheduleManager
         unsigned int getEventRuleCount();
         ScheduleEventRule *getEventRuleByIndex( unsigned int index );
         ScheduleEventRule *getEventRuleByID( std::string erID );
+
+        ScheduleEventRule *createNewEventRule();
+        void freeNewEventRule( ScheduleEventRule *ruleObj );
+        bool addNewEventRule( ScheduleEventRule *event );
+
+        bool deleteEventRuleByID( std::string erID );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();

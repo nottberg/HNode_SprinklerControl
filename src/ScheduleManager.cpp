@@ -1253,6 +1253,7 @@ ScheduleManager::ScheduleManager()
 {
     cfgPath = "/etc/hnode";  
     zoneMgr = NULL;
+    nextID = 1;
 }
 
 ScheduleManager::~ScheduleManager()
@@ -1493,10 +1494,80 @@ ScheduleManager::getEventRuleByID( std::string erID )
         if( erID == (*it)->getID() )
         {
             erObj = *it;
+            break;
         }
     }
 
     return erObj;
+}
+
+ScheduleEventRule *
+ScheduleManager::createNewEventRule()
+{
+    ScheduleEventRule *ruleObj;
+    char idStr[128];
+
+    // Allocate a new rule object
+    ruleObj = new ScheduleEventRule;
+
+    // Create a unique id
+    nextID += 1;
+    sprintf( idStr, "er%d", nextID );
+    ruleObj->setID( idStr );
+
+    printf( "New idStr: %s\n", idStr );
+
+    // Return the object
+    return ruleObj;
+}
+
+void
+ScheduleManager::freeNewEventRule( ScheduleEventRule *ruleObj )
+{
+    delete ruleObj;
+}
+
+bool 
+ScheduleManager::addNewEventRule( ScheduleEventRule *ruleObj )
+{
+    printf( "ScheduleManager - addNewEventRule\n" );
+
+    // Add the expander object to the list
+    eventRuleList.push_back( ruleObj );
+
+    // Save the new configuration
+    saveConfiguration();
+}
+
+bool 
+ScheduleManager::deleteEventRuleByID( std::string erID )
+{
+    ScheduleEventRule *erObj = NULL;
+
+    // Search through the switch list for the right ID
+    for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin() ; it != eventRuleList.end(); ++it)
+    {
+        if( erID == (*it)->getID() )
+        {
+            // Save away the object pointer
+            erObj = *it;
+
+            // Erase the element from the list
+            eventRuleList.erase( it );
+
+            // Get rid of the memory
+            delete erObj;
+
+            // Save the modified configuration
+            saveConfiguration();
+
+            // Success
+            return false;   
+        }
+    }
+
+    // Not found
+    return true;
 }
 
 bool 
@@ -2157,6 +2228,11 @@ ScheduleManager::saveEventRule( ScheduleEventRule *erObj )
 
     // Start an element named zoneid. 
     rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "trigger-group-ref", "%s", erObj->getTriggerGroupID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Close the element named rule. 
+    rc = xmlTextWriterEndElement( writer );
     if( rc < 0 ) 
         return true;
 }

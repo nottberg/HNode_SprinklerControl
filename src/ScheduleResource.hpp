@@ -65,6 +65,9 @@ class ScheduleRuleListResource : public RESTResource
     private:
         ScheduleManager *schManager;
 
+        bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
+        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
+
     public:
         ScheduleRuleListResource();
        ~ScheduleRuleListResource();
@@ -80,6 +83,8 @@ class ScheduleRuleResource : public RESTResource
     private:
         ScheduleManager *schManager;
 
+        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
+
     public:
         ScheduleRuleResource();
        ~ScheduleRuleResource();
@@ -87,6 +92,9 @@ class ScheduleRuleResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+        virtual void restDelete( RESTRequest *request );
+
 };
 
 class ScheduleCalendarEventResource : public RESTResource
