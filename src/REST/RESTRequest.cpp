@@ -287,6 +287,13 @@ RESTRequest::execute()
 }
 
 void 
+RESTRequest::sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr )
+{
+    setResponseCode( httpCode );
+    sendResponse();
+}
+
+void 
 RESTRequest::sendResponse()
 {
     printf( "sendResponse\n" );

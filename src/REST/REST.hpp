@@ -138,6 +138,81 @@ class RESTRepresentation
         unsigned char* getSimpleContentPtr( std::string &contentType, unsigned long &contentLength );
 };
 
+class RESTContentNode
+{
+    private:
+        std::string id;
+        std::string name;
+
+        std::map< std::string, std::string > fieldValues;
+
+        RESTContentNode *parent;        
+        std::vector< RESTContentNode * > children;
+
+    public:
+        RESTContentNode();
+       ~RESTContentNode();
+
+        void setName( std::string nameValue );
+        bool hasName();
+        std::string getName();
+
+        void setField( std::string name, std::string value );
+        bool clearField( std::string name );
+        bool getField( std::string name, std::string &value );
+
+        void setParent( RESTContentNode *parentPtr );
+        RESTContentNode *getParent();
+
+        void addChild( RESTContentNode *childPtr );
+        unsigned long getChildCount();
+        RESTContentNode *getChildByIndex( unsigned long index );
+};
+
+class RESTContentHelper
+{
+    private:
+        RESTContentNode *rootNode;
+
+    public:
+        RESTContentHelper();
+       ~RESTContentHelper();
+
+        void clearRootNode();
+        RESTContentNode *getRootNode();
+        RESTContentNode *detachRootNode();
+        static void freeDetachedRootNode( RESTContentNode *objPtr );
+
+        RESTContentNode *getObject( std::string objectName );
+};
+
+class RESTContentHelperXML : public RESTContentHelper
+{
+    private:
+
+        bool getAttribute( void *docPtr, void *nodePtr, std::string attrName, std::string &result );
+        bool getChildContent( void *docPtr, void *nodePtr, std::string childName, std::string &result );
+        void addFieldValues( void *docPtr, void *nodePtr, RESTContentNode *cnPtr );
+        void parseTree( void *docPtr, void *nodePtr, RESTContentNode *cnPtr );
+
+    public:
+        RESTContentHelperXML();
+       ~RESTContentHelperXML();
+ 
+        bool parseRepSimple( RESTRepresentation *repPtr );
+        bool parseRepEncoded( std::string key, RESTRepresentation *repPtr );
+};
+
+class RESTContentHelperJSON : public RESTContentHelper
+{
+    private:
+
+    public:
+        RESTContentHelperJSON();
+       ~RESTContentHelperJSON();
+ 
+};
+
 typedef enum RESTResourceMethodFlags
 {
     REST_RMETHOD_NONE   = 0x00,
@@ -244,6 +319,8 @@ class RESTRequest
         void setLink( void *resource );
 
         void execute();
+
+        void sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr );
 
         void sendResponse();
 };

@@ -405,6 +405,8 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     std::cout << "ScheduleRuleListResource::restPost" << std::endl;
 
+    RESTContentHelperXML helper;
+
     inData = request->getInboundRepresentation();
 
     if( inData->hasSimpleContent() == false )
@@ -415,6 +417,9 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
         return;
     }
 
+    helper.parseRepSimple( inData );
+
+#if 0
     dataBuf = inData->getSimpleContentPtr( contentType, dataLength );
 
     if( contentType != "application/xml" )
@@ -446,55 +451,48 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 //           <trigger-group-ref>tg1</trigger-group-ref>
 //       </rule>
 
-    // Make sure it has the expected root tag
-    if( strcmp( (char *)rootElem->name, "rule" ) != 0 )
+#endif
+    // Make sure we have the expected object
+    RESTContentNode *objNode = helper.getObject( "rule" );
+
+    if( objNode == NULL )
     {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "Must have 'rule' object as root" ); 
         return;
     }
 
     // Check for name attribute
-    if( getChildContent( rootElem, "name", nameStr ) )
+    if( objNode->getField( "name", nameStr ) )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 1, "The 'rule' object requires a 'name' field" ); 
         return;
     }   
 
     // Verify the contents
     // Get the description contents
-    if( getChildContent( rootElem, "desc", descStr ) == true )
+    if( objNode->getField( "desc", descStr ) )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 2, "The 'rule' object requires a 'desc' field" ); 
         return;
     }
 
     // Get the zone group ref
-    if( getChildContent( rootElem, "zone-group-ref", zgRefStr ) == true )
+    if( objNode->getField( "zone-group-ref", zgRefStr ) )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 3, "The 'rule' object requires a 'zone-group-ref' field" ); 
         return;
     }
 
     // Get the trigger group ref
-    if( getChildContent( rootElem, "trigger-group-ref", tgRefStr ) == true )
+    if( objNode->getField( "trigger-group-ref", tgRefStr ) )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 4, "The 'rule' object requires a 'trigger-group-ref' field" ); 
         return;
     }
 
     std::cout << nameStr << ":" << descStr << ":" << zgRefStr << ":" << tgRefStr << std::endl;
 
-    if( getChildContent( rootElem, "enabled", tmpStr ) )
+    if( objNode->getField( "enabled", tmpStr ) )
     {
         // The attribute was not found
         enabled = true;
@@ -513,9 +511,7 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     if( zgObj == NULL )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 5, "The zone-group " + zgRefStr + "has not yet been defined." ); 
         return;
     }
 
@@ -523,9 +519,7 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     if( tgObj == NULL )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 6, "The trigger-group " + tgRefStr + "has not yet been defined." ); 
         return;
     }
 
@@ -544,9 +538,7 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     if( schManager->addNewEventRule( ruleObj ) == true )
     {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 7, "Unable to add new rule due to controller error." ); 
         return;
     }
 

@@ -14,6 +14,7 @@ SET( HNODE_SPRINKLER_CTRL_SRC
      ${CMAKE_SOURCE_DIR}/src/REST/RESTRepresentation.cpp
      ${CMAKE_SOURCE_DIR}/src/REST/RESTRequest.cpp
      ${CMAKE_SOURCE_DIR}/src/REST/RESTResource.cpp
+     ${CMAKE_SOURCE_DIR}/src/REST/RESTContent.cpp
 
      ${CMAKE_SOURCE_DIR}/src/Switch.cpp
      ${CMAKE_SOURCE_DIR}/src/SwitchDevice.cpp
