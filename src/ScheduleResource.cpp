@@ -324,77 +324,11 @@ ScheduleRuleListResource::restGet( RESTRequest *request )
     request->sendResponse();
 }
 
-bool
-ScheduleRuleListResource::getAttribute( xmlNode *elem, std::string attrName, std::string &result )
-{
-    xmlChar *attrValue;
-    
-    // Start with a clear result
-    result.clear();
-
-    // Get the type attribute
-    attrValue = xmlGetProp( elem, (xmlChar *)attrName.c_str() );
-
-    if( attrValue == NULL )
-    {
-        return true;
-    }    
-
-    result = (char*)attrValue;
-
-    xmlFree( attrValue );
-
-    return false;
-}
-
-bool
-ScheduleRuleListResource::getChildContent( xmlNode *elem, std::string childName, std::string &result )
-{
-    xmlChar *contentValue;
-    xmlNode *curElem;
-    xmlNode *childElem;
-
-    // Start with a clear result
-    result.clear();
-
-    // Find the address element
-    childElem = NULL;
-    for( curElem = elem->children; curElem; curElem = curElem->next ) 
-    {
-        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, childName.c_str() ) == 0) ) 
-        {
-            childElem = curElem;
-            break;
-        }
-    }
- 
-    if(childElem == NULL )
-    {
-        return true;
-    }
-
-    // Get the type attribute
-    contentValue = xmlNodeGetContent( childElem );
-
-    result = (char*)contentValue;
-
-    xmlFree( contentValue );
-
-    return false;
-}
-
 void 
 ScheduleRuleListResource::restPost( RESTRequest *request )
 {
-    std::string rspData;
     RESTRepresentation *inData;
-
-    unsigned long dataLength;
-    std::string contentType;
-    unsigned char *dataBuf;
-
-    xmlDocPtr   doc;
-    xmlNode    *rootElem;
+    RESTContentHelperXML helper;
 
     std::string tmpStr;
     std::string nameStr;
@@ -405,53 +339,16 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
 
     std::cout << "ScheduleRuleListResource::restPost" << std::endl;
 
-    RESTContentHelperXML helper;
-
     inData = request->getInboundRepresentation();
 
     if( inData->hasSimpleContent() == false )
     {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 100, "Unsupported content type." ); 
         return;
     }
 
     helper.parseRepSimple( inData );
 
-#if 0
-    dataBuf = inData->getSimpleContentPtr( contentType, dataLength );
-
-    if( contentType != "application/xml" )
-    {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    // Run the simple content through the xml parser
-    doc = xmlParseMemory( (const char *)dataBuf, dataLength );
-    if (doc == NULL) 
-    {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    // Get the root element for the document
-    rootElem = xmlDocGetRootElement( doc );
-
-    std::cout << "Root Elem Name: " << rootElem->name << std::endl;
-
-//       <rule id="rule1" name="Monday Morning">
-//           <desc>Monday Morning</desc>
-//           <zone-group-ref>zg1</zone-group-ref>
-//           <trigger-group-ref>tg1</trigger-group-ref>
-//       </rule>
-
-#endif
     // Make sure we have the expected object
     RESTContentNode *objNode = helper.getObject( "rule" );
 
@@ -542,15 +439,8 @@ ScheduleRuleListResource::restPost( RESTRequest *request )
         return;
     }
 
-    std::cout << "Data Length:" << dataLength << std::endl;
-    std::cout << "Data:" << dataBuf << std::endl;
-
     // Build a response, including the new rule id
-
-
-    // Send back the response
-    request->setResponseCode( REST_HTTP_RCODE_CREATED );
-    request->sendResponse();
+    request->sendResourceCreatedResponse( ruleObj->getID() );
 }
 
 
@@ -568,42 +458,6 @@ void
 ScheduleRuleResource::setScheduleManager( ScheduleManager *schMgr )
 {
     schManager = schMgr;
-}
-
-bool
-ScheduleRuleResource::getChildContent( xmlNode *elem, std::string childName, std::string &result )
-{
-    xmlChar *contentValue;
-    xmlNode *curElem;
-    xmlNode *childElem;
-
-    // Start with a clear result
-    result.clear();
-
-    // Find the address element
-    childElem = NULL;
-    for( curElem = elem->children; curElem; curElem = curElem->next ) 
-    {
-        if( (curElem->type == XML_ELEMENT_NODE) && (strcmp( (char *)curElem->name, childName.c_str() ) == 0) ) 
-        {
-            childElem = curElem;
-            break;
-        }
-    }
- 
-    if(childElem == NULL )
-    {
-        return true;
-    }
-
-    // Get the type attribute
-    contentValue = xmlNodeGetContent( childElem );
-
-    result = (char*)contentValue;
-
-    xmlFree( contentValue );
-
-    return false;
 }
 
 void 
@@ -675,53 +529,35 @@ ScheduleRuleResource::restGet( RESTRequest *request )
 void 
 ScheduleRuleResource::restPut( RESTRequest *request )
 {
-    std::string erID;
-    std::string rspData;
-    ScheduleEventRule *erObj;
-    bool modified = false;
-    std::string tmpStr;
-    RESTRepresentation *inData;
-    unsigned long dataLength;
-    std::string contentType;
-    unsigned char *dataBuf;
-    xmlDocPtr   doc;
-    xmlNode    *rootElem;
+    std::string          erID;
+    ScheduleEventRule   *erObj;
+    bool                 modified = false;
+    std::string          tmpStr;
+    RESTRepresentation  *inData;
+    RESTContentHelperXML helper;
 
     inData = request->getInboundRepresentation();
 
     if( inData->hasSimpleContent() == false )
     {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 100, "Unsupported content type." ); 
         return;
     }
 
-    dataBuf = inData->getSimpleContentPtr( contentType, dataLength );
+    helper.parseRepSimple( inData );
 
-    if( contentType != "application/xml" )
-    {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
+    // Make sure we have the expected object
+    RESTContentNode *objNode = helper.getObject( "rule" );
 
-    // Run the simple content through the xml parser
-    doc = xmlParseMemory( (const char *)dataBuf, dataLength );
-    if (doc == NULL) 
+    if( objNode == NULL )
     {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "Must have 'rule' object as root" ); 
         return;
     }
 
     if( request->getURIParameter( "ruleid", erID ) )
     {
-        printf("Failed to look up ruleid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
         return;
     }
 
@@ -731,33 +567,12 @@ ScheduleRuleResource::restPut( RESTRequest *request )
 
     if( erObj == NULL )
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
-        request->sendResponse();
-        return;
-    }
-
-    // Get the root element for the document
-    rootElem = xmlDocGetRootElement( doc );
-
-    std::cout << "Root Elem Name: " << rootElem->name << std::endl;
-
-//       <rule id="rule1" name="Monday Morning">
-//           <desc>Monday Morning</desc>
-//           <zone-group-ref>zg1</zone-group-ref>
-//           <trigger-group-ref>tg1</trigger-group-ref>
-//       </rule>
-
-    // Make sure it has the expected root tag
-    if( strcmp( (char *)rootElem->name, "rule" ) != 0 )
-    {
-        // Return unsupported content type
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
         return;
     }
 
     // Check for name attribute
-    if( getChildContent( rootElem, "name", tmpStr ) == false )
+    if( objNode->getField( "name", tmpStr ) == false )
     {
         erObj->setName( tmpStr );
         modified = true;
@@ -765,7 +580,7 @@ ScheduleRuleResource::restPut( RESTRequest *request )
 
     // Verify the contents
     // Get the description contents
-    if( getChildContent( rootElem, "desc", tmpStr ) == false )
+    if( objNode->getField( "desc", tmpStr ) == false )
     {
         erObj->setDescription( tmpStr );
         modified = true;
@@ -791,7 +606,7 @@ ScheduleRuleResource::restPut( RESTRequest *request )
     }
 #endif
 
-    if( getChildContent( rootElem, "enabled", tmpStr ) == false )
+    if( objNode->getField( "enabled", tmpStr ) == false )
     {
         // Set state according to 
         // configuration file.

@@ -65,9 +65,6 @@ class ScheduleRuleListResource : public RESTResource
     private:
         ScheduleManager *schManager;
 
-        bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
-        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
-
     public:
         ScheduleRuleListResource();
        ~ScheduleRuleListResource();
@@ -82,8 +79,6 @@ class ScheduleRuleResource : public RESTResource
 {
     private:
         ScheduleManager *schManager;
-
-        bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
 
     public:
         ScheduleRuleResource();

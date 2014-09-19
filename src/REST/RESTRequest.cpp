@@ -286,6 +286,14 @@ RESTRequest::execute()
     }
 }
 
+void
+RESTRequest::sendResourceCreatedResponse( std::string resID )
+{
+    // Send back the response
+    setResponseCode( REST_HTTP_RCODE_CREATED );
+    sendResponse();
+}
+
 void 
 RESTRequest::sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr )
 {

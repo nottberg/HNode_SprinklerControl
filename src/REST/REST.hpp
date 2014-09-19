@@ -320,6 +320,8 @@ class RESTRequest
 
         void execute();
 
+        void sendResourceCreatedResponse( std::string resID );
+
         void sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr );
 
         void sendResponse();
