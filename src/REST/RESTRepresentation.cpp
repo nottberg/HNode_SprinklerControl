@@ -141,7 +141,7 @@ RESTRepDataItem::appendDataToBuffer( const char *buffer, size_t length )
         bufferPtr = tmpBuf;
     }
 
-    memcpy( &tmpBuf[ dataLength ], buffer, length );
+    memcpy( &bufferPtr[ dataLength ], buffer, length );
     dataLength += length;
 
     return 0;
@@ -623,6 +623,28 @@ RESTRepresentation::clearSimpleContent()
         delete simpleContent;
 
     simpleContent = NULL;
+}
+
+void 
+RESTRepresentation::setSimpleContent( std::string contentType )
+{
+    RESTRepDataItem *diPtr;
+
+    if( simpleContent == NULL )
+    {
+        diPtr = new RESTRepDataItem();
+        if( diPtr == NULL )
+        {
+            return;
+        }
+
+        diPtr->setType( REST_RDI_TYPE_SIMPLE_CONTENT );
+        diPtr->setContentType( contentType );
+
+        simpleContent = diPtr;    
+    }
+
+    simpleContent->setContentType( contentType );  
 }
 
 void 

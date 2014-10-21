@@ -104,15 +104,6 @@ ScheduleZoneGroupResource::restGet( RESTRequest *request )
     rspData += zgID;
     rspData += "\">";
 
-/*
-    rspData += "<name>";
-    rspData += zgObj->getName();
-    rspData += "</name>";
-
-    rspData += "<desc>";
-    rspData += zgObj->getDescription();
-    rspData += "</desc>";
-*/
     rspData += "</schedule-zone-group>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
@@ -257,11 +248,7 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
     rspData += "<duration>";
     rspData += zoneRule->getDuration().asTotalSeconds();
     rspData += "</duration>";
-/*
-    rspData += "<desc>";
-    rspData += zgObj->getDescription();
-    rspData += "</desc>";
-*/
+
     rspData += "</schedule-zone-rule>";
 
     RESTRepresentation *rspRep = request->getOutboundRepresentation();
@@ -295,30 +282,45 @@ ScheduleRuleListResource::setScheduleManager( ScheduleManager *schMgr )
 void 
 ScheduleRuleListResource::restGet( RESTRequest *request )
 {
-    std::string rspData;
+    std::string        rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
 
     std::cout << "ScheduleRuleListResource::restGet" << std::endl;
 
-    rspData = "<hnode-schedule-rule-id-list>";
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
 
-    if( schManager )
-    {
-        printf( "Event Rule count: %d\n", schManager->getEventRuleCount() );
-
-        for( unsigned int index = 0; index < schManager->getEventRuleCount(); index++ )
+        if( schManager == NULL )
         {
-            ScheduleEventRule *erObj = schManager->getEventRuleByIndex( index );
-
-            rspData += "<id>";
-            rspData += erObj->getID();
-            rspData += "</id>";
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
         }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateScheduleRuleListContent( objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+
     }
-
-    rspData += "</hnode-schedule-rule-id-list>"; 
-
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }    
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -327,115 +329,37 @@ ScheduleRuleListResource::restGet( RESTRequest *request )
 void 
 ScheduleRuleListResource::restPost( RESTRequest *request )
 {
-    RESTRepresentation *inData;
-    RESTContentHelperXML helper;
-
-    std::string tmpStr;
-    std::string nameStr;
-    std::string descStr;
-    std::string zgRefStr;
-    std::string tgRefStr;
-    bool        enabled;
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+    ScheduleEventRule *ruleObj;
 
     std::cout << "ScheduleRuleListResource::restPost" << std::endl;
 
-    inData = request->getInboundRepresentation();
-
-    if( inData->hasSimpleContent() == false )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
     {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 100, "Unsupported content type." ); 
+        // Generate a template for acceptable data
+        templateNode = ScheduleEventRule::generateCreateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
+
+        // Create the new object
+        schManager->addNewEventRule( helper->getRootNode(), &ruleObj );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
         return;
     }
-
-    helper.parseRepSimple( inData );
-
-    // Make sure we have the expected object
-    RESTContentNode *objNode = helper.getObject( "rule" );
-
-    if( objNode == NULL )
+    catch(...)
     {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "Must have 'rule' object as root" ); 
-        return;
-    }
-
-    // Check for name attribute
-    if( objNode->getField( "name", nameStr ) )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 1, "The 'rule' object requires a 'name' field" ); 
-        return;
-    }   
-
-    // Verify the contents
-    // Get the description contents
-    if( objNode->getField( "desc", descStr ) )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 2, "The 'rule' object requires a 'desc' field" ); 
-        return;
-    }
-
-    // Get the zone group ref
-    if( objNode->getField( "zone-group-ref", zgRefStr ) )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 3, "The 'rule' object requires a 'zone-group-ref' field" ); 
-        return;
-    }
-
-    // Get the trigger group ref
-    if( objNode->getField( "trigger-group-ref", tgRefStr ) )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 4, "The 'rule' object requires a 'trigger-group-ref' field" ); 
-        return;
-    }
-
-    std::cout << nameStr << ":" << descStr << ":" << zgRefStr << ":" << tgRefStr << std::endl;
-
-    if( objNode->getField( "enabled", tmpStr ) )
-    {
-        // The attribute was not found
-        enabled = true;
-    }
-    else
-    {
-        // Set state according to 
-        // configuration file.
-        if( tmpStr == "true" )
-            enabled = true;
-        else
-            enabled = false;
-    }
-
-    ScheduleZoneGroup *zgObj = schManager->getZoneGroupByID( zgRefStr );
-
-    if( zgObj == NULL )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 5, "The zone-group " + zgRefStr + "has not yet been defined." ); 
-        return;
-    }
-
-    ScheduleTriggerGroup *tgObj = schManager->getTriggerGroupByID( tgRefStr );
-
-    if( tgObj == NULL )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 6, "The trigger-group " + tgRefStr + "has not yet been defined." ); 
-        return;
-    }
-
-    // Add a rule record based on the content
-    ScheduleEventRule *ruleObj = schManager->createNewEventRule();
-
-    ruleObj->setName( nameStr );
-    ruleObj->setDescription( descStr );
-    ruleObj->setZoneGroup( zgObj );
-    ruleObj->setTriggerGroup( tgObj );
-
-    if( enabled == true )
-        ruleObj->setEnabled();
-    else
-        ruleObj->clearEnabled();
-
-    if( schManager->addNewEventRule( ruleObj ) == true )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 7, "Unable to add new rule due to controller error." ); 
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
         return;
     }
 
@@ -463,9 +387,9 @@ ScheduleRuleResource::setScheduleManager( ScheduleManager *schMgr )
 void 
 ScheduleRuleResource::restGet( RESTRequest *request )
 {
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
     std::string erID;
-    std::string rspData;
-    ScheduleEventRule *erObj;
 
     if( request->getURIParameter( "ruleid", erID ) )
     {
@@ -477,50 +401,40 @@ ScheduleRuleResource::restGet( RESTRequest *request )
 
     printf( "URL EventRuleID: %s\n", erID.c_str() );
 
-    erObj = schManager->getEventRuleByID( erID );
-
-    if( erObj == NULL )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
-        request->sendResponse();
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateEventRuleContent( erID, objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
         return;
     }
-
-    rspData = "<schedule-event-rule id=\"";
-    rspData += erID;
-    rspData += "\">";
-
-    rspData += "<enabled>";
-    if( erObj->getEnabled() == true )
-        rspData += "true";
-    else
-        rspData += "false";
-    rspData += "</enabled>";
-
-    rspData += "<name>";
-    rspData += erObj->getName();
-    rspData += "</name>";
-
-    rspData += "<desc>";
-    rspData += erObj->getDescription();
-    rspData += "</desc>";
-
-    rspData += "<url>";
-    rspData += erObj->getURL();
-    rspData += "</url>";
-
-    rspData += "<zone-group-id>";
-    rspData += erObj->getZoneGroupID();
-    rspData += "</zone-group-id>";
-
-    rspData += "<trigger-group-id>";
-    rspData += erObj->getTriggerGroupID();
-    rspData += "</trigger-group-id>";
-
-    rspData += "</schedule-event-rule>";
-
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
@@ -530,102 +444,51 @@ void
 ScheduleRuleResource::restPut( RESTRequest *request )
 {
     std::string          erID;
-    ScheduleEventRule   *erObj;
-    bool                 modified = false;
-    std::string          tmpStr;
-    RESTRepresentation  *inData;
-    RESTContentHelperXML helper;
+    RESTContentHelper    *helper;
+    RESTContentNode      *templateNode;
+    RESTContentNode      *objNode;
 
-    inData = request->getInboundRepresentation();
+    std::cout << "ScheduleRuleListResource::restPut" << std::endl;
 
-    if( inData->hasSimpleContent() == false )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
+
+        if( request->getURIParameter( "ruleid", erID ) )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
+            return;
+        }
+
+        printf( "ScheduleRuleResource - PUT: %s\n", erID.c_str() );
+
+        // Generate a template for acceptable data
+        templateNode = ScheduleEventRule::generateUpdateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
+
+        // Create the new object
+        schManager->updateEventRule( erID, helper->getRootNode() );
+    }
+    catch( SMException& sme )
     {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 100, "Unsupported content type." ); 
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
         return;
     }
 
-    helper.parseRepSimple( inData );
-
-    // Make sure we have the expected object
-    RESTContentNode *objNode = helper.getObject( "rule" );
-
-    if( objNode == NULL )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "Must have 'rule' object as root" ); 
-        return;
-    }
-
-    if( request->getURIParameter( "ruleid", erID ) )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
-        return;
-    }
-
-    printf( "ScheduleRuleResource - PUT: %s\n", erID.c_str() );
-
-    erObj = schManager->getEventRuleByID( erID );
-
-    if( erObj == NULL )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
-        return;
-    }
-
-    // Check for name attribute
-    if( objNode->getField( "name", tmpStr ) == false )
-    {
-        erObj->setName( tmpStr );
-        modified = true;
-    }   
-
-    // Verify the contents
-    // Get the description contents
-    if( objNode->getField( "desc", tmpStr ) == false )
-    {
-        erObj->setDescription( tmpStr );
-        modified = true;
-    }
-
-#if 0
-    // Get the zone group ref
-    if( getChildContent( rootElem, "zone-group-ref", zgRefStr ) == true )
-    {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    // Get the trigger group ref
-    if( getChildContent( rootElem, "trigger-group-ref", tgRefStr ) == true )
-    {
-        // A Name attribute is required
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-#endif
-
-    if( objNode->getField( "enabled", tmpStr ) == false )
-    {
-        // Set state according to 
-        // configuration file.
-        if( tmpStr == "true" )
-            erObj->setEnabled();
-        else
-            erObj->clearEnabled();
-
-        modified = true;
-    }
-
-    // If modifications were made then save the configuration
-    if( modified == true )
-    {
-        schManager->saveConfiguration();
-    }
-
+    // Success
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
+
 }
 
 void 
@@ -635,23 +498,34 @@ ScheduleRuleResource::restDelete( RESTRequest *request )
     std::string rspData;
     ScheduleEventRule *erObj;
 
-    if( request->getURIParameter( "ruleid", erID ) )
+    try
     {
-        printf("Failed to look up ruleid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
+
+        // extract the ruleid parameter
+        if( request->getURIParameter( "ruleid", erID ) )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." );
+            return;
+        }
+
+        printf( "ScheduleRuleResource - DELETE: %s\n", erID.c_str() );
+
+        // Attempt the delete operation.
+        schManager->deleteEventRuleByID( erID );
+
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
         return;
     }
 
-    printf( "ScheduleRuleResource - DELETE: %s\n", erID.c_str() );
-
-    if( schManager->deleteEventRuleByID( erID ) )
-    {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
-        request->sendResponse();
-        return;
-    }
-
+    // Success
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
@@ -676,24 +550,6 @@ void
 ScheduleCalendarEventResource::restGet( RESTRequest *request )
 {
     std::string rspData;
-
-#if 0
-    if( request->getURIParameter( "startTime", zoneID ) )
-    {
-        printf("Failed to look up zoneid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    if( request->getURIParameter( "endTime", zoneID ) )
-    {
-        printf("Failed to look up zoneid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-#endif
 
     std::cout << "ScheduleCalendarResource::restGet" << std::endl;
 

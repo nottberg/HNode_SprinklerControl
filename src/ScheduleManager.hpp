@@ -5,12 +5,15 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <exception>
 
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp" 
 
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
+
+#include "REST/REST.hpp"
 
 #include "ZoneManager.hpp"
 
@@ -444,8 +447,49 @@ class ScheduleEventRule
 
         void setTriggerGroup( ScheduleTriggerGroup *tg );
         std::string getTriggerGroupID();
+ 
+        void setFieldsFromContentNode( RESTContentNode *objCN ); 
 
         void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
+
+        //static void initRequiredFieldMap( std::map< std::string, std::string > &fieldMap );
+        //static void initOptionalFieldMap( std::map< std::string, std::string > &fieldMap );
+        //static void initUpdateFieldMap( std::map< std::string, std::string > &fieldMap );
+
+        static RESTContentNode *generateCreateTemplate();
+        static RESTContentNode *generateUpdateTemplate();
+
+};
+
+class SMException : public std::exception
+{
+    private:
+        unsigned long eCode;
+        std::string eMsg;
+
+    public:
+        SMException( unsigned long errCode, std::string errMsg )
+        {
+            eCode = errCode;
+            eMsg  = errMsg;
+        }
+
+       ~SMException() throw() {};
+
+        virtual const char* what() const throw()
+        {
+            return eMsg.c_str();
+        }
+
+        unsigned long getErrorCode() const throw()
+        {
+            return eCode;
+        }
+
+        std::string getErrorMsg() const throw()
+        {
+            return eMsg;
+        }
 };
 
 class ScheduleManager
@@ -500,9 +544,14 @@ class ScheduleManager
 
         ScheduleEventRule *createNewEventRule();
         void freeNewEventRule( ScheduleEventRule *ruleObj );
-        bool addNewEventRule( ScheduleEventRule *event );
+        void addNewEventRule( ScheduleEventRule *event );
+        void addNewEventRule( RESTContentNode *rootCN, ScheduleEventRule **newEvent );
+        void updateEventRule( std::string erID, RESTContentNode *rootCN );
 
-        bool deleteEventRuleByID( std::string erID );
+        void generateScheduleRuleListContent( RESTContentNode *rootCN ); 
+        void generateEventRuleContent( std::string ruleID, RESTContentNode *rootCN ); 
+
+        void deleteEventRuleByID( std::string erID );
 
         void setConfigurationPath( std::string cfgPath );
         bool loadConfiguration();

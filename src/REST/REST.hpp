@@ -129,6 +129,8 @@ class RESTRepresentation
         bool hasSimpleContent();
         void clearSimpleContent();
 
+        void setSimpleContent( std::string contentType );
+
         void setSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
         void setSimpleContent( std::string contentType, unsigned char *contentPtr, unsigned long contentLength );
 
@@ -138,28 +140,73 @@ class RESTRepresentation
         unsigned char* getSimpleContentPtr( std::string &contentType, unsigned long &contentLength );
 };
 
+class RESTContentField
+{
+    private:
+        std::string name;
+        std::string value;
+        bool        required;
+        
+    public:
+        RESTContentField();
+       ~RESTContentField();
+
+        void setName( std::string nameStr );
+        std::string getName();
+
+        void setValue( std::string valueStr );
+        std::string getValue();
+};
+
+typedef enum RESTContentNodeType
+{
+    RCNT_NOTSET,
+    RCNT_ARRAY,
+    RCNT_ID,
+    RCNT_OBJECT,
+}RCN_TYPE;
+
 class RESTContentNode
 {
     private:
-        std::string id;
         std::string name;
 
-        std::map< std::string, std::string > fieldValues;
+        std::map< std::string, RESTContentField > fieldValues;
 
         RESTContentNode *parent;        
         std::vector< RESTContentNode * > children;
+
+        RCN_TYPE type;
 
     public:
         RESTContentNode();
        ~RESTContentNode();
 
+        void setAsArray( std::string name );
+        void setAsID( std::string idValue );
+        void setAsObject( std::string name );
+
+        RCN_TYPE getType();
+
+        bool isArray();
+        bool isID();
+        bool isObj();
+
+        void setID( std::string idValue );
+        std::string getID();
+
         void setName( std::string nameValue );
         bool hasName();
         std::string getName();
 
+        void defineField( std::string name, bool required );
         void setField( std::string name, std::string value );
         bool clearField( std::string name );
+
+        bool getFieldInfo( std::string name, bool &required );
         bool getField( std::string name, std::string &value );
+
+        std::vector< RESTContentField* > getFieldList();
 
         void setParent( RESTContentNode *parentPtr );
         RESTContentNode *getParent();
@@ -167,6 +214,41 @@ class RESTContentNode
         void addChild( RESTContentNode *childPtr );
         unsigned long getChildCount();
         RESTContentNode *getChildByIndex( unsigned long index );
+
+        bool getRequiredFields( std::map< std::string, std::string > &fields );
+        bool getOptionalFields( std::map< std::string, std::string > &fields );
+        bool getUpdateFields( std::map< std::string, std::string > &fields );
+};
+
+class RESTContentException : public std::exception
+{
+    private:
+        unsigned long eCode;
+        std::string eMsg;
+
+    public:
+        RESTContentException( unsigned long errCode, std::string errMsg )
+        {
+            eCode = errCode;
+            eMsg  = errMsg;
+        }
+
+       ~RESTContentException() throw() {};
+
+        virtual const char* what() const throw()
+        {
+            return eMsg.c_str();
+        }
+
+        unsigned long getErrorCode() const throw()
+        {
+            return eCode;
+        }
+
+        std::string getErrorMsg() const throw()
+        {
+            return eMsg;
+        }
 };
 
 class RESTContentHelper
@@ -183,7 +265,14 @@ class RESTContentHelper
         RESTContentNode *detachRootNode();
         static void freeDetachedRootNode( RESTContentNode *objPtr );
 
+        bool hasRootObject( std::string objectName, RESTContentNode **objPtr );
+
         RESTContentNode *getObject( std::string objectName );
+
+        virtual bool parseRawData( RESTRepresentation *repPtr ) = 0;
+        virtual bool parseWithTemplate( RESTContentNode *templateCN, RESTRepresentation *repPtr ) = 0;
+
+        virtual bool generateContentRepresentation( RESTRepresentation *repPtr ) = 0;
 };
 
 class RESTContentHelperXML : public RESTContentHelper
@@ -195,12 +284,25 @@ class RESTContentHelperXML : public RESTContentHelper
         void addFieldValues( void *docPtr, void *nodePtr, RESTContentNode *cnPtr );
         void parseTree( void *docPtr, void *nodePtr, RESTContentNode *cnPtr );
 
+        bool findFieldValue( std::string fieldName, RESTContentNode *cnPtr, void *docPtr, void *nodePtr );
+
+        bool generateChildContent(  RESTContentNode *childCN, RESTRepresentation *repPtr );
+        bool generateArrayContent( RESTContentNode *arrCN, RESTRepresentation *repPtr );
+        bool generateObjectContent( RESTContentNode *objCN, RESTRepresentation *repPtr );
+        bool generateIDContent( RESTContentNode *idCN, RESTRepresentation *repPtr );
+
     public:
         RESTContentHelperXML();
        ~RESTContentHelperXML();
  
-        bool parseRepSimple( RESTRepresentation *repPtr );
-        bool parseRepEncoded( std::string key, RESTRepresentation *repPtr );
+        static bool supportsContentDecode( std::string contentType );
+        static bool supportsContentCreate( std::string contentType );
+
+        virtual bool parseRawData( RESTRepresentation *repPtr );
+        virtual bool parseWithTemplate( RESTContentNode *templateCN, RESTRepresentation *repPtr );
+
+        virtual bool generateContentRepresentation( RESTRepresentation *repPtr );
+
 };
 
 class RESTContentHelperJSON : public RESTContentHelper
@@ -211,6 +313,23 @@ class RESTContentHelperJSON : public RESTContentHelper
         RESTContentHelperJSON();
        ~RESTContentHelperJSON();
  
+};
+
+class RESTContentHelperFactory
+{
+    private:
+
+    public:
+        //static RESTContentHelper *decodeSimpleContent( RESTRepresentation *repPtr );
+        //static RESTContentHelper *decodeSimpleContent( RESTContentNode *templateRoot, RESTRepresentation *repPtr );
+
+        static RESTContentNode *newContentNode();
+        static void freeContentNode( RESTContentNode *nodePtr );
+
+        static RESTContentHelper *getRequestSimpleContentHelper( RESTRepresentation *repPtr );
+        static RESTContentHelper *getResponseSimpleContentHelper( RESTRepresentation *repPtr );
+
+        static void freeContentHelper( RESTContentHelper *chPtr );
 };
 
 typedef enum RESTResourceMethodFlags
