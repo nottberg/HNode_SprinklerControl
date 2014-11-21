@@ -262,12 +262,16 @@ class ScheduleRecurrenceRule
 class ScheduleZoneRule : public ScheduleAction
 {
     private:
+        std::string           id;
         Zone                 *zone;
         ScheduleTimeDuration  duration;
 
     public:
         ScheduleZoneRule();
        ~ScheduleZoneRule();
+
+        void setID( std::string idValue );
+        std::string getID();
 
         void setZone( Zone *zone );
         Zone *getZone();
@@ -279,6 +283,11 @@ class ScheduleZoneRule : public ScheduleAction
         virtual void start( ScheduleDateTime &curTime );
         virtual void poll( ScheduleDateTime &curTime );
         virtual void complete( ScheduleDateTime &curTime );
+
+        static RESTContentNode *generateCreateTemplate();
+        static RESTContentNode *generateUpdateTemplate();
+
+        void setFieldsFromContentNode( RESTContentNode *objCN ); 
 };
 
 typedef enum ScheduleEventRuleZoneEventPolicy 
@@ -291,8 +300,9 @@ class ScheduleZoneGroup
 {
     private:
         std::string id;
+        std::string name;
 
-        std::vector< ScheduleZoneRule > zoneList;
+        std::vector< ScheduleZoneRule * > zoneList;
 
         SER_ZONE_EVENT_POLICY zonePolicy;
 
@@ -304,9 +314,16 @@ class ScheduleZoneGroup
         std::string getID();        
 
         void setZoneEventPolicy( SER_ZONE_EVENT_POLICY eventPolicy );
+        void setZoneEventPolicyFromStr( std::string value );
+
         SER_ZONE_EVENT_POLICY getZoneEventPolicy();
+        std::string getZoneEventPolicyStr();
 
         void clearZoneList();
+        void addZoneRule( ScheduleZoneRule *zoneRule );
+        void updateZoneRule( std::string ruleID, RESTContentNode *objCN );
+        void deleteZoneRule( std::string ruleID );
+
         void addZone( Zone *zone );
         void setZoneDuration( std::string zoneID, ScheduleTimeDuration &td );
         void removeZone( std::string zoneID );
@@ -316,6 +333,11 @@ class ScheduleZoneGroup
         ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
         void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime );
+
+        static RESTContentNode *generateCreateTemplate();
+        static RESTContentNode *generateUpdateTemplate();
+
+        void setFieldsFromContentNode( RESTContentNode *objCN ); 
 };
 
 typedef enum ScheduleTimeTriggerScope 
@@ -362,6 +384,7 @@ class ScheduleTriggerGroup
 {
     private:
         std::string id;
+        std::string name;
 
         std::vector< ScheduleTimeTrigger > timeList;
 
@@ -371,6 +394,9 @@ class ScheduleTriggerGroup
 
         void setID( std::string idValue );
         std::string getID();        
+
+        void setName( std::string idValue );
+        std::string getName(); 
 
         void clearTimeTriggerList();
         void addTimeTrigger( std::string id, SER_TT_SCOPE scope, ScheduleDateTime &refTime );
@@ -382,6 +408,10 @@ class ScheduleTriggerGroup
 
         bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
 
+        static RESTContentNode *generateCreateTemplate();
+        static RESTContentNode *generateUpdateTemplate();
+
+        void setFieldsFromContentNode( RESTContentNode *objCN );
 };
 
 class ScheduleEventRule
@@ -530,13 +560,39 @@ class ScheduleManager
 
         void setZoneManager( ZoneManager *zoneMgr );
 
+        ScheduleZoneGroup *createNewZoneGroup();
+        void freeNewZoneGroup( ScheduleZoneGroup *grpObj );
+        void addNewZoneGroup( RESTContentNode *rootCN, ScheduleZoneGroup **newEvent );
+        void updateZoneGroup( std::string zgID, RESTContentNode *rootCN );
+        void deleteZoneGroup( std::string zgID );
+
+        ScheduleZoneRule *createNewZoneRule();
+        void freeNewZoneRule( ScheduleZoneRule *ruleObj );
+        void addNewZoneRule( std::string zgID, RESTContentNode *rootCN, ScheduleZoneRule **newEvent );
+        void updateZoneRule( std::string zgID, std::string ruleID, RESTContentNode *rootCN );
+        void deleteZoneRule( std::string zgID, std::string ruleID );
+
         unsigned int getZoneGroupCount();
         ScheduleZoneGroup *getZoneGroupByIndex( unsigned int index );
         ScheduleZoneGroup *getZoneGroupByID( std::string zgID );
 
+        void generateZoneGroupListContent( RESTContentNode *rootCN ); 
+        void generateZoneGroupContent( std::string zoneGroupID, RESTContentNode *rootCN ); 
+        void generateZoneGroupRuleListContent( std::string zoneGroupID, RESTContentNode *rootCN ); 
+        void generateZoneGroupRuleContent( std::string zoneGroupID, std::string ruleID, RESTContentNode *rootCN ); 
+
+        ScheduleTriggerGroup *createNewTriggerGroup();
+        void freeNewTriggerGroup( ScheduleTriggerGroup *ruleObj );
+        void addNewTriggerGroup( RESTContentNode *rootCN, ScheduleTriggerGroup **newEvent );
+        void updateTriggerGroup( std::string zgID, RESTContentNode *rootCN );
+        void deleteTriggerGroup( std::string zgID );
+
         unsigned int getTriggerGroupCount();
         ScheduleTriggerGroup *getTriggerGroupByIndex( unsigned int index );
         ScheduleTriggerGroup *getTriggerGroupByID( std::string tgID );
+
+        void generateTriggerGroupListContent( RESTContentNode *rootCN ); 
+        void generateTriggerGroupContent( std::string ruleID, RESTContentNode *rootCN ); 
 
         unsigned int getEventRuleCount();
         ScheduleEventRule *getEventRuleByIndex( unsigned int index );

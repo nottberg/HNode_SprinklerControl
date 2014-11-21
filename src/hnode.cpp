@@ -90,10 +90,12 @@ typedef struct IrrigationNodeContext
 
     ScheduleManager          scheduleManager;
 
-    ScheduleZoneGroupListResource schZGListResource;
-    ScheduleZoneGroupResource     schZGResource;
-    ScheduleRuleListResource      schRuleListResource;
-    ScheduleRuleResource          schRuleResource;
+    ScheduleZoneGroupListResource    schZGListResource;
+    ScheduleZoneGroupResource        schZGResource;
+    ScheduleTriggerGroupListResource schTGListResource;
+    ScheduleTriggerGroupResource     schTGResource;
+    ScheduleRuleListResource         schRuleListResource;
+    ScheduleRuleResource             schRuleResource;
 
     ScheduleZoneRuleListResource  schZoneRuleListResource; 
     ScheduleZoneRuleResource      schZoneRuleResource;
@@ -339,11 +341,19 @@ hnode_start_rest_daemon(CONTEXT *Context)
 
     Context->schZGListResource.setScheduleManager( &Context->scheduleManager );
     Context->schZGResource.setScheduleManager( &Context->scheduleManager );
+
+    Context->schTGListResource.setScheduleManager( &Context->scheduleManager );
+    Context->schTGResource.setScheduleManager( &Context->scheduleManager );
+
     Context->schRuleListResource.setScheduleManager( &Context->scheduleManager );
     Context->schRuleResource.setScheduleManager( &Context->scheduleManager );
 
     Context->Rest.registerResource( &(Context->schZGListResource) );
     Context->Rest.registerResource( &(Context->schZGResource) );
+
+    Context->Rest.registerResource( &(Context->schTGListResource) );
+    Context->Rest.registerResource( &(Context->schTGResource) );
+
     Context->Rest.registerResource( &(Context->schRuleListResource) );
     Context->Rest.registerResource( &(Context->schRuleResource) );
 

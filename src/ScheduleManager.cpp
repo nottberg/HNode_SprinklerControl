@@ -504,6 +504,71 @@ ScheduleZoneRule::~ScheduleZoneRule()
 
 }
 
+RESTContentNode *
+ScheduleZoneRule::generateCreateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-zone-rule" );
+
+    // Required fields
+    rtnNode->defineField( "zoneid", true );
+
+    // Optional fields
+    rtnNode->defineField( "duration", false );
+
+    return rtnNode;
+}
+
+RESTContentNode *
+ScheduleZoneRule::generateUpdateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-zone-rule" );
+
+    // Required fields
+    rtnNode->defineField( "zoneid", false );
+    rtnNode->defineField( "duration", false );
+
+    return rtnNode;
+}
+
+void
+ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
+{
+    std::string tmpStr;
+    ScheduleTimeDuration td;
+
+    // Optional Fields
+    objCN->getField( "duration", tmpStr );
+
+    if( tmpStr.empty() == false )
+    {
+        td.setFromString( tmpStr );
+        setDuration( td );
+    }
+
+}
+
+void 
+ScheduleZoneRule::setID( std::string idValue )
+{
+    id = idValue;
+}
+
+std::string 
+ScheduleZoneRule::getID()
+{
+    return id;
+}
+
 void 
 ScheduleZoneRule::setZone( Zone *zonePtr )
 {
@@ -566,6 +631,52 @@ ScheduleZoneGroup::~ScheduleZoneGroup()
 
 }
 
+RESTContentNode *
+ScheduleZoneGroup::generateCreateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-zone-group" );
+
+    // Required fields
+    rtnNode->defineField( "name", true );
+    rtnNode->defineField( "policy", true );
+
+    return rtnNode;
+}
+
+RESTContentNode *
+ScheduleZoneGroup::generateUpdateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-zone-group" );
+
+    // Optional fields
+    rtnNode->defineField( "name", false );
+    rtnNode->defineField( "policy", false );
+
+    return rtnNode;
+}
+
+void
+ScheduleZoneGroup::setFieldsFromContentNode( RESTContentNode *objCN )
+{
+    std::string tmpStr;
+
+    // Required Fields
+    if( objCN->getField( "name", tmpStr ) )
+    {
+        name = tmpStr;
+    }
+}
+
 void 
 ScheduleZoneGroup::setID( std::string idValue )
 {
@@ -591,6 +702,18 @@ ScheduleZoneGroup::getZoneEventPolicy()
 }
 
 void 
+ScheduleZoneGroup::setZoneEventPolicyFromStr( std::string value )
+{
+    
+}
+
+std::string 
+ScheduleZoneGroup::getZoneEventPolicyStr()
+{
+    return "sequential";
+}
+
+void 
 ScheduleZoneGroup::clearZoneList()
 {
     zoneList.clear();
@@ -599,22 +722,72 @@ ScheduleZoneGroup::clearZoneList()
 void 
 ScheduleZoneGroup::addZone( Zone *zone )
 {
-    ScheduleZoneRule rule;
+    ScheduleZoneRule *rule = new ScheduleZoneRule;
 
-    rule.setZone( zone );
+    rule->setID( "addZone" );
+    rule->setZone( zone );
     zoneList.push_back( rule );
 }
 
 void 
 ScheduleZoneGroup::setZoneDuration( std::string zoneID, ScheduleTimeDuration &td )
 {
-    for( std::vector<ScheduleZoneRule>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
+    for( std::vector<ScheduleZoneRule *>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
     {
-        if( it->getZone()->getID() == zoneID )
+        if( (*it)->getZone()->getID() == zoneID )
         {
-            it->setDuration( td );
+            (*it)->setDuration( td );
         }
     }
+}
+
+void
+ScheduleZoneGroup::addZoneRule( ScheduleZoneRule *ruleObj )
+{
+    zoneList.push_back( ruleObj );
+}
+
+void 
+ScheduleZoneGroup::updateZoneRule( std::string ruleID, RESTContentNode *objCN )
+{
+    for( std::vector<ScheduleZoneRule *>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
+    {
+        if( (*it)->getID() == ruleID )
+        {
+            (*it)->setFieldsFromContentNode( objCN ); 
+            return;
+        }
+    }
+
+    // Not found
+    throw SMException( 110, "Zone Rule with id " + ruleID +", does not exist"); 
+}
+
+void
+ScheduleZoneGroup::deleteZoneRule( std::string ruleID )
+{
+    ScheduleZoneRule *ruleObj = NULL;
+
+    for( std::vector<ScheduleZoneRule *>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
+    {
+        if( (*it)->getID() == ruleID )
+        {
+            // Save away the object pointer
+            ruleObj = *it;
+
+            // Erase the element from the list
+            zoneList.erase( it );
+
+            // Get rid of the memory
+            delete ruleObj;
+
+            // Success
+            return;   
+        }
+    }
+
+    // Not found
+    throw SMException( 110, "Zone Rule with id " + ruleID +", does not exist"); 
 }
 
 unsigned int 
@@ -629,7 +802,7 @@ ScheduleZoneGroup::getZoneRuleByIndex( unsigned int index )
     if( index > zoneList.size() )
         return NULL;
 
-    return &zoneList[ index ];
+    return zoneList[ index ];
 }
 
 ScheduleZoneRule *
@@ -638,11 +811,11 @@ ScheduleZoneGroup::getZoneRuleByID( std::string zgID )
     ScheduleZoneRule *zgObj = NULL;
 
     // Search through the switch list for the right ID
-    for( std::vector<ScheduleZoneRule>::iterator it = zoneList.begin() ; it != zoneList.end(); ++it )
+    for( std::vector<ScheduleZoneRule *>::iterator it = zoneList.begin() ; it != zoneList.end(); ++it )
     {
-        if( zgID == (it)->getZoneID() )
+        if( zgID == (*it)->getZoneID() )
         {
-            zgObj = &(*it);
+            zgObj = (*it);
         }
     }
 
@@ -663,11 +836,11 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     printf( "ScheduleZoneGroup -- zone rule count: %d\n", (int)zoneList.size() );
 
     // Go through the zone list and schedule an event for each one
-    for( std::vector<ScheduleZoneRule>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
+    for( std::vector<ScheduleZoneRule *>::iterator it = zoneList.begin(); it != zoneList.end(); ++it )
     {
         ScheduleEvent *event = new ScheduleEvent;
 
-        std::string eventName = it->getZoneID() + "-" + eventTime.getSimpleString();
+        std::string eventName = (*it)->getZoneID() + "-" + eventTime.getSimpleString();
 
         // Copy over identifying data
         event->setId( id );
@@ -677,8 +850,8 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         event->setStartTime( eventTime );
     
         // FIX-ME calulate zone watering duration.
-        printf("eventDuration: %d\n", (int)it->getDuration().asTotalSeconds() );
-        eventTime.addSeconds( it->getDuration().asTotalSeconds() );
+        printf("eventDuration: %d\n", (int)(*it)->getDuration().asTotalSeconds() );
+        eventTime.addSeconds( (*it)->getDuration().asTotalSeconds() );
 
         // Set the end time.
         event->setEndTime( eventTime );
@@ -694,13 +867,15 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         }
 
         // Create the zone action object
-        event->setAction( &(*it) );
+        event->setAction( (*it) );
 
         // Mark ready and queue for execution.
         event->setReady();
         activeEvents.addEvent( event ); 
     }
 }
+
+
 
 ScheduleTimeTrigger::ScheduleTimeTrigger()
 {
@@ -767,6 +942,52 @@ ScheduleTriggerGroup::~ScheduleTriggerGroup()
 
 }
 
+RESTContentNode *
+ScheduleTriggerGroup::generateCreateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-trigger-group" );
+
+    // Required fields
+    rtnNode->defineField( "name", true );
+    rtnNode->defineField( "policy", true );
+
+    return rtnNode;
+}
+
+RESTContentNode *
+ScheduleTriggerGroup::generateUpdateTemplate()
+{
+    RESTContentNode *rtnNode;
+
+    rtnNode = RESTContentHelperFactory::newContentNode();
+
+    // Give the root element a tag name
+    rtnNode->setAsObject( "schedule-trigger-group" );
+
+    // Optional fields
+    rtnNode->defineField( "name", false );
+    rtnNode->defineField( "policy", false );
+
+    return rtnNode;
+}
+
+void
+ScheduleTriggerGroup::setFieldsFromContentNode( RESTContentNode *objCN )
+{
+    std::string tmpStr;
+
+    // Required Fields
+    if( objCN->getField( "name", tmpStr ) )
+    {
+        name = tmpStr;
+    }
+}
+
 void 
 ScheduleTriggerGroup::setID( std::string idValue )
 {
@@ -775,6 +996,18 @@ ScheduleTriggerGroup::setID( std::string idValue )
 
 std::string 
 ScheduleTriggerGroup::getID()
+{
+    return id;
+}
+
+void 
+ScheduleTriggerGroup::setName( std::string idValue )
+{
+    id = idValue;
+}
+
+std::string 
+ScheduleTriggerGroup::getName()
 {
     return id;
 }
@@ -1103,8 +1336,15 @@ ScheduleEventRule::setFieldsFromContentNode( RESTContentNode *objCN )
     std::string tmpStr;
 
     // Required Fields
-    objCN->getField( "name", name );
-    objCN->getField( "desc", desc );
+    if( objCN->getField( "name", tmpStr ) )
+    {
+        name = tmpStr;
+    }
+
+    if( objCN->getField( "desc", tmpStr ) )
+    {
+        desc = tmpStr;
+    }
 
     // Optional Fields
     objCN->getField( "enabled", tmpStr );
@@ -1315,6 +1555,281 @@ ScheduleManager::getZoneGroupByID( std::string zgID )
     return zgObj;
 }
 
+void 
+ScheduleManager::addNewZoneGroup( RESTContentNode *rootCN, ScheduleZoneGroup **newGroup )
+{
+    std::string tmpValue;
+
+    printf( "ScheduleManager - addNewZoneGroup\n" );
+
+    // Add a rule record based on the content
+    ScheduleZoneGroup *grpObj = createNewZoneGroup(); 
+
+    // Have the object fill in it's internal members
+    grpObj->setFieldsFromContentNode( rootCN );
+
+    // Add the expander object to the list
+    zoneGroupList.push_back( grpObj );
+
+    // Save the new configuration
+    saveConfiguration();
+
+    // Fill out the return pointer.
+    *newGroup = grpObj;
+}
+
+void 
+ScheduleManager::updateZoneGroup( std::string zgID, RESTContentNode *rootCN )
+{
+    ScheduleZoneGroup *zgObj;
+    std::string        tmpValue;
+
+    printf( "ScheduleManager - updateZoneGroup\n" );
+
+    // Make sure the request object already exists.
+    zgObj = getZoneGroupByID( zgID );    
+
+    if( zgObj == NULL )
+    {
+        throw SMException( 103, "Specified zone group does not exist");
+    }
+
+    // Check for a zone group update.
+    zgObj->setFieldsFromContentNode( rootCN );
+
+    // Save the new configuration
+    saveConfiguration();
+}
+
+void
+ScheduleManager::deleteZoneGroup( std::string zgID )
+{
+    ScheduleZoneGroup *zgObj = NULL;
+
+    // Search through the list for the right ID
+    for( std::vector<ScheduleZoneGroup *>::iterator it = zoneGroupList.begin() ; it != zoneGroupList.end(); ++it)
+    {
+        if( zgID == (*it)->getID() )
+        {
+            // Save away the object pointer
+            zgObj = *it;
+
+            // Erase the element from the list
+            zoneGroupList.erase( it );
+
+            // Get rid of the memory
+            delete zgObj;
+
+            // Save the modified configuration
+            saveConfiguration();
+
+            // Success
+            return;   
+        }
+    }
+
+    // Not found
+    throw SMException( 110, "Zone Group with id " + zgID +", does not exist"); 
+}
+
+void 
+ScheduleManager::addNewZoneRule( std::string zoneGroupID, RESTContentNode *rootCN, ScheduleZoneRule **newRule )
+{
+    std::string tmpValue;
+
+    printf( "ScheduleManager - addNewZoneRule\n" );
+
+    ScheduleZoneGroup *zgObj = getZoneGroupByID( zoneGroupID );
+
+    if( zgObj == NULL )
+    {
+        throw SMException( 100, "Specified zone group does not exist");
+    }
+
+    // Get the zone reference
+    rootCN->getField( "zoneid", tmpValue );
+
+    Zone *zone = zoneMgr->getZoneByID( tmpValue );
+
+    if( zone == NULL )
+    {
+        throw SMException( 101, "Specified zone does not exist");
+    }
+
+    // Add a rule record based on the content
+    ScheduleZoneRule *ruleObj = createNewZoneRule(); 
+
+    // Have the object fill in it's internal members
+    ruleObj->setFieldsFromContentNode( rootCN );
+
+    // Add the zone object
+    ruleObj->setZone( zone );
+
+    // Add the expander object to the list
+    zgObj->addZoneRule( ruleObj );
+
+    // Save the new configuration
+    saveConfiguration();
+
+    // Fill out the return pointer.
+    *newRule = ruleObj;
+}
+
+void 
+ScheduleManager::updateZoneRule( std::string zgID, std::string ruleID, RESTContentNode *rootCN )
+{
+    ScheduleZoneGroup *zgObj;
+    std::string        tmpValue;
+
+    printf( "ScheduleManager - updateZoneGroup\n" );
+
+    // Make sure the request object already exists.
+    zgObj = getZoneGroupByID( zgID );    
+
+    if( zgObj == NULL )
+    {
+        throw SMException( 103, "Specified zone group does not exist");
+    }
+
+    // Check for a zone group update.
+    zgObj->updateZoneRule( ruleID, rootCN );
+
+    // Save the new configuration
+    saveConfiguration();
+}
+
+void
+ScheduleManager::deleteZoneRule( std::string zgID, std::string zoneRuleID )
+{
+    ScheduleZoneGroup *zgObj = NULL;
+
+    // Search through the list for the right ID
+    for( std::vector<ScheduleZoneGroup *>::iterator it = zoneGroupList.begin() ; it != zoneGroupList.end(); ++it)
+    {
+        if( zgID == (*it)->getID() )
+        {
+            // Ask the zone group to get rid of a zone rule
+            (*it)->deleteZoneRule( zoneRuleID );
+
+            // Save the modified configuration
+            saveConfiguration();
+
+            // Success
+            return;   
+        }
+    }
+
+    // Not found
+    throw SMException( 110, "Zone Group with id " + zgID +", does not exist"); 
+}
+
+void
+ScheduleManager::generateZoneGroupListContent( RESTContentNode *rootNode )
+{
+    RESTContentNode   *curNode;
+
+    // Create the root object
+    rootNode->setAsArray( "zone-group-list" );
+
+    std::cout << "ScheduleManager::generateZoneGroupListContent - 1" << std::endl;
+
+    // Enumerate the zone-group list
+    for( std::vector<ScheduleZoneGroup *>::iterator it = zoneGroupList.begin() ; it != zoneGroupList.end(); ++it)
+    {
+        std::cout << "ScheduleManager::generateZoneGroupListContent - " << (*it)->getID() << std::endl;
+
+        curNode = new RESTContentNode();
+      
+        curNode->setAsID( (*it)->getID() );
+
+        rootNode->addChild( curNode );
+    }
+
+}
+
+void
+ScheduleManager::generateZoneGroupContent( std::string objID, RESTContentNode *rootNode )
+{
+    ScheduleZoneGroup *zgObj = NULL;
+    RESTContentNode   *curNode;
+
+    // Create the root object
+    rootNode->setAsObject( "schedule-zone-group" );
+
+    std::cout << "ScheduleManager::generateZoneGroupContent - 1" << std::endl;
+
+    zgObj = getZoneGroupByID( objID );
+
+    if( zgObj )
+    {
+        rootNode->setID( objID );
+
+        rootNode->setField( "policy", zgObj->getZoneEventPolicyStr() );
+    }
+}
+
+void 
+ScheduleManager::generateZoneGroupRuleListContent( std::string zoneGroupID, RESTContentNode *rootCN )
+{
+    ScheduleZoneGroup *zgObj;
+    RESTContentNode   *curNode;
+
+    zgObj = getZoneGroupByID( zoneGroupID );
+
+    if( zgObj == NULL )
+    {
+        throw SMException( 110, "Specified zone group does not exist");
+    }
+
+    // Create the root object
+    rootCN->setAsArray( "schedule-zone-rule-list" );
+
+    std::cout << "ScheduleManager::generateZoneGroupRuleListContent - 1" << std::endl;
+
+    for( unsigned int index = 0; index < zgObj->getZoneRuleCount(); index++ )
+    {
+        ScheduleZoneRule *zrObj = zgObj->getZoneRuleByIndex( index );
+
+        std::cout << "ScheduleManager::generateZoneGroupRuleListContent - " <<zrObj->getZoneID() << std::endl;
+
+        curNode = new RESTContentNode();
+      
+        curNode->setAsID( zrObj->getZoneID() );
+
+        rootCN->addChild( curNode );
+    }
+
+}
+
+void 
+ScheduleManager::generateZoneGroupRuleContent( std::string zoneGroupID, std::string ruleID, RESTContentNode *rootCN )
+{
+    ScheduleZoneGroup *zgObj;
+    ScheduleZoneRule  *zoneRule;
+
+    zgObj = getZoneGroupByID( zoneGroupID );
+
+    if( zgObj == NULL )
+    {
+        throw SMException( 110, "Specified zone group does not exist");
+    }
+
+    zoneRule = zgObj->getZoneRuleByID( ruleID );
+
+    if( zoneRule == NULL )
+    {
+        throw SMException( 120, "Specified zone rule does not exist");
+    }
+
+    // Create the root object
+    rootCN->setAsObject( "schedule-zone-rule" );
+
+    rootCN->setID( ruleID );
+
+    //rootCN->setField( "duration", zoneRule->getDuration().asTotalSeconds() );
+
+}
+
 unsigned int 
 ScheduleManager::getTriggerGroupCount()
 {
@@ -1345,6 +1860,126 @@ ScheduleManager::getTriggerGroupByID( std::string tgID )
     }
 
     return tgObj;
+}
+
+void 
+ScheduleManager::addNewTriggerGroup( RESTContentNode *rootCN, ScheduleTriggerGroup **newGroup )
+{
+    std::string tmpValue;
+
+    printf( "ScheduleManager - addNewTriggerGroup\n" );
+
+    // Add a rule record based on the content
+    ScheduleTriggerGroup *grpObj = createNewTriggerGroup(); 
+
+    // Have the object fill in it's internal members
+    grpObj->setFieldsFromContentNode( rootCN );
+
+    // Add the expander object to the list
+    triggerGroupList.push_back( grpObj );
+
+    // Save the new configuration
+    saveConfiguration();
+
+    // Fill out the return pointer.
+    *newGroup = grpObj;
+}
+
+void 
+ScheduleManager::updateTriggerGroup( std::string tgID, RESTContentNode *rootCN )
+{
+    ScheduleTriggerGroup *tgObj;
+    std::string        tmpValue;
+
+    printf( "ScheduleManager - updateTriggerGroup\n" );
+
+    // Make sure the request object already exists.
+    tgObj = getTriggerGroupByID( tgID );    
+
+    if( tgObj == NULL )
+    {
+        throw SMException( 103, "Specified zone group does not exist");
+    }
+
+    // Check for a zone group update.
+    tgObj->setFieldsFromContentNode( rootCN );
+
+    // Save the new configuration
+    saveConfiguration();
+}
+
+void
+ScheduleManager::deleteTriggerGroup( std::string tgID )
+{
+    ScheduleTriggerGroup *tgObj = NULL;
+
+    // Search through the list for the right ID
+    for( std::vector<ScheduleTriggerGroup *>::iterator it = triggerGroupList.begin() ; it != triggerGroupList.end(); ++it)
+    {
+        if( tgID == (*it)->getID() )
+        {
+            // Save away the object pointer
+            tgObj = *it;
+
+            // Erase the element from the list
+            triggerGroupList.erase( it );
+
+            // Get rid of the memory
+            delete tgObj;
+
+            // Save the modified configuration
+            saveConfiguration();
+
+            // Success
+            return;   
+        }
+    }
+
+    // Not found
+    throw SMException( 110, "Trigger Group with id " + tgID +", does not exist"); 
+}
+
+void
+ScheduleManager::generateTriggerGroupListContent( RESTContentNode *rootNode )
+{
+    RESTContentNode   *curNode;
+
+    // Create the root object
+    rootNode->setAsArray( "trigger-group-list" );
+
+    std::cout << "ScheduleManager::generateTriggerGroupListContent - 1" << std::endl;
+
+    // Enumerate the zone-group list
+    for( std::vector<ScheduleTriggerGroup *>::iterator it = triggerGroupList.begin() ; it != triggerGroupList.end(); ++it)
+    {
+        std::cout << "ScheduleManager::generateTriggerGroupListContent - " << (*it)->getID() << std::endl;
+
+        curNode = new RESTContentNode();
+      
+        curNode->setAsID( (*it)->getID() );
+
+        rootNode->addChild( curNode );
+    }
+
+}
+
+void
+ScheduleManager::generateTriggerGroupContent( std::string objID, RESTContentNode *rootNode )
+{
+    ScheduleTriggerGroup *tgObj = NULL;
+    RESTContentNode   *curNode;
+
+    // Create the root object
+    rootNode->setAsObject( "schedule-trigger-group" );
+
+    std::cout << "ScheduleManager::generateTriggerGroupContent - 1" << std::endl;
+
+    tgObj = getTriggerGroupByID( objID );
+
+    if( tgObj )
+    {
+        rootNode->setID( objID );
+    }
 }
 
 unsigned int 
@@ -1399,6 +2034,67 @@ ScheduleManager::createNewEventRule()
     // Return the object
     return ruleObj;
 }
+
+ScheduleZoneGroup *
+ScheduleManager::createNewZoneGroup()
+{
+    ScheduleZoneGroup *grpObj;
+    char idStr[128];
+
+    // Allocate a new rule object
+    grpObj = new ScheduleZoneGroup;
+
+    // Create a unique id
+    nextID += 1;
+    sprintf( idStr, "zg%d", nextID );
+    grpObj->setID( idStr );
+
+    printf( "New idStr: %s\n", idStr );
+
+    // Return the object
+    return grpObj;
+}
+
+ScheduleZoneRule *
+ScheduleManager::createNewZoneRule()
+{
+    ScheduleZoneRule *ruleObj;
+    char idStr[128];
+
+    // Allocate a new rule object
+    ruleObj = new ScheduleZoneRule;
+
+    // Create a unique id
+    nextID += 1;
+    sprintf( idStr, "zr%d", nextID );
+    ruleObj->setID( idStr );
+
+    printf( "New idStr: %s\n", idStr );
+
+    // Return the object
+    return ruleObj;
+}
+
+ScheduleTriggerGroup *
+ScheduleManager::createNewTriggerGroup()
+{
+    ScheduleTriggerGroup *grpObj;
+    char idStr[128];
+
+    // Allocate a new rule object
+    grpObj = new ScheduleTriggerGroup;
+
+    // Create a unique id
+    nextID += 1;
+    sprintf( idStr, "zg%d", nextID );
+    grpObj->setID( idStr );
+
+    printf( "New idStr: %s\n", idStr );
+
+    // Return the object
+    return grpObj;
+}
+
 
 void
 ScheduleManager::freeNewEventRule( ScheduleEventRule *ruleObj )
@@ -1698,6 +2394,7 @@ ScheduleManager::addRule( xmlDocPtr doc, xmlNode *ruleElem )
     eventRuleList.push_back( ruleObj );
 
 }
+
 
 bool 
 ScheduleManager::parseZoneRuleList( xmlDocPtr doc, xmlNode *zgElem, ScheduleZoneGroup *zgObj )

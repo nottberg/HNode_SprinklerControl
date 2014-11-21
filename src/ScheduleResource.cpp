@@ -11,7 +11,7 @@
 
 ScheduleZoneGroupListResource::ScheduleZoneGroupListResource()
 {
-    setURLPattern( "/schedule/zone-groups", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/zone-groups", (REST_RMETHOD_T)(REST_RMETHOD_GET|REST_RMETHOD_POST) );
 }
 
 ScheduleZoneGroupListResource::~ScheduleZoneGroupListResource()
@@ -28,39 +28,95 @@ ScheduleZoneGroupListResource::setScheduleManager( ScheduleManager *schMgr )
 void 
 ScheduleZoneGroupListResource::restGet( RESTRequest *request )
 {
-    std::string rspData;
+    std::string        rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
 
     std::cout << "ScheduleZoneGroupListResource::restGet" << std::endl;
 
-    rspData = "<hnode-schedule-zg-id-list>";
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
 
-    if( schManager )
-    {
-        printf( "ZoneGroup count: %d\n", schManager->getZoneGroupCount() );
-
-        for( unsigned int index = 0; index < schManager->getZoneGroupCount(); index++ )
+        if( schManager == NULL )
         {
-            ScheduleZoneGroup *zgObj = schManager->getZoneGroupByIndex( index );
-
-            rspData += "<id>";
-            rspData += zgObj->getID();
-            rspData += "</id>";
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
         }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateZoneGroupListContent( objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+
     }
-
-    rspData += "</hnode-schedule-zg-id-list>"; 
-
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }    
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
 
+void 
+ScheduleZoneGroupListResource::restPost( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+    ScheduleZoneGroup *ruleObj;
+
+    std::cout << "ScheduleZoneGroupListResource::restPost" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Generate a template for acceptable data
+        templateNode = ScheduleZoneGroup::generateCreateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
+
+        // Create the new object
+        schManager->addNewZoneGroup( helper->getRootNode(), &ruleObj );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Build a response, including the new rule id
+    request->sendResourceCreatedResponse( ruleObj->getID() );
+}
+
 
 ScheduleZoneGroupResource::ScheduleZoneGroupResource()
 {
-    setURLPattern( "/schedule/zone-groups/{zonegroupid}", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}", (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE ) );
 }
 
 ScheduleZoneGroupResource::~ScheduleZoneGroupResource()
@@ -77,9 +133,70 @@ ScheduleZoneGroupResource::setScheduleManager( ScheduleManager *schMgr )
 void 
 ScheduleZoneGroupResource::restGet( RESTRequest *request )
 {
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+    std::string objID;
+
+    if( request->getURIParameter( "zonegroupid", objID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL ZoneGroupID: %s\n", objID.c_str() );
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateZoneGroupContent( objID, objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleZoneGroupResource::restPut( RESTRequest *request )
+{
     std::string zgID;
     std::string rspData;
-    ScheduleZoneGroup *zgObj;
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+
+    std::cout << "ScheduleZoneGroupResource::restPut" << std::endl;
 
     if( request->getURIParameter( "zonegroupid", zgID ) )
     {
@@ -91,31 +208,83 @@ ScheduleZoneGroupResource::restGet( RESTRequest *request )
 
     printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    zgObj = schManager->getZoneGroupByID( zgID );
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
 
-    if( zgObj == NULL )
+        // Generate a template for acceptable data
+        templateNode = ScheduleZoneGroup::generateUpdateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
+
+        // Create the new object
+        schManager->updateZoneGroup( zgID, helper->getRootNode() );
+    }
+    catch( SMException& sme )
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleZoneGroupResource::restDelete( RESTRequest *request )
+{
+    std::string zgID;
+    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+
+    std::cout << "ScheduleZoneGroupResource::restDelete" << std::endl;
+
+    if( request->getURIParameter( "zonegroupid", zgID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
     }
 
-    rspData = "<schedule-zone-group id=\"";
-    rspData += zgID;
-    rspData += "\">";
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    rspData += "</schedule-zone-group>";
+    try
+    {
+        // Attempt the delete operation.
+        schManager->deleteZoneGroup( zgID );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
 
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
-
+    // Success
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
 
 ScheduleZoneRuleListResource::ScheduleZoneRuleListResource()
 {
-    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
 }
 
 ScheduleZoneRuleListResource::~ScheduleZoneRuleListResource()
@@ -132,11 +301,12 @@ ScheduleZoneRuleListResource::setScheduleManager( ScheduleManager *schMgr )
 void 
 ScheduleZoneRuleListResource::restGet( RESTRequest *request )
 {
-    std::string zgID;
-    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+    std::string        objID;
     ScheduleZoneGroup *zgObj;
 
-    if( request->getURIParameter( "zonegroupid", zgID ) )
+    if( request->getURIParameter( "zonegroupid", objID ) )
     {
         printf("Failed to look up zonegroupid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
@@ -144,43 +314,104 @@ ScheduleZoneRuleListResource::restGet( RESTRequest *request )
         return;
     }
 
-    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
+    printf( "URL ZoneGroupID: %s\n", objID.c_str() );
 
-    zgObj = schManager->getZoneGroupByID( zgID );
-
-    if( zgObj == NULL )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateZoneGroupRuleListContent( objID, objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleZoneRuleListResource::restPost( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+    std::string       objID;
+    ScheduleZoneRule  *ruleObj;
+
+    std::cout << "ScheduleoneRuleListResource::restPost" << std::endl;
+
+    if( request->getURIParameter( "zonegroupid", objID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
     }
 
-    rspData = "<schedule-zone-rule-list id=\"";
-    rspData += zgID;
-    rspData += "\">";
+    printf( "URL ZoneGroupID: %s\n", objID.c_str() );
 
-    for( unsigned int index = 0; index < zgObj->getZoneRuleCount(); index++ )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
     {
-        ScheduleZoneRule *zrObj = zgObj->getZoneRuleByIndex( index );
+        // Generate a template for acceptable data
+        templateNode = ScheduleZoneRule::generateCreateTemplate();
 
-        rspData += "<id>";
-        rspData += zrObj->getZoneID();
-        rspData += "</id>";
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
+
+        // Create the new object
+        schManager->addNewZoneRule( objID, helper->getRootNode(), &ruleObj );
     }
-    
-    rspData += "</schedule-zone-rule-list>";
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
 
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
-
-    request->setResponseCode( REST_HTTP_RCODE_OK );
-    request->sendResponse();
+    // Build a response, including the new rule id
+    request->sendResourceCreatedResponse( ruleObj->getID() );
 }
 
 
 ScheduleZoneRuleResource::ScheduleZoneRuleResource()
 {
-    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET) );
+    setURLPattern( "/schedule/zone-groups/{zonegroupid}/members/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE) );
 }
 
 ScheduleZoneRuleResource::~ScheduleZoneRuleResource()
@@ -200,8 +431,8 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
     std::string zgID;
     std::string zoneID;
     std::string rspData;
-    ScheduleZoneGroup *zgObj;
-    ScheduleZoneRule  *zoneRule;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
 
     if( request->getURIParameter( "zonegroupid", zgID ) )
     {
@@ -223,43 +454,431 @@ ScheduleZoneRuleResource::restGet( RESTRequest *request )
 
     printf( "URL ZoneID: %s\n", zoneID.c_str() );
 
-    zgObj = schManager->getZoneGroupByID( zgID );
-
-    if( zgObj == NULL )
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateZoneGroupRuleContent( zgID, zoneID, objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleZoneRuleResource::restPut( RESTRequest *request )
+{
+    std::string zgID;
+    std::string zoneID;
+    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+
+    std::cout << "ScheduleZoneRuleResource::restPut" << std::endl;
+
+    if( request->getURIParameter( "zonegroupid", zgID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
     }
 
-    zoneRule = zgObj->getZoneRuleByID( zoneID );
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
 
-    if( zoneRule == NULL )
+    if( request->getURIParameter( "zoneid", zoneID ) )
     {
-        request->setResponseCode( REST_HTTP_RCODE_NOT_FOUND );
+        printf("Failed to look up zoneid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
     }
 
-    rspData = "<schedule-zone-rule id=\"";
-    rspData += zoneID;
-    rspData += "\">";
+    printf( "URL ZoneID: %s\n", zoneID.c_str() );
 
-    rspData += "<duration>";
-    rspData += zoneRule->getDuration().asTotalSeconds();
-    rspData += "</duration>";
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
 
-    rspData += "</schedule-zone-rule>";
+        // Generate a template for acceptable data
+        templateNode = ScheduleZoneRule::generateUpdateTemplate();
 
-    RESTRepresentation *rspRep = request->getOutboundRepresentation();
-    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
+
+        // Create the new object
+        schManager->updateZoneRule( zgID, zoneID, helper->getRootNode() );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleZoneRuleResource::restDelete( RESTRequest *request )
+{
+    std::string zgID;
+    std::string zoneID;
+    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+
+    std::cout << "ScheduleZoneRuleResource::restDelete" << std::endl;
+
+    if( request->getURIParameter( "zonegroupid", zgID ) )
+    {
+        printf("Failed to look up zonegroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
+
+    if( request->getURIParameter( "zoneid", zoneID ) )
+    {
+        printf("Failed to look up zoneid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL ZoneID: %s\n", zoneID.c_str() );
+
+    try
+    {
+        // Attempt the delete operation.
+        schManager->deleteZoneRule( zgID, zoneID );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+ScheduleTriggerGroupListResource::ScheduleTriggerGroupListResource()
+{
+    setURLPattern( "/schedule/trigger-groups", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
+}
+
+ScheduleTriggerGroupListResource::~ScheduleTriggerGroupListResource()
+{
+
+}
+
+void
+ScheduleTriggerGroupListResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleTriggerGroupListResource::restGet( RESTRequest *request )
+{
+    std::string        rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+
+    std::cout << "ScheduleTriggerGroupListResource::restGet" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateTriggerGroupListContent( objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }    
 
     request->setResponseCode( REST_HTTP_RCODE_OK );
     request->sendResponse();
 }
 
+void 
+ScheduleTriggerGroupListResource::restPost( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+    ScheduleTriggerGroup *ruleObj;
+
+    std::cout << "ScheduleTriggerGroupListResource::restPost" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Generate a template for acceptable data
+        templateNode = ScheduleTriggerGroup::generateCreateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
+
+        // Create the new object
+        schManager->addNewTriggerGroup( helper->getRootNode(), &ruleObj );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Build a response, including the new rule id
+    request->sendResourceCreatedResponse( ruleObj->getID() );
+}
 
 
+ScheduleTriggerGroupResource::ScheduleTriggerGroupResource()
+{
+    setURLPattern( "/schedule/trigger-groups/{triggergroupid}", (REST_RMETHOD_T)(REST_RMETHOD_GET|REST_RMETHOD_PUT|REST_RMETHOD_DELETE) );
+}
+
+ScheduleTriggerGroupResource::~ScheduleTriggerGroupResource()
+{
+
+}
+
+void
+ScheduleTriggerGroupResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleTriggerGroupResource::restGet( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+    std::string objID;
+
+    if( request->getURIParameter( "triggergroupid", objID ) )
+    {
+        printf("Failed to look up triggergroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL TriggerGroupID: %s\n", objID.c_str() );
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+
+        if( schManager == NULL )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+            return;
+        }
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Generate the list    
+        schManager->generateTriggerGroupContent( objID, objNode );        
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleTriggerGroupResource::restPut( RESTRequest *request )
+{
+    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *templateNode;
+    RESTContentNode   *objNode;
+    std::string objID;
+
+    if( request->getURIParameter( "triggergroupid", objID ) )
+    {
+        printf("Failed to look up triggergroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL TriggerGroupID: %s\n", objID.c_str() );
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
+
+        // Generate a template for acceptable data
+        templateNode = ScheduleTriggerGroup::generateUpdateTemplate();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
+
+        // Create the new object
+        schManager->updateTriggerGroup( objID, helper->getRootNode() );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+
+}
+
+void 
+ScheduleTriggerGroupResource::restDelete( RESTRequest *request )
+{
+    std::string rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+    std::string objID;
+
+    if( request->getURIParameter( "triggergroupid", objID ) )
+    {
+        printf("Failed to look up triggergroupid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL TriggerGroupID: %s\n", objID.c_str() );
+
+    try
+    {
+        // Attempt the delete operation.
+        schManager->deleteTriggerGroup( objID );
+    }
+    catch( SMException& sme )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
 
 
 

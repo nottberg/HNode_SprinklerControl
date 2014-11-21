@@ -16,6 +16,8 @@ class ScheduleZoneGroupListResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPost( RESTRequest *request );
+
 };
 
 class ScheduleZoneGroupResource : public RESTResource
@@ -30,6 +32,9 @@ class ScheduleZoneGroupResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+        virtual void restDelete( RESTRequest *request );
+
 };
 
 class ScheduleZoneRuleListResource : public RESTResource
@@ -44,6 +49,8 @@ class ScheduleZoneRuleListResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPost( RESTRequest *request );
+
 };
 
 class ScheduleZoneRuleResource : public RESTResource
@@ -58,6 +65,42 @@ class ScheduleZoneRuleResource : public RESTResource
         void setScheduleManager( ScheduleManager *schMgr );
 
         virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+        virtual void restDelete( RESTRequest *request );
+
+};
+
+class ScheduleTriggerGroupListResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleTriggerGroupListResource();
+       ~ScheduleTriggerGroupListResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+        virtual void restPost( RESTRequest *request );
+
+};
+
+class ScheduleTriggerGroupResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleTriggerGroupResource();
+       ~ScheduleTriggerGroupResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+        virtual void restDelete( RESTRequest *request );
+
 };
 
 class ScheduleRuleListResource : public RESTResource
