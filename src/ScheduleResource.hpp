@@ -103,6 +103,39 @@ class ScheduleTriggerGroupResource : public RESTResource
 
 };
 
+class ScheduleTriggerRuleListResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleTriggerRuleListResource();
+       ~ScheduleTriggerRuleListResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+        virtual void restPost( RESTRequest *request );
+
+};
+
+class ScheduleTriggerRuleResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleTriggerRuleResource();
+       ~ScheduleTriggerRuleResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+        virtual void restDelete( RESTRequest *request );
+
+};
+
 class ScheduleRuleListResource : public RESTResource
 {
     private:
