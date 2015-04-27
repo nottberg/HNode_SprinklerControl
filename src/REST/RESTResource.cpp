@@ -234,3 +234,276 @@ RESTResource::restDelete( RESTRequest *request )
     request->sendResponse();
 }
 
+RESTResourceRESTContentList::RESTResourceRESTContentList( std::string pattern, RESTContentManager &mgr, unsigned int type, std::string list, std::string prefix, std::string relationshipName, std::string relationshipRoot )
+: contentMgr( mgr )
+{
+    setURLPattern( pattern, (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_POST ) );
+
+    objType   = type;
+    listName  = list;
+    objPrefix = prefix;
+    relName   = relationshipName;
+    relRoot   = relationshipRoot;
+}
+
+RESTResourceRESTContentList::~RESTResourceRESTContentList()
+{
+
+}
+
+void
+RESTResourceRESTContentList::restGet( RESTRequest *request )
+{
+    std::string        rspData;
+    RESTContentHelper *helper;
+    RESTContentNode   *objNode;
+    RESTContentNode *curNode;
+
+    std::cout << "RESTResourceRESTContentList::restGet" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
+
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        objNode = helper->getRootNode();
+
+        // Create the root object
+        objNode->setAsArray( listName );
+
+        // Enumerate the zone-group list
+        std::vector< std::string > idList;
+
+        contentMgr.getIDVectorByType( objType, idList );
+
+        for( std::vector< std::string >::iterator it = idList.begin() ; it != idList.end(); ++it)
+        {
+            std::cout << "RESTResourceRESTContentList::restGet - " << *it << std::endl;
+
+            curNode = new RESTContentNode();
+            curNode->setAsID( *it );
+            curNode->setID( *it );
+            objNode->addChild( curNode );
+        }
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }    
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+void
+RESTResourceRESTContentList::restPost( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentTemplate  *templateNode;
+    RESTContentNode   *objNode;
+    std::string        objID;
+
+    std::cout << "RESTResourceRESTContentList::restPost" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Generate a template for acceptable data
+        templateNode = contentMgr.getContentTemplateForType( objType );
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
+
+        // Create the new object
+        contentMgr.createObj( objType, objPrefix, objID );
+        contentMgr.updateObj( objID, helper->getRootNode() );
+        contentMgr.addRelationship( relName, relRoot, objID );
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Build a response, including the new rule id
+    request->sendResourceCreatedResponse( objID );
+}
+
+
+RESTResourceRESTContentObject::RESTResourceRESTContentObject(  std::string pattern, RESTContentManager &mgr, unsigned int type, std::string idParam )
+: contentMgr( mgr )
+{
+    setURLPattern( pattern, (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE ) );
+ 
+    objType  = type;
+    objUrlID = idParam; 
+}
+
+RESTResourceRESTContentObject::~RESTResourceRESTContentObject()
+{
+
+}
+
+void
+RESTResourceRESTContentObject::restGet( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *outNode;
+    RESTContentNode   *objNode;
+    std::string        objID;
+
+    if( request->getURIParameter( objUrlID, objID ) )
+    {
+        printf("Failed to look up ruleid parameter\n");
+        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
+        request->sendResponse();
+        return;
+    }
+
+    printf( "URL objID: %s\n", objID.c_str() );
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        outNode = helper->getRootNode();
+
+        // Lookup the rule object
+        objNode = contentMgr.getObjectByID( objID );
+
+        // Generate the list
+        objNode->setContentNodeFromFields( outNode );           
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+void 
+RESTResourceRESTContentObject::restPut( RESTRequest *request )
+{
+    std::string          objID;
+    RESTContentHelper    *helper;
+    RESTContentTemplate  *templateNode;
+//    RESTContentNode      *objNode;
+
+    std::cout << "RESTResourceRESTContentObject::restPut" << std::endl;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try{
+
+        if( request->getURIParameter( objUrlID, objID ) )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
+            return;
+        }
+
+        printf( "RESTResourceRESTContentObject - PUT: %s\n", objID.c_str() );
+
+        // Generate a template for acceptable data
+        templateNode = contentMgr.getContentTemplateForType( objType );
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
+
+        // Create the new object
+        contentMgr.updateObj( objID, helper->getRootNode() );
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+void 
+RESTResourceRESTContentObject::restDelete( RESTRequest *request )
+{
+    std::string objID;
+
+    try
+    {
+
+        // extract the ruleid parameter
+        if( request->getURIParameter( objUrlID, objID ) )
+        {
+            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." );
+            return;
+        }
+
+        printf( "RESTResourceRESTContentObject - DELETE: %s\n", objID.c_str() );
+
+        // Attempt the delete operation.
+        contentMgr.deleteObjByID( objID );
+
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    // Success
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+

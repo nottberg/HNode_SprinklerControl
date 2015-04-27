@@ -11,6 +11,29 @@
 
 #include "REST.hpp"
 
+RESTContentFieldDef::RESTContentFieldDef()
+{
+
+}
+
+RESTContentFieldDef::~RESTContentFieldDef()
+{
+
+}
+
+void
+RESTContentFieldDef::setName( std::string nameStr )
+{
+    name = nameStr;
+}
+
+std::string
+RESTContentFieldDef::getName()
+{
+    return name;
+}
+
+
 RESTContentField::RESTContentField()
 {
 
@@ -45,45 +68,147 @@ RESTContentField::getValue()
     return value;
 }
 
-RESTContentNode::RESTContentNode()
+RESTContentReferenceDef::RESTContentReferenceDef()
 {
-    type = RCNT_NOTSET;
+
 }
 
-RESTContentNode::~RESTContentNode()
+RESTContentReferenceDef::~RESTContentReferenceDef()
+{
+
+}
+
+void
+RESTContentReferenceDef::setName( std::string nameStr )
+{
+    name = nameStr;
+}
+
+std::string
+RESTContentReferenceDef::getName()
+{
+    return name;
+}
+
+#if 0
+RESTContentReference::RESTContentReference()
+{
+
+}
+
+RESTContentReference::~RESTContentReference()
+{
+
+}
+
+void
+RESTContentReference::setName( std::string nameStr )
+{
+    name = nameStr;
+}
+
+std::string
+RESTContentReference::getName()
+{
+    return name;
+}
+
+void
+RESTContentReference::setValue( std::string valueStr )
+{
+    value = valueStr;
+}
+
+std::string
+RESTContentReference::getValue()
+{
+    return value;
+}
+#endif
+
+RESTContentIDStack::RESTContentIDStack()
+{
+
+}
+
+RESTContentIDStack::~RESTContentIDStack()
 {
 
 }
 
 void 
-RESTContentNode::setAsArray( std::string nameStr )
+RESTContentIDStack::clear()
+{
+    idList.clear();
+}
+
+void 
+RESTContentIDStack::pushID( std::string idStr )
+{
+    idList.push_front( idStr );
+}
+
+void 
+RESTContentIDStack::popID()
+{
+    idList.pop_front();
+}
+
+std::string 
+RESTContentIDStack::getParent( unsigned int depth )
+{
+    std::list< std::string >::iterator it;
+
+    it = idList.begin();
+    it++;
+    return *it;    
+}
+
+std::string 
+RESTContentIDStack::getLast()
+{
+    return idList.front();
+}
+
+RESTContentBase::RESTContentBase()
+{
+    type   = RCNT_NOTSET;
+    parent = NULL;
+}
+
+RESTContentBase::~RESTContentBase()
+{
+
+}
+
+void 
+RESTContentBase::setAsArray( std::string nameStr )
 {
     type = RCNT_ARRAY;
     setName( nameStr );
 }
 
 void 
-RESTContentNode::setAsID( std::string idValue )
+RESTContentBase::setAsID( std::string idValue )
 {
     type = RCNT_ID;
-    setID( idValue );
 }
 
 void 
-RESTContentNode::setAsObject( std::string nameStr )
+RESTContentBase::setAsObject( std::string nameStr )
 {
     type = RCNT_OBJECT;
     setName( nameStr );
 }
 
 RCN_TYPE 
-RESTContentNode::getType()
+RESTContentBase::getType()
 {
     return type;
 }
 
 bool 
-RESTContentNode::isArray()
+RESTContentBase::isArray()
 {
     if( type == RCNT_ARRAY )
         return true;
@@ -92,7 +217,7 @@ RESTContentNode::isArray()
 }
 
 bool 
-RESTContentNode::isID()
+RESTContentBase::isID()
 {
     if( type == RCNT_ID )
         return true;
@@ -101,12 +226,510 @@ RESTContentNode::isID()
 }
 
 bool 
-RESTContentNode::isObj()
+RESTContentBase::isObj()
 {
     if( type == RCNT_OBJECT )
         return true;
 
     return false;
+}
+
+void 
+RESTContentBase::setName( std::string nameValue )
+{
+    name = nameValue;
+}
+
+bool 
+RESTContentBase::hasName()
+{
+    if( name.empty() )
+        return false;
+
+    return true;
+}
+
+std::string 
+RESTContentBase::getName()
+{
+    return name;
+}
+
+void 
+RESTContentBase::setParent( RESTContentBase *parentPtr )
+{
+    parent = parentPtr;
+}
+
+RESTContentBase *
+RESTContentBase::getParent()
+{
+    return parent;
+}
+
+void 
+RESTContentBase::addChild( RESTContentBase *childPtr )
+{
+    childPtr->setParent( this );
+    children.push_back( childPtr );
+}
+
+unsigned long 
+RESTContentBase::getChildCount()
+{
+    return children.size();
+}
+
+RESTContentBase *
+RESTContentBase::getChildByIndex( unsigned long index )
+{
+    if( index >= children.size() )
+        return NULL;
+
+    return children[ index ];
+}
+
+RESTContentBase *
+RESTContentBase::getChildByName( std::string name )
+{
+    for( std::vector< RESTContentBase * >::const_iterator it = children.begin(); it != children.end(); ++it )
+    {
+        if( (*it)->getName() == name )
+        {
+            return *it;
+        }
+    }
+
+    return NULL;
+}
+
+RESTContentTemplate::RESTContentTemplate()
+{
+    staticFlag = false;
+
+    objCB     = NULL;
+    listCB    = NULL;
+    factoryCB = NULL;
+}
+
+RESTContentTemplate::~RESTContentTemplate()
+{
+
+}
+
+void 
+RESTContentTemplate::setFactoryType( std::string type )
+{
+    factoryType = type;
+}
+
+std::string 
+RESTContentTemplate::getFactoryType()
+{
+    return factoryType;
+}
+
+void 
+RESTContentTemplate::setTemplateID( unsigned int id )
+{
+    templateID = id;
+}
+
+unsigned int 
+RESTContentTemplate::getTemplateID()
+{
+    return templateID;
+}
+
+void 
+RESTContentTemplate::setObjectCallback( RESTContentObjectCallback *callback )
+{
+    objCB = callback;
+}
+
+void 
+RESTContentTemplate::setListCallback( RESTContentListCallback *callback )
+{
+    listCB = callback;
+}
+
+void 
+RESTContentTemplate::setFactoryCallback( RESTContentFactoryCallback *callback )
+{
+    factoryCB = callback;
+}
+
+bool 
+RESTContentTemplate::isStatic()
+{
+    return staticFlag;
+}
+
+void 
+RESTContentTemplate::setStatic()
+{
+    staticFlag = true;
+}
+
+void 
+RESTContentTemplate::clearStatic()
+{
+    staticFlag = false;
+}
+
+#if 0
+void 
+RESTContentTemplate::setReferenceCallback( RESTContentReferenceCallback *callback )
+{
+    refCB = callback;
+}
+#endif
+
+void 
+RESTContentTemplate::defineField( std::string name, bool required )
+{
+    RESTContentFieldDef field;
+
+    if( fieldDefs.count( name ) > 0 )
+    {
+        fieldDefs[name] = field;
+        return;
+    }
+
+    RESTContentFieldDef newField;
+    newField.setName( name );   
+    fieldDefs.insert( std::pair< std::string, RESTContentFieldDef >( name, newField ) );
+}
+
+void 
+RESTContentTemplate::defineRef( std::string name, bool required )
+{
+    RESTContentReferenceDef ref;
+
+    if( referenceDefs.count( name ) > 0 )
+    {
+        referenceDefs[name] = ref;
+        return;
+    }
+
+    RESTContentReferenceDef newRef;
+    newRef.setName( name );   
+    referenceDefs.insert( std::pair< std::string, RESTContentReferenceDef >( name, newRef ) );
+}
+
+bool 
+RESTContentTemplate::getFieldInfo( std::string name, bool &required )
+{
+
+}
+
+std::vector< RESTContentFieldDef* >
+RESTContentTemplate::getFieldList()
+{
+    std::vector< RESTContentFieldDef* > resultList;
+
+    for( std::map< std::string, RESTContentFieldDef >::const_iterator it = fieldDefs.begin(); it != fieldDefs.end(); ++it )
+    {
+        resultList.push_back( (RESTContentFieldDef *) &(it->second) );      
+    }
+
+    return resultList;
+}
+
+bool 
+RESTContentTemplate::checkForFieldMatch( std::string name )
+{
+    if( fieldDefs.count( name ) )
+        return true;
+
+    return false;
+}
+
+bool 
+RESTContentTemplate::checkForRefMatch( std::string name )
+{
+    if( referenceDefs.count( name ) )
+        return true;
+
+    return false;
+}
+
+bool 
+RESTContentTemplate::checkForTagMatch( std::string name )
+{
+    if( fieldDefs.count( name ) )
+        return false;
+
+    return true;
+}
+
+bool 
+RESTContentTemplate::checkForChildMatch( std::string name, RESTContentTemplate **cnPtr )
+{
+    RESTContentTemplate *cnPtr2;
+
+    cnPtr2 = (RESTContentTemplate *) getChildByName( name );
+
+    if( cnPtr2 == NULL )
+        return false;
+
+    *cnPtr = cnPtr2;
+
+    return true;
+}
+
+bool 
+RESTContentTemplate::lookupObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType )
+{
+    std::cout << "RESTContentNode::lookupObj: " << idStack.getLast() << "|" << objType << std::endl;
+
+    // If we have a direct override call that.
+    if( factoryCB != NULL )
+    {
+        return factoryCB->lookupObj( idStack, ctObj, objType );
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        return parent->lookupObj( idStack, ctObj, objType );
+    }
+
+    // The object was not found.
+    return false;
+   
+}
+
+bool
+RESTContentTemplate::createObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType, std::string &objID )  
+{
+    std::cout << "RESTContentNode::createObj: " << idStack.getLast() << "|" << objType << std::endl;
+
+    // If we have a direct override call that.
+    if( factoryCB != NULL )
+    {
+        return factoryCB->createObj( idStack, ctObj, objType, objID );
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        return parent->createObj( idStack, ctObj, objType, objID );
+    }
+
+    // Otherwise we are done.
+    return false;
+}
+
+void 
+RESTContentTemplate::startObject( std::string objID ) 
+{
+    std::cout << "RESTContentNode::startObject: " << objID << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->startObject( objID );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->startObject( objID );
+        return;
+    }
+
+}
+
+void 
+RESTContentTemplate::fieldsValid( std::string objID ) 
+{
+    std::cout << "RESTContentNode::fieldsValid: " << objID << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->fieldsValid( objID );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->fieldsValid( objID );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::startChild( std::string objID )  
+{
+    std::cout << "RESTContentNode::startChild: " << objID << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->startChild( objID );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->startChild( objID );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::endChild( std::string objID )    
+{
+    std::cout << "RESTContentNode::endChild: " << objID << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->endChild( objID );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->endChild( objID );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::endObject( std::string objID )   
+{
+    std::cout << "RESTContentNode::endObject: " << objID << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->endObject( objID );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->endObject( objID );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::updateField( std::string objID, std::string name, std::string value )
+{
+    std::cout << "RESTContentNode::updateField: " << objID << "|" << name << "|" << value << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->updateField( objID, name, value );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->updateField( objID, name, value );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::updateRef( std::string objID, std::string name, std::string value )
+{
+    std::cout << "RESTContentNode::updateRef: " << objID << "|" << name << "|" << value << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->updateRef( objID, name, value );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->updateRef( objID, name, value );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::updateTag( std::string objID, std::string name, std::string value )
+{
+    std::cout << "RESTContentNode::updateTag: " << objID << "|" << name << "|" << value << std::endl;
+
+    // If we have a direct override call that.
+    if( objCB != NULL )
+    {
+        objCB->updateTag( objID, name, value );
+        return;
+    }
+
+    // Otherwise try our parent
+    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
+
+    if( parent != NULL ) 
+    {
+        parent->updateTag( objID, name, value );
+        return;
+    }
+}
+
+void 
+RESTContentTemplate::addListMember( std::string objID, std::string listID, std::string childID )
+{
+    std::cout << "RESTContentNode::addListMember: " << objID << "|" << listID << "|" << childID << std::endl;
+
+}
+
+void *
+RESTContentTemplate::resolveRef( std::string refType, std::string objID )
+{
+    std::cout << "RESTContentNode::resolveRef: " << refType << "|" << objID  << std::endl;
+
+}
+
+RESTContentNode::RESTContentNode()
+{
+//    type = RCNT_NOTSET;
+}
+
+RESTContentNode::~RESTContentNode()
+{
+
+}
+
+unsigned int
+RESTContentNode::getObjType()
+{
+    return -1;
 }
 
 void 
@@ -123,44 +746,6 @@ RESTContentNode::getID()
     getField( "id", returnStr );
 
     return returnStr;
-}
-
-void 
-RESTContentNode::setName( std::string nameValue )
-{
-    name = nameValue;
-}
-
-bool 
-RESTContentNode::hasName()
-{
-    if( name.empty() )
-        return false;
-
-    return true;
-}
-
-std::string 
-RESTContentNode::getName()
-{
-    return name;
-}
-
-void 
-RESTContentNode::defineField( std::string name, bool required )
-{
-    RESTContentField field;
-
-    if( fieldValues.count( name ) > 0 )
-    {
-        fieldValues[name] = field;
-        return;
-    }
-
-    RESTContentField newField;
-    newField.setName( name );
-    //newField.setValue( value );    
-    fieldValues.insert( std::pair< std::string, RESTContentField >( name, newField ) );
 }
 
 void 
@@ -209,56 +794,387 @@ RESTContentNode::getFieldList()
     return resultList;
 }
 
+#if 0
 void 
-RESTContentNode::setParent( RESTContentNode *parentPtr )
+RESTContentNode::setRef( std::string name, std::string value )
 {
-    parent = parentPtr;
+    if( refValues.count( name ) > 0 )
+    {
+        refValues[name].setValue( value );
+        return;
+    }
+
+    RESTContentReference newRef;
+    newRef.setName( name );
+    newRef.setValue( value );
+    refValues.insert( std::pair< std::string, RESTContentReference >( name, newRef ) );
 }
 
-RESTContentNode *
-RESTContentNode::getParent()
+bool 
+RESTContentNode::clearRef( std::string name )
 {
-    return parent;
+    refValues.erase( name );
+}
+
+bool 
+RESTContentNode::getRef( std::string name, std::string &value )
+{
+    if( refValues.count( name ) > 0 )
+    {
+       value = refValues[ name ].getValue();
+       return true;
+    }
+
+    return false;
+}
+
+std::vector< RESTContentReference* >
+RESTContentNode::getRefList()
+{
+    std::vector< RESTContentReference* > resultList;
+
+    for( std::map< std::string, RESTContentReference >::const_iterator it = refValues.begin(); it != refValues.end(); ++it )
+    {
+        resultList.push_back( (RESTContentReference *) &(it->second) );      
+    }
+
+    return resultList;
+}
+#endif
+
+void 
+RESTContentNode::setVertex( refGraphVertex_t newVertex )
+{
+    vertex = newVertex;
+}
+
+refGraphVertex_t 
+RESTContentNode::getVertex()
+{
+    return vertex;
 }
 
 void 
-RESTContentNode::addChild( RESTContentNode *childPtr )
-{
-    childPtr->setParent( this );
-    children.push_back( childPtr );
-}
-
-unsigned long 
-RESTContentNode::getChildCount()
-{
-    return children.size();
-}
-
-RESTContentNode *
-RESTContentNode::getChildByIndex( unsigned long index )
-{
-    if( index >= children.size() )
-        return NULL;
-
-    return children[ index ];
-}
-
-bool 
-RESTContentNode::getRequiredFields( std::map< std::string, std::string > &fields )
+RESTContentNode::setFieldsFromContentNode( RESTContentNode *objCN )
 {
 
 }
 
-bool 
-RESTContentNode::getOptionalFields( std::map< std::string, std::string > &fields )
+void 
+RESTContentNode::setContentNodeFromFields( RESTContentNode *objCN )
 {
 
 }
 
-bool 
-RESTContentNode::getUpdateFields( std::map< std::string, std::string > &fields )
+#if 0
+RESTContentRef::RESTContentRef()
 {
 
+}
+
+RESTContentRef::~RESTContentRef()
+{
+
+}
+
+void 
+RESTContentRef::setID( std::string newID )
+{
+    refID = newID;
+}
+
+std::string 
+RESTContentRef::getID()
+{
+    return refID;
+}
+#endif
+
+RESTContentManager::RESTContentManager()
+{
+    nextID = 0;
+
+    struct RESTCMVertex rootVProp;
+
+    rootVProp.objID = "root";
+
+    add_vertex( rootVProp, refGraph );
+}
+
+RESTContentManager::~RESTContentManager()
+{
+
+}
+
+std::string 
+RESTContentManager::getUniqueObjID( std::string prefix )
+{
+    char idStr[128];
+
+    // Create a unique id
+    nextID += 1;
+    sprintf( idStr, "%s%d", prefix.c_str(), (int) nextID );
+
+    return idStr;
+}
+
+void 
+RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::string &objID )
+{
+    RESTContentNode *node;
+
+    objID.clear();
+
+    node = newObject( type );
+
+    if( node == NULL )
+        return;
+
+    // Add it to the vertex list
+    struct RESTCMVertex rootVProp;
+
+    rootVProp.objID = node->getID();
+
+    refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
+
+    // Record the vertext in the node object
+    node->setVertex( vertex );
+
+    // Add it to the object map
+    node->setID( getUniqueObjID( idPrefix ) );
+
+    std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
+    objMap.insert( insPair );
+
+    objID = node->getID();
+}
+
+void 
+RESTContentManager::addObj( RESTContentNode *ctObj )
+{
+    std::string idStr;
+
+    idStr = ctObj->getID();
+
+    // Add it to the vertex list
+    struct RESTCMVertex rootVProp;
+
+    rootVProp.objID = ctObj->getID();
+
+    refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
+
+    // Record the vertext in the node object
+    ctObj->setVertex( vertex );
+
+    // Add it to the object map
+    std::pair< std::string, RESTContentNode* > insPair( idStr, ctObj );
+    objMap.insert( insPair );
+}
+
+void 
+RESTContentManager::updateObj( std::string objID, RESTContentNode *inputCN )
+{
+
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    // Find and validate the object
+    it = objMap.find( objID );
+
+    if( it != objMap.end() )
+    {
+        // Remove the vertex
+        it->second->setFieldsFromContentNode( inputCN );
+    }
+}
+
+
+void 
+RESTContentManager::removeObjByID( std::string objID )
+{
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    // Find and validate the object
+    it = objMap.find( objID );
+
+    if( it != objMap.end() )
+    {
+        // Remove the vertex
+        refGraphVertex_t vertex = it->second->getVertex();
+        clear_vertex( vertex, refGraph );
+        remove_vertex( vertex, refGraph );
+
+        // Remove the object from the map
+        objMap.erase( it );
+        return;
+    }
+
+    return;
+}
+
+void 
+RESTContentManager::deleteObjByID( std::string objID )
+{
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    // Find and validate the object
+    it = objMap.find( objID );
+
+    if( it != objMap.end() )
+    {
+        // Remove the vertex
+        refGraphVertex_t vertex = it->second->getVertex();
+        clear_vertex( vertex, refGraph );
+        remove_vertex( vertex, refGraph );
+
+        // Remove the object from the map
+        RESTContentNode *objPtr = it->second;
+
+        // Erase the object
+        objMap.erase( it );
+        delete objPtr;
+        return;
+    }
+
+    return;
+}
+
+void 
+RESTContentManager::removeAllObjects()
+{
+    refGraph.clear();
+    objMap.clear();
+}
+
+void 
+RESTContentManager::deleteAllObjects()
+{
+    // Perform the delete on the actual objects
+    for( std::map< std::string, RESTContentNode* >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        // Remove the object from the map
+        RESTContentNode *objPtr = it->second;
+
+        // Erase the object
+        delete objPtr;       
+    }
+
+    // Clear the data structures
+    refGraph.clear();
+    objMap.clear();
+}
+
+void
+RESTContentManager::addRelationship( std::string relID, std::string parentID, std::string childID )
+{
+    std::map< std::string, RESTContentNode* >::iterator it;
+    RESTContentNode *parentObj;
+    RESTContentNode *childObj;
+    struct RESTCMEdge eProp;
+
+    // Find the parent object
+    it = objMap.find( parentID );
+
+    if( it == objMap.end() )
+        return;
+    
+    parentObj = it->second;
+
+    // Find the child object
+    it = objMap.find( childID );
+
+    if( it == objMap.end() )
+        return;
+    
+    childObj = it->second;
+
+    // Fill in the link metadata
+    eProp.relationID = relID;
+
+    // Add the new edge
+    add_edge( parentObj->getVertex(), childObj->getVertex(), eProp, refGraph );
+}
+
+void
+RESTContentManager::removeRelationship( std::string relID, std::string parentID, std::string childID )
+{
+
+}
+
+RESTContentNode* 
+RESTContentManager::getObjectByID( std::string objID )
+{
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    it = objMap.find( objID );
+
+    if( it != objMap.end() )
+    {
+        return it->second;
+    }
+
+    return NULL;
+}
+
+void 
+RESTContentManager::getIDListForRelationship( std::string parentID, std::string relID, std::vector< std::string > &idList )
+{
+
+}
+
+
+#if 0
+RESTContentNode* 
+RESTContentManager::getObjectFromRef( RESTContentRef &ref )
+{
+    return getObjectByID( ref.getID() );
+}
+#endif
+
+unsigned int 
+RESTContentManager::getObjectCountByType( unsigned int type )
+{
+    unsigned int count = 0;
+    for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        if( it->second->getType() == type )
+            count += 1; 
+    }
+
+    return count;
+}
+
+void 
+RESTContentManager::getIDVectorByType( unsigned int type, std::vector< std::string > &rtnVector )
+{
+    for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        std::cout << "RESTContentManager::getIDVectorByType - " << it->first << ":" << it->second->getObjType() << std::endl;
+        if( it->second->getObjType() == type )
+        {
+            rtnVector.push_back( it->second->getID() );
+        }
+    }
+}
+
+void 
+RESTContentManager::getObjectVectorByType( unsigned int type, std::vector< RESTContentNode* > &rtnVector )
+{
+    for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        if( it->second->getObjType() == type )
+        {
+            rtnVector.push_back( it->second );
+        }
+    }
+}
+
+void 
+RESTContentManager::getObjectList( std::list< RESTContentNode* > &objList )
+{
+    for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        objList.push_back( it->second );
+    }
 }
 
 RESTContentHelper::RESTContentHelper()
@@ -574,7 +1490,7 @@ RESTContentHelperXML::findFieldValue( std::string fieldName, RESTContentNode *cn
 }
 
 bool 
-RESTContentHelperXML::parseWithTemplate( RESTContentNode *templateCN, RESTRepresentation *repPtr )
+RESTContentHelperXML::parseWithTemplate( RESTContentTemplate *templateCN, RESTRepresentation *repPtr )
 {
     xmlDocPtr      doc;
     xmlNode       *rootElem;
@@ -625,9 +1541,9 @@ RESTContentHelperXML::parseWithTemplate( RESTContentNode *templateCN, RESTRepres
         rootCN->setName( templateCN->getName() );
 
         // Go through the fields in the template and try to match those.
-        std::vector< RESTContentField* > fieldList = templateCN->getFieldList();
+        std::vector< RESTContentFieldDef* > fieldList = templateCN->getFieldList();
 
-        for( std::vector< RESTContentField* >::const_iterator it = fieldList.begin(); it != fieldList.end(); ++it )
+        for( std::vector< RESTContentFieldDef* >::const_iterator it = fieldList.begin(); it != fieldList.end(); ++it )
         {
             std::cout << "Field Name: " << (*it)->getName() << std::endl;
             if( findFieldValue( (*it)->getName(), rootCN, doc, rootElem ) == false )
@@ -689,7 +1605,7 @@ RESTContentHelperXML::generateArrayContent( RESTContentNode *arrCN, RESTRepresen
 
     for( int indx = 0; indx < arrCN->getChildCount(); indx++ )
     {
-        RESTContentNode *childCN = arrCN->getChildByIndex( indx );
+        RESTContentNode *childCN = (RESTContentNode *)arrCN->getChildByIndex( indx );
         
         generateChildContent( childCN, repPtr );
     }
@@ -729,7 +1645,7 @@ RESTContentHelperXML::generateObjectContent( RESTContentNode *objCN, RESTReprese
 
     for( int indx = 0; indx < objCN->getChildCount(); indx++ )
     {
-        RESTContentNode *childCN = objCN->getChildByIndex( indx );
+        RESTContentNode *childCN = (RESTContentNode *)objCN->getChildByIndex( indx );
         
         generateChildContent( childCN, repPtr );
     }
@@ -842,6 +1758,18 @@ RESTContentHelperFactory::newContentNode()
 
 void 
 RESTContentHelperFactory::freeContentNode( RESTContentNode *nodePtr )
+{
+    delete nodePtr;
+}
+
+RESTContentTemplate *
+RESTContentHelperFactory::newContentTemplate()
+{
+    return new RESTContentTemplate();
+}
+
+void 
+RESTContentHelperFactory::freeContentTemplate( RESTContentTemplate *nodePtr )
 {
     delete nodePtr;
 }

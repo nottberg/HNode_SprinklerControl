@@ -128,6 +128,16 @@ class ScheduleTimeIterator
         void setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval );
 };
 
+typedef enum ScheduleRestObjectTemplateID
+{
+    SCH_ROTID_ROOT         = 0,
+    SCH_ROTID_ZONEGROUP    = 1,
+    SCH_ROTID_ZONERULE     = 2,
+    SCH_ROTID_TRIGGERGROUP = 3,
+    SCH_ROTID_TRIGGERRULE  = 4,
+    SCH_ROTID_EVENTRULE    = 5
+}SCH_ROTID_T;
+
 class ScheduleAction
 {
     private:
@@ -267,16 +277,18 @@ typedef enum ScheduleZoneRuleType
     SZR_TYPE_FIXED_DURATION = 1
 }SZR_TYPE_T;
 
-class ScheduleZoneRule : public ScheduleAction
+class ScheduleZoneRule : public RESTContentNode, public ScheduleAction
 {
     private:
-        std::string           id;
-        std::string           name;
+        RESTContentManager     &objManager;
+    
+        std::string             id;
+        std::string             name;
         //Zone                 *zone;
         //ScheduleTimeDuration  duration;
 
     public:
-        ScheduleZoneRule();
+        ScheduleZoneRule( RESTContentManager &objMgr );
        ~ScheduleZoneRule();
 
         virtual SZR_TYPE_T getType();       
@@ -293,13 +305,14 @@ class ScheduleZoneRule : public ScheduleAction
         virtual void poll( ScheduleDateTime &curTime );
         virtual void complete( ScheduleDateTime &curTime );
 
-        static RESTContentNode *generateCreateTemplate();
-        static RESTContentNode *generateUpdateTemplate();
+        static RESTContentTemplate *generateContentTemplate();
 
+        virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN ); 
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
         virtual bool buildRCNodeTree( RESTContentNode *rootCN );
+        static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
 };
 
 // Run the associated zone for a fixed duration.
@@ -310,7 +323,7 @@ class SZRFixedDuration : public ScheduleZoneRule
         ScheduleTimeDuration  duration;
 
     public:
-        SZRFixedDuration();
+        SZRFixedDuration( RESTContentManager &objMgr );
        ~SZRFixedDuration();
 
         virtual SZR_TYPE_T getType();       
@@ -340,18 +353,20 @@ typedef enum ScheduleEventRuleZoneEventPolicy
     SER_ZEP_SEQUENCIAL = 1,
 }SER_ZONE_EVENT_POLICY;
 
-class ScheduleZoneGroup
+class ScheduleZoneGroup : public RESTContentNode
 {
     private:
+        RESTContentManager &objManager;
+
         std::string id;
         std::string name;
 
-        std::vector< ScheduleZoneRule * > zoneList;
+        //std::vector< RESTContentRef > zoneList;
 
         SER_ZONE_EVENT_POLICY zonePolicy;
 
     public:
-        ScheduleZoneGroup();
+        ScheduleZoneGroup( RESTContentManager &objMgr );
        ~ScheduleZoneGroup();
 
         void setID( std::string idValue );
@@ -378,13 +393,14 @@ class ScheduleZoneGroup
 
         void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime );
 
-        static RESTContentNode *generateCreateTemplate();
-        static RESTContentNode *generateUpdateTemplate();
+        static RESTContentTemplate *generateContentTemplate();
 
-        void setFieldsFromContentNode( RESTContentNode *objCN );
-        void setContentNodeFromFields( RESTContentNode *objCN );
+        virtual unsigned int getObjType();
+        virtual void setFieldsFromContentNode( RESTContentNode *objCN );
+        virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
         bool buildRCNodeTree( RESTContentNode *rootCN );
+        static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
 };
 
 typedef enum ScheduleTriggerRuleType
@@ -393,16 +409,18 @@ typedef enum ScheduleTriggerRuleType
     STR_TYPE_TIME   = 1
 }STR_TYPE_T;
 
-class ScheduleTriggerRule
+class ScheduleTriggerRule : public RESTContentNode
 {
     private:
+        RESTContentManager &objManager;
+
         std::string    id;
         std::string    name;
 
         //STR_TYPE_T     type;
 
     public:
-        ScheduleTriggerRule();
+        ScheduleTriggerRule( RESTContentManager &objMgr );
        ~ScheduleTriggerRule();
 
         virtual STR_TYPE_T getType();       
@@ -417,14 +435,14 @@ class ScheduleTriggerRule
 
         virtual bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
 
+        virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN );
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
-        static RESTContentNode *generateCreateTemplate();
-        static RESTContentNode *generateUpdateTemplate();
+        static RESTContentTemplate *generateContentTemplate();
 
         virtual bool buildRCNodeTree( RESTContentNode *rootCN );
-
+        static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
 };
 
 typedef enum ScheduleTimeTriggerScope 
@@ -458,7 +476,7 @@ class ScheduleTimeTrigger : public ScheduleTriggerRule
         ScheduleDateTime   refTime;
 
     public:
-        ScheduleTimeTrigger();
+        ScheduleTimeTrigger( RESTContentManager &objMgr );
        ~ScheduleTimeTrigger();
 
         virtual STR_TYPE_T getType();       
@@ -483,16 +501,18 @@ class ScheduleTimeTrigger : public ScheduleTriggerRule
 };
 
 // Manage a set of triggers to cause the event to fire.
-class ScheduleTriggerGroup
+class ScheduleTriggerGroup : public RESTContentNode
 {
     private:
+        RESTContentManager &objManager;
+
         std::string id;
         std::string name;
 
-        std::vector< ScheduleTriggerRule * > ruleList;
+        //std::vector< RESTContentRef > ruleList;
 
     public:
-        ScheduleTriggerGroup();
+        ScheduleTriggerGroup( RESTContentManager &objMgr);
        ~ScheduleTriggerGroup();
 
         void setID( std::string idValue );
@@ -512,18 +532,22 @@ class ScheduleTriggerGroup
 
         bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
 
-        static RESTContentNode *generateCreateTemplate();
-        static RESTContentNode *generateUpdateTemplate();
+        static RESTContentTemplate *generateContentTemplate();
 
-        void setFieldsFromContentNode( RESTContentNode *objCN );
-        void setContentNodeFromFields( RESTContentNode *objCN );
+        virtual unsigned int getObjType();
+        virtual void setFieldsFromContentNode( RESTContentNode *objCN );
+        virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
         bool buildRCNodeTree( RESTContentNode *rootCN );
+        static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
+
 };
 
-class ScheduleEventRule
+class ScheduleEventRule : public RESTContentNode
 {
     private:
+
+        RESTContentManager &objManager;
 
         bool enabled;
 
@@ -537,9 +561,12 @@ class ScheduleEventRule
 
         //std::vector<ScheduleRecurrenceRule> recurrenceList;
         //std::vector<ScheduleZoneRule> zoneRuleList;
-        ScheduleZoneGroup *zoneGroup;
+        //ScheduleZoneGroup *zoneGroup;
+        //RESTContentRef zoneRef;
+
         //ScheduleDateTime  refTime;
-        ScheduleTriggerGroup *triggerGroup;
+        //ScheduleTriggerGroup *triggerGroup;
+        //RESTContentRef triggerRef;
 
         bool fireManually;
 
@@ -549,7 +576,7 @@ class ScheduleEventRule
         //void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
 
     public:
-        ScheduleEventRule();
+        ScheduleEventRule( RESTContentManager &objMgr );
        ~ScheduleEventRule();
 
         void setEnabled();
@@ -585,8 +612,9 @@ class ScheduleEventRule
         void setTriggerGroup( ScheduleTriggerGroup *tg );
         std::string getTriggerGroupID();
  
-        void setFieldsFromContentNode( RESTContentNode *objCN ); 
-        void setContentNodeFromFields( RESTContentNode *objCN );
+        virtual unsigned int getObjType();
+        virtual void setFieldsFromContentNode( RESTContentNode *objCN ); 
+        virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
         bool buildRCNodeTree( RESTContentNode *rootCN );
 
@@ -596,9 +624,8 @@ class ScheduleEventRule
         //static void initOptionalFieldMap( std::map< std::string, std::string > &fieldMap );
         //static void initUpdateFieldMap( std::map< std::string, std::string > &fieldMap );
 
-        static RESTContentNode *generateCreateTemplate();
-        static RESTContentNode *generateUpdateTemplate();
-
+        static RESTContentTemplate *generateContentTemplate();
+        static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
 };
 
 class SMException : public std::exception
@@ -632,7 +659,7 @@ class SMException : public std::exception
         }
 };
 
-class ScheduleManager
+class ScheduleManager : public RESTContentManager, RESTContentObjectCallback, RESTContentListCallback
 {
     private:
         std::string cfgPath;
@@ -640,14 +667,14 @@ class ScheduleManager
 
         unsigned long nextID;
 
-        std::vector<ScheduleEventRule *> eventRuleList;
+        //std::vector<ScheduleEventRule *> eventRuleList;
 
         ScheduleEventList activeEvents;
 
         ZoneManager *zoneMgr;
-        std::vector<ScheduleZoneGroup *> zoneGroupList;
+        //std::vector<ScheduleZoneGroup *> zoneGroupList;
 
-        std::vector<ScheduleTriggerGroup *> triggerGroupList;
+        //std::vector<ScheduleTriggerGroup *> triggerGroupList;
 
         bool getAttribute( xmlNode *elem, std::string attrName, std::string &result );
         bool getChildContent( xmlNode *elem, std::string childName, std::string &result );
@@ -665,6 +692,10 @@ class ScheduleManager
         bool saveEventRuleList();
 
         bool saveConfigNew();
+        bool loadConfigNew();
+
+        virtual RESTContentNode* newObject( unsigned int type );
+        virtual RESTContentTemplate *getContentTemplateForType( unsigned int type );
 
     public:
         ScheduleManager();
@@ -720,8 +751,8 @@ class ScheduleManager
 
         ScheduleEventRule *createNewEventRule();
         void freeNewEventRule( ScheduleEventRule *ruleObj );
-        void addNewEventRule( ScheduleEventRule *event );
-        void addNewEventRule( RESTContentNode *rootCN, ScheduleEventRule **newEvent );
+//        void addNewEventRule( ScheduleEventRule *event );
+//        void addNewEventRule( RESTContentNode *rootCN, ScheduleEventRule **newEvent );
         void updateEventRule( std::string erID, RESTContentNode *rootCN );
 
         void generateScheduleRuleListContent( RESTContentNode *rootCN ); 
@@ -739,6 +770,22 @@ class ScheduleManager
         ScheduleEventList *getEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime );
 
         void freeScheduleEventList( ScheduleEventList *listPtr );
+
+//        virtual bool lookupObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType );
+//        virtual bool createObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType, std::string &objID );
+
+
+
+        virtual void startObject( std::string objID );
+        virtual void fieldsValid( std::string objID );
+        virtual void startChild( std::string objID );
+        virtual void endChild( std::string objID );
+        virtual void endObject( std::string objID );
+        virtual void updateField( std::string objID, std::string name, std::string value );
+        virtual void updateRef( std::string objID, std::string name, std::string value );
+        virtual void updateTag( std::string objID, std::string name, std::string value );
+
+        virtual void addListMember( std::string objID, std::string listID, std::string childID );
 };
 
 #endif // __SCHEDULE_MANAGER_H__

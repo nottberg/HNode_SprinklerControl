@@ -144,7 +144,7 @@ RESTRequest::processUploadData( const char *upload_data, size_t upload_data_size
         return 0;
     }
 
-    printf( "processUploadData - length: %d \n", upload_data_size );
+    printf( "processUploadData - length: %d \n", (int) upload_data_size );
 
     int result = MHD_post_process( postProcessor, upload_data, upload_data_size );
 

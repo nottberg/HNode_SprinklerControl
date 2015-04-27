@@ -4,37 +4,22 @@
 #include "REST/REST.hpp"
 #include "ScheduleManager.hpp"
 
-class ScheduleZoneGroupListResource : public RESTResource
+class ScheduleZoneGroupListResource : public RESTResourceRESTContentList
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleZoneGroupListResource();
+        ScheduleZoneGroupListResource( ScheduleManager &mgr );
        ~ScheduleZoneGroupListResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPost( RESTRequest *request );
-
 };
 
-class ScheduleZoneGroupResource : public RESTResource
+class ScheduleZoneGroupResource : public RESTResourceRESTContentObject
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleZoneGroupResource();
+        ScheduleZoneGroupResource( ScheduleManager &mgr );
        ~ScheduleZoneGroupResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPut( RESTRequest *request );
-        virtual void restDelete( RESTRequest *request );
-
 };
 
 class ScheduleZoneRuleListResource : public RESTResource
@@ -70,37 +55,22 @@ class ScheduleZoneRuleResource : public RESTResource
 
 };
 
-class ScheduleTriggerGroupListResource : public RESTResource
+class ScheduleTriggerGroupListResource : public RESTResourceRESTContentList
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleTriggerGroupListResource();
+        ScheduleTriggerGroupListResource( ScheduleManager &mgr );
        ~ScheduleTriggerGroupListResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPost( RESTRequest *request );
-
 };
 
-class ScheduleTriggerGroupResource : public RESTResource
+class ScheduleTriggerGroupResource : public RESTResourceRESTContentObject
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleTriggerGroupResource();
+        ScheduleTriggerGroupResource( ScheduleManager &mgr );
        ~ScheduleTriggerGroupResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPut( RESTRequest *request );
-        virtual void restDelete( RESTRequest *request );
-
 };
 
 class ScheduleTriggerRuleListResource : public RESTResource
@@ -136,36 +106,22 @@ class ScheduleTriggerRuleResource : public RESTResource
 
 };
 
-class ScheduleRuleListResource : public RESTResource
+class ScheduleRuleListResource : public RESTResourceRESTContentList
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleRuleListResource();
+        ScheduleRuleListResource( ScheduleManager &mgr );
        ~ScheduleRuleListResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPost( RESTRequest *request );
 };
 
-class ScheduleRuleResource : public RESTResource
+class ScheduleRuleResource : public RESTResourceRESTContentObject
 {
     private:
-        ScheduleManager *schManager;
 
     public:
-        ScheduleRuleResource();
+        ScheduleRuleResource( ScheduleManager &mgr );
        ~ScheduleRuleResource();
-
-        void setScheduleManager( ScheduleManager *schMgr );
-
-        virtual void restGet( RESTRequest *request );
-        virtual void restPut( RESTRequest *request );
-        virtual void restDelete( RESTRequest *request );
-
 };
 
 class ScheduleCalendarEventResource : public RESTResource

@@ -106,6 +106,12 @@ typedef struct IrrigationNodeContext
     ScheduleCalendarEventResource calEventResource;
 
 //    ScheduleResource         scheduleResource;
+    IrrigationNodeContext() : schRuleListResource( this->scheduleManager ),
+                              schRuleResource( this->scheduleManager ),
+                              schZGListResource( this->scheduleManager ),
+                              schZGResource( this->scheduleManager ),
+                              schTGListResource( this->scheduleManager ),
+                              schTGResource( this->scheduleManager ) {}
 
 }CONTEXT;
 
@@ -342,14 +348,14 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->Rest.registerResource( &(Context->zoneResource) );
     Context->Rest.registerResource( &(Context->zoneMapResource) );
 
-    Context->schZGListResource.setScheduleManager( &Context->scheduleManager );
-    Context->schZGResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schZGListResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schZGResource.setScheduleManager( &Context->scheduleManager );
 
-    Context->schTGListResource.setScheduleManager( &Context->scheduleManager );
-    Context->schTGResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schTGListResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schTGResource.setScheduleManager( &Context->scheduleManager );
 
-    Context->schRuleListResource.setScheduleManager( &Context->scheduleManager );
-    Context->schRuleResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schRuleListResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schRuleResource.setScheduleManager( &Context->scheduleManager );
 
     Context->Rest.registerResource( &(Context->schZGListResource) );
     Context->Rest.registerResource( &(Context->schZGResource) );
@@ -468,7 +474,7 @@ main (AVAHI_GCC_UNUSED int argc, AVAHI_GCC_UNUSED char *argv[])
 
     
     // Initialize the gobject type system
-    g_type_init();
+    //g_type_init();
 
     // Parse any command line options.
     cmdline_context = g_option_context_new ("- a hnode implementation for raspberry pi sprinkler controller.");
