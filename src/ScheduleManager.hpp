@@ -703,6 +703,7 @@ class ScheduleManager : public RESTContentManager, RESTContentObjectCallback, RE
 
         void setZoneManager( ZoneManager *zoneMgr );
 
+#if 0
         ScheduleZoneGroup *createNewZoneGroup();
         void freeNewZoneGroup( ScheduleZoneGroup *grpObj );
         void addNewZoneGroup( RESTContentNode *rootCN, ScheduleZoneGroup **newEvent );
@@ -714,6 +715,7 @@ class ScheduleManager : public RESTContentManager, RESTContentObjectCallback, RE
         void addNewZoneRule( std::string zgID, RESTContentNode *rootCN, ScheduleZoneRule **newEvent );
         void updateZoneRule( std::string zgID, std::string ruleID, RESTContentNode *rootCN );
         void deleteZoneRule( std::string zgID, std::string ruleID );
+#endif
 
         unsigned int getZoneGroupCount();
         ScheduleZoneGroup *getZoneGroupByIndex( unsigned int index );
@@ -724,22 +726,24 @@ class ScheduleManager : public RESTContentManager, RESTContentObjectCallback, RE
         void generateZoneGroupRuleListContent( std::string zoneGroupID, RESTContentNode *rootCN ); 
         void generateZoneGroupRuleContent( std::string zoneGroupID, std::string ruleID, RESTContentNode *rootCN ); 
 
+#if 0
         ScheduleTriggerGroup *createNewTriggerGroup();
         void freeNewTriggerGroup( ScheduleTriggerGroup *ruleObj );
         void addNewTriggerGroup( RESTContentNode *rootCN, ScheduleTriggerGroup **newEvent );
         void updateTriggerGroup( std::string zgID, RESTContentNode *rootCN );
         void deleteTriggerGroup( std::string zgID );
-
+#endif
         unsigned int getTriggerGroupCount();
         ScheduleTriggerGroup *getTriggerGroupByIndex( unsigned int index );
         ScheduleTriggerGroup *getTriggerGroupByID( std::string tgID );
 
+#if 0
         ScheduleTriggerRule *createNewTriggerRule( RESTContentNode *rootCN );
         void freeNewTriggerRule( ScheduleTriggerRule *ruleObj );
         void addNewTriggerRule( std::string tgID, RESTContentNode *rootCN, ScheduleTriggerRule **newEvent );
         void updateTriggerRule( std::string tgID, std::string ruleID, RESTContentNode *rootCN );
         void deleteTriggerRule( std::string tgID, std::string ruleID );
-
+#endif
         void generateTriggerGroupListContent( RESTContentNode *rootCN ); 
         void generateTriggerGroupContent( std::string ruleID, RESTContentNode *rootCN ); 
         void generateTriggerGroupRuleListContent( std::string triggerGroupID, RESTContentNode *rootCN ); 
@@ -749,11 +753,11 @@ class ScheduleManager : public RESTContentManager, RESTContentObjectCallback, RE
         ScheduleEventRule *getEventRuleByIndex( unsigned int index );
         ScheduleEventRule *getEventRuleByID( std::string erID );
 
-        ScheduleEventRule *createNewEventRule();
-        void freeNewEventRule( ScheduleEventRule *ruleObj );
+//        ScheduleEventRule *createNewEventRule();
+//        void freeNewEventRule( ScheduleEventRule *ruleObj );
 //        void addNewEventRule( ScheduleEventRule *event );
 //        void addNewEventRule( RESTContentNode *rootCN, ScheduleEventRule **newEvent );
-        void updateEventRule( std::string erID, RESTContentNode *rootCN );
+//        void updateEventRule( std::string erID, RESTContentNode *rootCN );
 
         void generateScheduleRuleListContent( RESTContentNode *rootCN ); 
         void generateEventRuleContent( std::string ruleID, RESTContentNode *rootCN ); 

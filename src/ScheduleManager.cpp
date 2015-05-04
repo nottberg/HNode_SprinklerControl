@@ -2143,7 +2143,7 @@ ScheduleManager::getZoneGroupByID( std::string zgID )
 #endif
     return zgObj;
 }
-
+#if 0
 void 
 ScheduleManager::addNewZoneGroup( RESTContentNode *rootCN, ScheduleZoneGroup **newGroup )
 {
@@ -2323,6 +2323,7 @@ ScheduleManager::deleteZoneRule( std::string zgID, std::string zoneRuleID )
     throw SMException( 110, "Zone Group with id " + zgID +", does not exist"); 
 #endif
 }
+#endif
 
 void
 ScheduleManager::generateZoneGroupListContent( RESTContentNode *rootNode )
@@ -2466,6 +2467,7 @@ ScheduleManager::getTriggerGroupByID( std::string tgID )
     return tgObj;
 }
 
+#if 0
 void 
 ScheduleManager::addNewTriggerGroup( RESTContentNode *rootCN, ScheduleTriggerGroup **newGroup )
 {
@@ -2631,6 +2633,8 @@ ScheduleManager::deleteTriggerRule( std::string tgID, std::string ruleID )
 #endif
 }
 
+#endif
+
 void
 ScheduleManager::generateTriggerGroupListContent( RESTContentNode *rootNode )
 {
@@ -2774,6 +2778,7 @@ ScheduleManager::getEventRuleByID( std::string erID )
     return erObj;
 }
 
+#if 0
 ScheduleEventRule *
 ScheduleManager::createNewEventRule()
 {
@@ -2874,14 +2879,12 @@ ScheduleManager::createNewTriggerRule( RESTContentNode *rootCN )
     return ruleObj;
 }
 
-
 void
 ScheduleManager::freeNewEventRule( ScheduleEventRule *ruleObj )
 {
     delete ruleObj;
 }
 
-#if 0
 void 
 ScheduleManager::addNewEventRule( ScheduleEventRule *ruleObj )
 {
@@ -2937,7 +2940,6 @@ ScheduleManager::addNewEventRule( RESTContentNode *rootCN, ScheduleEventRule **n
     *newEvent = ruleObj;
 
 }
-#endif
 
 void 
 ScheduleManager::updateEventRule( std::string erID, RESTContentNode *rootCN )
@@ -2955,7 +2957,6 @@ ScheduleManager::updateEventRule( std::string erID, RESTContentNode *rootCN )
         throw SMException( 103, "Specified schdule event rule does not exist");
     }
 
-#if 0
     // Check for a zone group update.
     if( rootCN->getRef( "zone-group-ref", tmpValue ) )
     {
@@ -2983,7 +2984,7 @@ ScheduleManager::updateEventRule( std::string erID, RESTContentNode *rootCN )
         // Set the update zone group on the object
         ruleObj->setTriggerGroup( tgObj );
     }
-#endif
+
 
     // Have the object fill in it's internal members
     ruleObj->setFieldsFromContentNode( rootCN );
@@ -2991,6 +2992,7 @@ ScheduleManager::updateEventRule( std::string erID, RESTContentNode *rootCN )
     // Save the new configuration
     saveConfiguration();
 }
+#endif
 
 void
 ScheduleManager::generateScheduleRuleListContent( RESTContentNode *rootNode )

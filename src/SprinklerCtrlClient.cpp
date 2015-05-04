@@ -64,6 +64,7 @@ int main( int argc, char* argv[] )
         ("zone-group", "Operate on zone groups.")
         ("trigger-group", "Operate on trigger groups")
         ("zone-rule", "Operate on a zone rule")
+        ("trigger-rule", "Operate on a trigger rule")
 
         ("cmd", "dummy cmd")
         ("objid", po::value<std::string>(&objID), "The object id.")
@@ -112,6 +113,17 @@ int main( int argc, char* argv[] )
             }
 
             url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members";
+        }
+        else if( vm.count( "trigger-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid" ) )
+            {
+                fprintf( stderr, "The objid parameter is required\n" );
+                return -1;
+            }
+
+            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members";
         }
  
         // get a curl handle 
@@ -190,6 +202,18 @@ int main( int argc, char* argv[] )
             post = "<schedule-zone-rule><name>Zone Rule</name><type>fixedduration</type><duration>600</duration></schedule-zone-rule>";
             url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members";
         }
+        else if( vm.count( "trigger-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid" ) )
+            {
+                fprintf( stderr, "The objid parameter is required\n" );
+                return -1;
+            }
+
+            post = "<schedule-trigger-rule><name>Zone Rule</name><type>fixedduration</type><duration>600</duration></schedule-trigger-rule>";
+            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members";
+        }
 
         // get a curl handle 
         curl = curl_easy_init();
@@ -265,6 +289,17 @@ int main( int argc, char* argv[] )
 
             url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
         }
+        else if( vm.count( "trigger-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid2" ) )
+            {
+                fprintf( stderr, "The objid2 parameter is required\n" );
+                return -1;
+            }
+
+            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
+        }
 
         // get a curl handle 
         curl = curl_easy_init();
@@ -337,6 +372,30 @@ int main( int argc, char* argv[] )
             putData = "<schedule-trigger-group><name>Update Name</name></schedule-trigger-group>";
             url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID;
         }
+        else if( vm.count( "zone-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid2" ) )
+            {
+                fprintf( stderr, "The objid2 parameter is required\n" );
+                return -1;
+            }
+
+            putData = "<schedule-zone-rule><name>Update Rule</name><duration>300</duration></schedule-zone-rule>";
+            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
+        }
+        else if( vm.count( "trigger-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid2" ) )
+            {
+                fprintf( stderr, "The objid2 parameter is required\n" );
+                return -1;
+            }
+
+            putData = "<schedule-trigger-rule><name>Update Rule</name><duration>300</duration></schedule-trigger-rule>";
+            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
+        }
 
         // get a curl handle 
         curl = curl_easy_init();
@@ -405,6 +464,28 @@ int main( int argc, char* argv[] )
         else if( vm.count( "trigger-group" ) )
         {
             url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID;
+        }
+        else if( vm.count( "zone-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid2" ) )
+            {
+                fprintf( stderr, "The objid2 parameter is required\n" );
+                return -1;
+            }
+
+            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
+        }
+        else if( vm.count( "trigger-rule" ) )
+        {
+            // objID must have been specified
+            if( !vm.count( "objid2" ) )
+            {
+                fprintf( stderr, "The objid2 parameter is required\n" );
+                return -1;
+            }
+
+            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
         }
 
         // get a curl handle 
