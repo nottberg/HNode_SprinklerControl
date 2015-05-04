@@ -22,36 +22,36 @@ class ScheduleZoneGroupResource : public RESTResourceRESTContentObject
        ~ScheduleZoneGroupResource();
 };
 
-class ScheduleZoneRuleListResource : public RESTResource
+class ScheduleZoneRuleListResource : public RESTResourceRESTContentList
 {
     private:
-        ScheduleManager *schManager;
+//        ScheduleManager *schManager;
 
     public:
-        ScheduleZoneRuleListResource();
+        ScheduleZoneRuleListResource( ScheduleManager &mgr );
        ~ScheduleZoneRuleListResource();
 
-        void setScheduleManager( ScheduleManager *schMgr );
+//        void setScheduleManager( ScheduleManager *schMgr );
 
-        virtual void restGet( RESTRequest *request );
-        virtual void restPost( RESTRequest *request );
+//        virtual void restGet( RESTRequest *request );
+//        virtual void restPost( RESTRequest *request );
 
 };
 
-class ScheduleZoneRuleResource : public RESTResource
+class ScheduleZoneRuleResource : public RESTResourceRESTContentObject
 {
     private:
-        ScheduleManager *schManager;
+//        ScheduleManager *schManager;
 
     public:
-        ScheduleZoneRuleResource();
+        ScheduleZoneRuleResource( ScheduleManager &mgr );
        ~ScheduleZoneRuleResource();
 
-        void setScheduleManager( ScheduleManager *schMgr );
+//        void setScheduleManager( ScheduleManager *schMgr );
 
-        virtual void restGet( RESTRequest *request );
-        virtual void restPut( RESTRequest *request );
-        virtual void restDelete( RESTRequest *request );
+//        virtual void restGet( RESTRequest *request );
+//        virtual void restPut( RESTRequest *request );
+//        virtual void restDelete( RESTRequest *request );
 
 };
 

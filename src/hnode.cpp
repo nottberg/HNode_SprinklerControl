@@ -110,6 +110,8 @@ typedef struct IrrigationNodeContext
                               schRuleResource( this->scheduleManager ),
                               schZGListResource( this->scheduleManager ),
                               schZGResource( this->scheduleManager ),
+                              schZoneRuleListResource( this->scheduleManager ),
+                              schZoneRuleResource( this->scheduleManager ),
                               schTGListResource( this->scheduleManager ),
                               schTGResource( this->scheduleManager ) {}
 
@@ -366,8 +368,8 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->Rest.registerResource( &(Context->schRuleListResource) );
     Context->Rest.registerResource( &(Context->schRuleResource) );
 
-    Context->schZoneRuleListResource.setScheduleManager( &Context->scheduleManager );
-    Context->schZoneRuleResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schZoneRuleListResource.setScheduleManager( &Context->scheduleManager );
+    //Context->schZoneRuleResource.setScheduleManager( &Context->scheduleManager );
 
     Context->Rest.registerResource( &(Context->schZoneRuleListResource) );
     Context->Rest.registerResource( &(Context->schZoneRuleResource) );

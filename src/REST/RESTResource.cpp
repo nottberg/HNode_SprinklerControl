@@ -54,6 +54,40 @@ RESTResourcePE::isMatch( std::string testElem )
     return false;
 }
 
+RESTResourceRelationship::RESTResourceRelationship()
+{
+
+}
+
+RESTResourceRelationship::~RESTResourceRelationship()
+{
+
+}
+
+void 
+RESTResourceRelationship::setListID( std::string listID )
+{
+    list = listID;
+}
+
+void 
+RESTResourceRelationship::setChildParamID( std::string urlID )
+{
+    paramID = urlID;
+}
+
+std::string 
+RESTResourceRelationship::getListID()
+{
+    return list;
+}
+
+std::string 
+RESTResourceRelationship::getChildParamID()
+{
+    return paramID;
+}
+
 RESTResource::RESTResource()
 {
 
@@ -234,16 +268,114 @@ RESTResource::restDelete( RESTRequest *request )
     request->sendResponse();
 }
 
-RESTResourceRESTContentList::RESTResourceRESTContentList( std::string pattern, RESTContentManager &mgr, unsigned int type, std::string list, std::string prefix, std::string relationshipName, std::string relationshipRoot )
+RESTContentManagerResource::RESTContentManagerResource( RESTContentManager &mgr )
 : contentMgr( mgr )
+{
+
+
+}
+
+RESTContentManagerResource::~RESTContentManagerResource()
+{
+
+}
+
+void 
+RESTContentManagerResource::clearRelationships()
+{
+    relationshipStack.clear();
+}
+
+void 
+RESTContentManagerResource::appendRelationship( std::string listName, std::string childParamID )
+{
+    RESTResourceRelationship relObj;
+
+    relObj.setListID( listName );
+    relObj.setChildParamID( childParamID );
+
+    relationshipStack.push_back( relObj );
+}
+
+bool
+RESTContentManagerResource::checkObjectRelationships( RESTRequest *request, std::string &terminalID )
+{
+    std::string paramID;
+    std::string curRootID = "root";
+
+    // Havent found anything yet.
+    terminalID.clear();
+
+    // Walk though any relationships and find the terminating ID
+    for( std::vector<RESTResourceRelationship>::iterator it = relationshipStack.begin(); it != relationshipStack.end(); ++it )
+    {
+        if( request->getURIParameter( it->getChildParamID(), paramID ) )
+        {
+            printf("Failed to look up ruleid parameter\n");
+            return true;
+        }
+
+        std::cout << "checkObjectRelationships: " << curRootID << ", " << paramID << ", " << it->getListID() << std::endl;
+
+        if( contentMgr.hasRelationship( curRootID, paramID, it->getListID() ) == false )
+        {
+            printf("Failed to look up ruleid parameter\n");
+            return true;
+        }
+
+        // Take the next step
+        curRootID = paramID;
+
+        printf( "checkObjectRelationships: %s\n", curRootID.c_str() );
+    }
+
+    // Report back the last match
+    terminalID = curRootID;
+
+    // Success
+    return false;
+}
+
+void 
+RESTContentManagerResource::restGet( RESTRequest *request )
+{
+    std::cout << "RESTResource::restGet" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
+}
+
+void 
+RESTContentManagerResource::restPut( RESTRequest *request )
+{
+    std::cout << "RESTResource::restPut" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
+}
+
+void 
+RESTContentManagerResource::restPost( RESTRequest *request )
+{
+    std::cout << "RESTResource::restPost" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
+}
+
+void 
+RESTContentManagerResource::restDelete( RESTRequest *request )
+{
+    std::cout << "RESTResource::restDelete" << std::endl;
+    request->setResponseCode( REST_HTTP_RCODE_NOT_IMPLEMENTED );
+    request->sendResponse();
+}
+
+RESTResourceRESTContentList::RESTResourceRESTContentList( std::string pattern, RESTContentManager &mgr, unsigned int type, std::string list, std::string prefix )
+: RESTContentManagerResource( mgr )
 {
     setURLPattern( pattern, (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_POST ) );
 
-    objType   = type;
-    listName  = list;
-    objPrefix = prefix;
-    relName   = relationshipName;
-    relRoot   = relationshipRoot;
+    objType      = type;
+    listElement  = list;
+    objPrefix    = prefix;
 }
 
 RESTResourceRESTContentList::~RESTResourceRESTContentList()
@@ -272,12 +404,21 @@ RESTResourceRESTContentList::restGet( RESTRequest *request )
         objNode = helper->getRootNode();
 
         // Create the root object
-        objNode->setAsArray( listName );
+        objNode->setAsArray( listElement );
+
+        // Resolve relationships to a terminalID and its parent
+        std::string parentID;
+
+        if( checkObjectRelationships( request, parentID ) )
+        {
+            throw new RCMException( 1004, "Could not resolve parent ID" );
+        }
 
         // Enumerate the zone-group list
         std::vector< std::string > idList;
 
-        contentMgr.getIDVectorByType( objType, idList );
+        contentMgr.getIDListForRelationship( parentID, listElement, idList );
+        //contentMgr.getIDVectorByType( objType, idList );
 
         for( std::vector< std::string >::iterator it = idList.begin() ; it != idList.end(); ++it)
         {
@@ -331,10 +472,18 @@ RESTResourceRESTContentList::restPost( RESTRequest *request )
         // Parse the content based on the template ( throws an exception for missing content )
         helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
 
+        // Resolve relationships to a terminalID and its parent
+        std::string parentID;
+
+        if( checkObjectRelationships( request, parentID ) )
+        {
+            throw new RCMException( 1004, "Could not resolve parent ID" );
+        }
+
         // Create the new object
         contentMgr.createObj( objType, objPrefix, objID );
         contentMgr.updateObj( objID, helper->getRootNode() );
-        contentMgr.addRelationship( relName, relRoot, objID );
+        contentMgr.addRelationship( listElement, parentID, objID );
     }
     catch( RCMException& me )
     {
@@ -352,13 +501,12 @@ RESTResourceRESTContentList::restPost( RESTRequest *request )
 }
 
 
-RESTResourceRESTContentObject::RESTResourceRESTContentObject(  std::string pattern, RESTContentManager &mgr, unsigned int type, std::string idParam )
-: contentMgr( mgr )
+RESTResourceRESTContentObject::RESTResourceRESTContentObject(  std::string pattern, RESTContentManager &mgr, unsigned int type )
+: RESTContentManagerResource( mgr )
 {
     setURLPattern( pattern, (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE ) );
  
     objType  = type;
-    objUrlID = idParam; 
 }
 
 RESTResourceRESTContentObject::~RESTResourceRESTContentObject()
@@ -374,12 +522,20 @@ RESTResourceRESTContentObject::restGet( RESTRequest *request )
     RESTContentNode   *objNode;
     std::string        objID;
 
+#if 0
     if( request->getURIParameter( objUrlID, objID ) )
     {
         printf("Failed to look up ruleid parameter\n");
         request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
         request->sendResponse();
         return;
+    }
+#endif
+
+    // Resolve relationships to a terminalID and its parent
+    if( checkObjectRelationships( request, objID ) )
+    {
+        throw new RCMException( 1004, "Could not resolve object relationships" );
     }
 
     printf( "URL objID: %s\n", objID.c_str() );
@@ -433,10 +589,18 @@ RESTResourceRESTContentObject::restPut( RESTRequest *request )
     // during processing.
     try{
 
+#if 0
         if( request->getURIParameter( objUrlID, objID ) )
         {
             request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." ); 
             return;
+        }
+#endif
+
+        // Resolve relationships to a terminalID and its parent
+        if( checkObjectRelationships( request, objID ) )
+        {
+            throw new RCMException( 1004, "Could not resolve object relationships" );
         }
 
         printf( "RESTResourceRESTContentObject - PUT: %s\n", objID.c_str() );
@@ -476,12 +640,18 @@ RESTResourceRESTContentObject::restDelete( RESTRequest *request )
 
     try
     {
-
+#if 0
         // extract the ruleid parameter
         if( request->getURIParameter( objUrlID, objID ) )
         {
             request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 0, "A valid id must be provided as part of the URL." );
             return;
+        }
+#endif
+        // Resolve relationships to a terminalID and its parent
+        if( checkObjectRelationships( request, objID ) )
+        {
+            throw new RCMException( 1004, "Could not resolve object relationships" );
         }
 
         printf( "RESTResourceRESTContentObject - DELETE: %s\n", objID.c_str() );

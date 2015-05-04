@@ -572,6 +572,8 @@ class RESTContentManager
         void addRelationship( std::string relID, std::string parentID, std::string childID );
         void removeRelationship( std::string relID, std::string parentID, std::string childID );
 
+        bool hasRelationship( std::string rootID, std::string childID, std::string listID );
+
         RESTContentNode* getObjectByID( std::string idStr );
         //RESTContentNode* getObjectFromRef( RESTContentRef &ref );
 
@@ -816,6 +818,22 @@ class RESTResourcePE
 };
 
 
+class RESTResourceRelationship
+{
+    private:
+        std::string list;
+        std::string paramID;
+
+    public:
+        RESTResourceRelationship();
+       ~RESTResourceRelationship();
+
+        void setListID( std::string listID );
+        void setChildParamID( std::string urlID );
+
+        std::string getListID();
+        std::string getChildParamID();
+};
 
 class RESTResource
 {
@@ -825,6 +843,10 @@ class RESTResource
 
         std::vector<RESTResourcePE> patternElements;
 
+//        std::vector<RESTResourceRelationship> relationshipStack;
+
+//        RESTContentManager &contentMgr;
+
         void parse(const std::string& url_s);
 
     public:
@@ -832,6 +854,12 @@ class RESTResource
        ~RESTResource();
 
         void setURLPattern( std::string pattern, REST_RMETHOD_T methodFlags );
+
+//        void clearRelationships();
+//        void appendRelationship( std::string listName, std::string childParamID );
+
+//        bool determineObjectParent( RESTRequest *request, std::string &parentID );
+//        bool checkObjectRelationships( RESTRequest *request, std::string &terminalID );
 
         bool linkRequest( RESTRequest *request );
 
@@ -847,20 +875,46 @@ class RESTResource
 
 };
 
-class RESTResourceRESTContentList : public RESTResource
+class RESTContentManagerResource : public RESTResource
 {
     private:
-        RESTContentManager &contentMgr;
 
-        unsigned int objType;
-
-        std::string listName;
-        std::string objPrefix;
-        std::string relName;
-        std::string relRoot;
+        std::vector<RESTResourceRelationship> relationshipStack;
 
     public:
-        RESTResourceRESTContentList( std::string pattern, RESTContentManager &mgr, unsigned int type, std::string list, std::string prefix, std::string relationshipName, std::string relationshipRoot );
+
+        RESTContentManager &contentMgr;
+
+        RESTContentManagerResource( RESTContentManager &mgr );
+       ~RESTContentManagerResource();
+
+        void clearRelationships();
+        void appendRelationship( std::string listName, std::string childParamID );
+
+        bool checkObjectRelationships( RESTRequest *request, std::string &terminalID );
+
+        virtual void restGet( RESTRequest *request );
+
+        virtual void restPut( RESTRequest *request );
+
+        virtual void restPost( RESTRequest *request );
+
+        virtual void restDelete( RESTRequest *request );
+
+};
+
+class RESTResourceRESTContentList : public RESTContentManagerResource
+{
+    private:
+        unsigned int objType;
+
+        std::string listElement;
+        std::string objPrefix;
+        //std::string relName;
+        //std::string relRoot;
+
+    public:
+        RESTResourceRESTContentList( std::string pattern, RESTContentManager &mgr, unsigned int type, std::string list, std::string prefix );
        ~RESTResourceRESTContentList();
 
         virtual void restGet( RESTRequest *request );
@@ -868,17 +922,13 @@ class RESTResourceRESTContentList : public RESTResource
         virtual void restPost( RESTRequest *request );
 };
 
-class RESTResourceRESTContentObject : public RESTResource
+class RESTResourceRESTContentObject : public RESTContentManagerResource
 {
     private:
-        RESTContentManager &contentMgr;
-
         unsigned int objType;
 
-        std::string objUrlID;
-
     public:
-        RESTResourceRESTContentObject(  std::string pattern, RESTContentManager &mgr, unsigned int type, std::string idParam );
+        RESTResourceRESTContentObject(  std::string pattern, RESTContentManager &mgr, unsigned int type );
        ~RESTResourceRESTContentObject();
 
         virtual void restGet( RESTRequest *request );

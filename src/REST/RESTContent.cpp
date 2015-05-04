@@ -892,13 +892,24 @@ RESTContentRef::getID()
 
 RESTContentManager::RESTContentManager()
 {
+    RESTContentNode *node;
+
     nextID = 0;
+
+    node = new RESTContentNode();
+
+    node->setID( "root" );
 
     struct RESTCMVertex rootVProp;
 
-    rootVProp.objID = "root";
+    rootVProp.objID = node->getID();
 
-    add_vertex( rootVProp, refGraph );
+    refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
+
+    node->setVertex( vertex );
+
+    std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
+    objMap.insert( insPair );
 }
 
 RESTContentManager::~RESTContentManager()
@@ -925,10 +936,14 @@ RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::str
 
     objID.clear();
 
+    // create the new object
     node = newObject( type );
 
     if( node == NULL )
         return;
+
+    // Assign it's unique id
+    node->setID( getUniqueObjID( idPrefix ) );
 
     // Add it to the vertex list
     struct RESTCMVertex rootVProp;
@@ -941,11 +956,10 @@ RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::str
     node->setVertex( vertex );
 
     // Add it to the object map
-    node->setID( getUniqueObjID( idPrefix ) );
-
     std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
     objMap.insert( insPair );
 
+    // Return the new id
     objID = node->getID();
 }
 
@@ -959,7 +973,7 @@ RESTContentManager::addObj( RESTContentNode *ctObj )
     // Add it to the vertex list
     struct RESTCMVertex rootVProp;
 
-    rootVProp.objID = ctObj->getID();
+    rootVProp.objID = idStr;
 
     refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
 
@@ -1100,6 +1114,62 @@ RESTContentManager::removeRelationship( std::string relID, std::string parentID,
 
 }
 
+#if 0
+template < class Graph > struct exercise_vertex 
+{
+//...
+    void operator()( const Vertex& v ) const
+    {
+        typedef graph_traits<Graph> GraphTraits;
+        typename property_map<Graph, vertex_index_t>::type index = get(vertex_index, g);
+
+        std::cout << "out-edges: ";
+        typename GraphTraits::out_edge_iterator out_i, out_end;
+        typename GraphTraits::edge_descriptor e;
+        for( tie( out_i, out_end ) = out_edges( v, g ); out_i != out_end; ++out_i ) 
+        {
+            e = *out_i;
+            Vertex src = source(e, g), targ = target(e, g);
+            std::cout << "(" << index[src] << "," << index[targ] << ") ";
+        }
+      
+        std::cout << std::endl;
+        //...
+    }
+    //...
+};
+#endif
+
+bool 
+RESTContentManager::hasRelationship( std::string parentID, std::string childID, std::string listID )
+{
+    std::cout << "hasRelationship: " << parentID << ", " << listID << ", " << childID << std::endl;
+
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    it = objMap.find( parentID );
+
+    if( it == objMap.end() )
+    {
+        return false;
+    }
+
+    // Get a list of outgoing edges from vertex 1
+    typedef boost::graph_traits < refGraph_t >::out_edge_iterator out_edge_iterator;
+    std::pair< out_edge_iterator, out_edge_iterator > outEdges = boost::out_edges( it->second->getVertex(), refGraph );
+ 
+    for( ; outEdges.first != outEdges.second; ++outEdges.first )
+    {
+        if( ( refGraph[*outEdges.first].relationID == listID ) && ( refGraph[ target(*outEdges.first, refGraph) ].objID == childID ) )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 RESTContentNode* 
 RESTContentManager::getObjectByID( std::string objID )
 {
@@ -1118,7 +1188,28 @@ RESTContentManager::getObjectByID( std::string objID )
 void 
 RESTContentManager::getIDListForRelationship( std::string parentID, std::string relID, std::vector< std::string > &idList )
 {
+    std::cout << "getRelationList: " << parentID << ", " << relID << std::endl;
 
+    std::map< std::string, RESTContentNode* >::iterator it;
+
+    it = objMap.find( parentID );
+
+    if( it == objMap.end() )
+    {
+        return;
+    }
+
+    // Get a list of outgoing edges from vertex 1
+    typedef boost::graph_traits < refGraph_t >::out_edge_iterator out_edge_iterator;
+    std::pair< out_edge_iterator, out_edge_iterator > outEdges = boost::out_edges( it->second->getVertex(), refGraph );
+ 
+    for( ; outEdges.first != outEdges.second; ++outEdges.first )
+    {
+        if( refGraph[*outEdges.first].relationID == relID )
+        {
+            idList.push_back( refGraph[ target(*outEdges.first, refGraph) ].objID );
+        }
+    }
 }
 
 

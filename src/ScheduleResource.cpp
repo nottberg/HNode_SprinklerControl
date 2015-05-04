@@ -10,7 +10,7 @@
 
 
 ScheduleZoneGroupListResource::ScheduleZoneGroupListResource( ScheduleManager &mgr )
-:RESTResourceRESTContentList( "/schedule/zone-groups", mgr, SCH_ROTID_ZONEGROUP, "zone-group-list", "zg", "zone-groups", "root" )
+:RESTResourceRESTContentList( "/schedule/zone-groups", mgr, SCH_ROTID_ZONEGROUP, "zone-group-list", "zg" )
 {
 
 }
@@ -20,111 +20,10 @@ ScheduleZoneGroupListResource::~ScheduleZoneGroupListResource()
 
 }
 
-#if 0
-ScheduleZoneGroupListResource::ScheduleZoneGroupListResource()
-{
-    setURLPattern( "/schedule/zone-groups", (REST_RMETHOD_T)(REST_RMETHOD_GET|REST_RMETHOD_POST) );
-}
-
-void
-ScheduleZoneGroupListResource::setScheduleManager( ScheduleManager *schMgr )
-{
-    schManager = schMgr;
-}
-
-void 
-ScheduleZoneGroupListResource::restGet( RESTRequest *request )
-{
-    std::string        rspData;
-    RESTContentHelper *helper;
-    RESTContentNode   *objNode;
-
-    std::cout << "ScheduleZoneGroupListResource::restGet" << std::endl;
-
-    // All of the routines below will throw a SMException if they encounter an error
-    // during processing.
-    try{
-
-        if( schManager == NULL )
-        {
-            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-            return;
-        }
-
-        // Parse the content
-        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
-
-        // Get a pointer to the root node
-        objNode = helper->getRootNode();
-
-        // Generate the list    
-        schManager->generateZoneGroupListContent( objNode );        
-
-        // Make sure we have the expected object
-        helper->generateContentRepresentation( request->getOutboundRepresentation() );
-
-    }
-    catch( SMException& sme )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
-        return;
-    }
-    catch(...)
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-        return;
-    }    
-
-    request->setResponseCode( REST_HTTP_RCODE_OK );
-    request->sendResponse();
-}
-
-void 
-ScheduleZoneGroupListResource::restPost( RESTRequest *request )
-{
-    RESTContentHelper *helper;
-    RESTContentTemplate  *templateNode;
-    RESTContentNode   *objNode;
-    ScheduleZoneGroup *ruleObj;
-
-    std::cout << "ScheduleZoneGroupListResource::restPost" << std::endl;
-
-    // All of the routines below will throw a SMException if they encounter an error
-    // during processing.
-    try
-    {
-        // Generate a template for acceptable data
-        templateNode = ScheduleZoneGroup::generateContentTemplate();
-
-        // Allocate the appropriate type of helper to parse the content
-        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
-
-        // Parse the content based on the template ( throws an exception for missing content )
-        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() ); 
-
-        // Create the new object
-        schManager->addNewZoneGroup( helper->getRootNode(), &ruleObj );
-    }
-    catch( SMException& sme )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
-        return;
-    }
-    catch(...)
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-        return;
-    }
-
-    // Build a response, including the new rule id
-    request->sendResourceCreatedResponse( ruleObj->getID() );
-}
-#endif
-
 ScheduleZoneGroupResource::ScheduleZoneGroupResource( ScheduleManager &mgr )
-:RESTResourceRESTContentObject( "/schedule/zone-groups/{zonegroupid}", mgr, SCH_ROTID_ZONEGROUP, "zonegroupid" )
+:RESTResourceRESTContentObject( "/schedule/zone-groups/{zonegroupid}", mgr, SCH_ROTID_ZONEGROUP )
 {
-    //setURLPattern( "/schedule/zone-groups/{zonegroupid}", (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE ) );
+    appendRelationship( "zone-group-list", "zonegroupid" );
 }
 
 ScheduleZoneGroupResource::~ScheduleZoneGroupResource()
@@ -132,166 +31,18 @@ ScheduleZoneGroupResource::~ScheduleZoneGroupResource()
 
 }
 
+ScheduleZoneRuleListResource::ScheduleZoneRuleListResource( ScheduleManager &mgr )
+:RESTResourceRESTContentList( "/schedule/zone-groups/{zonegroupid}/members", mgr, SCH_ROTID_ZONERULE, "zone-rule-list", "zr" )
+{
+    appendRelationship( "zone-group-list", "zonegroupid" );
+}
+
+ScheduleZoneRuleListResource::~ScheduleZoneRuleListResource()
+{
+
+}
+
 #if 0
-void
-ScheduleZoneGroupResource::setScheduleManager( ScheduleManager *schMgr )
-{
-    schManager = schMgr;
-}
-
-void 
-ScheduleZoneGroupResource::restGet( RESTRequest *request )
-{
-    RESTContentHelper *helper;
-    RESTContentNode   *objNode;
-    std::string objID;
-
-    if( request->getURIParameter( "zonegroupid", objID ) )
-    {
-        printf("Failed to look up zonegroupid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    printf( "URL ZoneGroupID: %s\n", objID.c_str() );
-
-    // All of the routines below will throw a SMException if they encounter an error
-    // during processing.
-    try
-    {
-
-        if( schManager == NULL )
-        {
-            request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-            return;
-        }
-
-        // Parse the content
-        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
-
-        // Get a pointer to the root node
-        objNode = helper->getRootNode();
-
-        // Generate the list    
-        schManager->generateZoneGroupContent( objID, objNode );        
-
-        // Make sure we have the expected object
-        helper->generateContentRepresentation( request->getOutboundRepresentation() );
-    
-    }
-    catch( SMException& sme )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
-        return;
-    }
-    catch(...)
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-        return;
-    }
-
-    request->setResponseCode( REST_HTTP_RCODE_OK );
-    request->sendResponse();
-
-}
-
-void 
-ScheduleZoneGroupResource::restPut( RESTRequest *request )
-{
-    std::string zgID;
-    std::string rspData;
-    RESTContentHelper *helper;
-    RESTContentTemplate  *templateNode;
-    RESTContentNode   *objNode;
-
-    std::cout << "ScheduleZoneGroupResource::restPut" << std::endl;
-
-    if( request->getURIParameter( "zonegroupid", zgID ) )
-    {
-        printf("Failed to look up zonegroupid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
-
-    // All of the routines below will throw a SMException if they encounter an error
-    // during processing.
-    try{
-
-        // Generate a template for acceptable data
-        templateNode = ScheduleZoneGroup::generateContentTemplate();
-
-        // Allocate the appropriate type of helper to parse the content
-        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( request->getInboundRepresentation() );
-
-        // Parse the content based on the template ( throws an exception for missing content )
-        helper->parseWithTemplate( templateNode, request->getInboundRepresentation() );
-
-        // Create the new object
-        schManager->updateZoneGroup( zgID, helper->getRootNode() );
-    }
-    catch( SMException& sme )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
-        return;
-    }
-    catch(...)
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-        return;
-    }
-
-    // Success
-    request->setResponseCode( REST_HTTP_RCODE_OK );
-    request->sendResponse();
-
-}
-
-void 
-ScheduleZoneGroupResource::restDelete( RESTRequest *request )
-{
-    std::string zgID;
-    std::string rspData;
-    RESTContentHelper *helper;
-    RESTContentNode   *objNode;
-
-    std::cout << "ScheduleZoneGroupResource::restDelete" << std::endl;
-
-    if( request->getURIParameter( "zonegroupid", zgID ) )
-    {
-        printf("Failed to look up zonegroupid parameter\n");
-        request->setResponseCode( REST_HTTP_RCODE_BAD_REQUEST );
-        request->sendResponse();
-        return;
-    }
-
-    printf( "URL ZoneGroupID: %s\n", zgID.c_str() );
-
-    try
-    {
-        // Attempt the delete operation.
-        schManager->deleteZoneGroup( zgID );
-    }
-    catch( SMException& sme )
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, sme.getErrorCode(), sme.getErrorMsg() ); 
-        return;
-    }
-    catch(...)
-    {
-        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
-        return;
-    }
-
-    // Success
-    request->setResponseCode( REST_HTTP_RCODE_OK );
-    request->sendResponse();
-}
-#endif
-
 ScheduleZoneRuleListResource::ScheduleZoneRuleListResource()
 {
     setURLPattern( "/schedule/zone-groups/{zonegroupid}/members", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_POST) );
@@ -417,8 +168,21 @@ ScheduleZoneRuleListResource::restPost( RESTRequest *request )
     // Build a response, including the new rule id
     request->sendResourceCreatedResponse( ruleObj->getID() );
 }
+#endif
 
+ScheduleZoneRuleResource::ScheduleZoneRuleResource( ScheduleManager &mgr )
+:RESTResourceRESTContentObject( "/schedule/zone-groups/{zonegroupid}/members/{zoneid}", mgr, SCH_ROTID_ZONERULE )
+{
+    appendRelationship( "zone-group-list", "zonegroupid" );
+    appendRelationship( "zone-rule-list", "zoneid" );
+}
 
+ScheduleZoneRuleResource::~ScheduleZoneRuleResource()
+{
+
+}
+
+#if 0
 ScheduleZoneRuleResource::ScheduleZoneRuleResource()
 {
     setURLPattern( "/schedule/zone-groups/{zonegroupid}/members/{zoneid}", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE) );
@@ -621,8 +385,10 @@ ScheduleZoneRuleResource::restDelete( RESTRequest *request )
     request->sendResponse();
 }
 
+#endif
+
 ScheduleTriggerGroupListResource::ScheduleTriggerGroupListResource( ScheduleManager &mgr )
-:RESTResourceRESTContentList( "/schedule/trigger-groups", mgr, SCH_ROTID_TRIGGERGROUP, "trigger-group-list", "tg", "trigger-groups", "root" )
+:RESTResourceRESTContentList( "/schedule/trigger-groups", mgr, SCH_ROTID_TRIGGERGROUP, "trigger-group-list", "tg" )
 {
 
 }
@@ -739,9 +505,9 @@ ScheduleTriggerGroupListResource::restPost( RESTRequest *request )
 #endif
 
 ScheduleTriggerGroupResource::ScheduleTriggerGroupResource( ScheduleManager &mgr )
-:RESTResourceRESTContentObject( "/schedule/trigger-groups/{triggergroupid}", mgr, SCH_ROTID_TRIGGERGROUP, "triggergroupid" )
+:RESTResourceRESTContentObject( "/schedule/trigger-groups/{triggergroupid}", mgr, SCH_ROTID_TRIGGERGROUP )
 {
-    // setURLPattern( "/schedule/trigger-groups/{triggergroupid}", (REST_RMETHOD_T)(REST_RMETHOD_GET|REST_RMETHOD_PUT|REST_RMETHOD_DELETE) );
+    appendRelationship( "trigger-group-list", "triggergroupid" );
 }
 
 ScheduleTriggerGroupResource::~ScheduleTriggerGroupResource()
@@ -1261,7 +1027,7 @@ RESTResourceRESTContentList::RESTResourceRESTContentList( std::string pattern, R
 #endif
 
 ScheduleRuleListResource::ScheduleRuleListResource( ScheduleManager &mgr )
-:RESTResourceRESTContentList( "/schedule/rules", mgr, SCH_ROTID_EVENTRULE, "event-rule-list", "er", "event-rules", "root" )
+:RESTResourceRESTContentList( "/schedule/rules", mgr, SCH_ROTID_EVENTRULE, "event-rule-list", "er")
 {
 
 }
@@ -1272,9 +1038,9 @@ ScheduleRuleListResource::~ScheduleRuleListResource()
 }
 
 ScheduleRuleResource::ScheduleRuleResource( ScheduleManager &mgr )
-:RESTResourceRESTContentObject( "/schedule/rules/{ruleid}", mgr, SCH_ROTID_EVENTRULE, "ruleid" )
+:RESTResourceRESTContentObject( "/schedule/rules/{ruleid}", mgr, SCH_ROTID_EVENTRULE )
 {
-
+    appendRelationship( "event-rule-list", "ruleid" );
 }
 
 ScheduleRuleResource::~ScheduleRuleResource()
