@@ -211,7 +211,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            post = "<schedule-trigger-rule><name>Zone Rule</name><type>fixedduration</type><duration>600</duration></schedule-trigger-rule>";
+            post = "<schedule-trigger-rule><name>Trigger Rule</name><type>time</type><scope>day</scope><reftime>20140507T173400</reftime></schedule-trigger-rule>";
             url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members";
         }
 
@@ -393,7 +393,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            putData = "<schedule-trigger-rule><name>Update Rule</name><duration>300</duration></schedule-trigger-rule>";
+            putData = "<schedule-trigger-rule><name>Update Rule</name></schedule-trigger-rule>";
             url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
         }
 

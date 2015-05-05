@@ -500,7 +500,8 @@ ScheduleRecurrenceRule::~ScheduleRecurrenceRule()
 ScheduleZoneRule::ScheduleZoneRule( RESTContentManager &objMgr )
     : objManager( objMgr )
 {
-
+    //ruleType = SZR_TYPE_NOTSET;
+    ruleType = SZR_TYPE_FIXED_DURATION;
 }
 
 ScheduleZoneRule::~ScheduleZoneRule()
@@ -517,6 +518,16 @@ ScheduleZoneRule::getType()
 std::string 
 ScheduleZoneRule::getTypeStr()
 {
+    switch( ruleType )
+    {
+        case SZR_TYPE_FIXED_DURATION:
+            return "fixedduration";
+        break;
+
+        default:
+        break;
+    }
+
     return "notset";
 }
 
@@ -550,8 +561,8 @@ void
 ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
 {
     std::string tmpStr;
+    ScheduleTimeDuration td;
 
-    // Optional Fields
     objCN->getField( "name", tmpStr );
 
     if( tmpStr.empty() == false )
@@ -559,6 +570,22 @@ ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
         name = tmpStr;
     }
 
+    // Optional Fields
+    objCN->getField( "type", tmpStr );
+
+    if( tmpStr == "fixedduration" )
+    {
+        ruleType = SZR_TYPE_FIXED_DURATION;
+    }
+
+    // Optional Fields
+    objCN->getField( "duration", tmpStr );
+
+    if( tmpStr.empty() == false )
+    {
+        td.setFromString( tmpStr );
+        setDuration( td );
+    }
 }
 
 void
@@ -571,6 +598,7 @@ ScheduleZoneRule::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setID( getID() );
     objCN->setField( "type", getTypeStr() );
     objCN->setField( "name", getName() );
+    objCN->setField( "duration", getDuration().getISOString() );
 }
 
 bool 
@@ -624,6 +652,31 @@ ScheduleZoneRule::getName()
     return name;
 }
 
+
+void 
+ScheduleZoneRule::setZoneID( std::string newZoneID )
+{
+    zoneID = newZoneID;
+}
+
+std::string 
+ScheduleZoneRule::getZoneID()
+{
+    return zoneID;
+}
+
+void 
+ScheduleZoneRule::setDuration( ScheduleTimeDuration &td )
+{
+    duration = td;
+}
+
+ScheduleTimeDuration 
+ScheduleZoneRule::getDuration()
+{
+    return duration;
+}
+
 void 
 ScheduleZoneRule::start( ScheduleDateTime &curTime )
 {
@@ -647,7 +700,7 @@ ScheduleZoneRule::complete( ScheduleDateTime &curTime )
 
 
 
-
+#if 0
 SZRFixedDuration::SZRFixedDuration( RESTContentManager &objMgr )
     : ScheduleZoneRule( objMgr )
 {
@@ -774,7 +827,7 @@ SZRFixedDuration::complete( ScheduleDateTime &curTime )
 
     zone->setStateOff( "Schedule Event" );
 }
-
+#endif
 
 
 
@@ -1073,8 +1126,8 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         event->setStartTime( eventTime );
     
         // FIX-ME calulate zone watering duration.
-        printf("eventDuration: %d\n", (int)((SZRFixedDuration*)zrObj)->getDuration().asTotalSeconds() );
-        eventTime.addSeconds( ((SZRFixedDuration*)zrObj)->getDuration().asTotalSeconds() );
+        printf("eventDuration: %d\n", (int)zrObj->getDuration().asTotalSeconds() );
+        eventTime.addSeconds( zrObj->getDuration().asTotalSeconds() );
 
         // Set the end time.
         event->setEndTime( eventTime );
@@ -1101,7 +1154,7 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
 ScheduleTriggerRule::ScheduleTriggerRule( RESTContentManager &objMgr )
     : objManager( objMgr )
 {
-
+    ruleType = STR_TYPE_NOTSET;
 //    std::string      id;
 //    SER_TT_SCOPE     scope;
 //    ScheduleDateTime refTime;
@@ -1127,6 +1180,8 @@ ScheduleTriggerRule::generateContentTemplate()
 
     // Optional fields
     rtnNode->defineField( "name", false );
+    rtnNode->defineField( "scope", false );
+    rtnNode->defineField( "reftime", false );
 
     return rtnNode;
 }
@@ -1141,6 +1196,28 @@ ScheduleTriggerRule::setFieldsFromContentNode( RESTContentNode *objCN )
     {
         name = tmpStr;
     }
+
+    if( objCN->getField( "type", tmpStr ) )
+    {
+        if( tmpStr == "time" )
+            ruleType = STR_TYPE_TIME;
+    }
+
+    // Required Fields
+    if( objCN->getField( "scope", tmpStr ) )
+    {
+        setScopeFromStr( tmpStr );
+    }
+
+    // Required Fields
+    if( objCN->getField( "reftime", tmpStr ) )
+    {
+        ScheduleDateTime time;
+        time.setTimeFromISOString( tmpStr );
+
+        setRefTime( time );
+    }
+
 }
 
 void
@@ -1153,6 +1230,8 @@ ScheduleTriggerRule::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setField( "id", getID() );
     objCN->setField( "type", getTypeStr() );
     objCN->setField( "name", getName() );
+    objCN->setField( "scope", getScopeStr() );
+    objCN->setField( "reftime", getRefTime().getISOString() );
 }
 
 bool 
@@ -1185,12 +1264,22 @@ ScheduleTriggerRule::buildRCTemplateTree( RESTContentTemplate *rootCN )
 STR_TYPE_T
 ScheduleTriggerRule::getType()
 {
-    return STR_TYPE_NOTSET;
+    return ruleType; 
 }
 
 std::string 
 ScheduleTriggerRule::getTypeStr()
 {
+    switch( ruleType )
+    {
+        case STR_TYPE_TIME:
+            return "time";
+        break;
+
+        default:
+        break;
+    }
+
     return "notset";
 }
 
@@ -1224,13 +1313,100 @@ ScheduleTriggerRule::getName()
     return name;
 }
 
+void 
+ScheduleTriggerRule::setScope( SER_TT_SCOPE scopeValue )
+{
+    scope = scopeValue;
+}
+
+SER_TT_SCOPE 
+ScheduleTriggerRule::getScope()
+{
+    return scope;
+}
+
+bool
+ScheduleTriggerRule::setScopeFromStr( std::string scopeStr )
+{
+    if( scopeStr == SERScopeString[0] )
+    {
+        scope = SER_TT_SCOPE_NOTSET;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[1] )
+    {
+        scope = SER_TT_SCOPE_DAY;
+        return false;
+    }
+
+    // String wasn't recognized
+    return true;
+}
+
+std::string 
+ScheduleTriggerRule::getScopeStr()
+{
+    return SERScopeString[scope];
+}
+
+void 
+ScheduleTriggerRule::setRefTime( ScheduleDateTime &refTimeValue )
+{
+    refTime.setTime( refTimeValue );
+}
+
+ScheduleDateTime 
+ScheduleTriggerRule::getRefTime()
+{
+    return refTime;
+}
+
 bool 
 ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
 {
-    // Base class 
+    switch( ruleType )
+    {
+        case STR_TYPE_TIME:
+        {
+            ScheduleDateTime startTime;
+            ScheduleDateTime prestartTime;
+
+            // If we are not in the right day, then exit
+            if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceTimeOfDay( refTime );
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            //printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
+            //printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
+            //printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
+            //printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
+        }
+        break;
+
+        default:
+        break;
+    }
+
+    // Nothing 
     return false;
 }
 
+#if 0
 ScheduleTimeTrigger::ScheduleTimeTrigger( RESTContentManager &objMgr )
     : ScheduleTriggerRule( objMgr )
 {
@@ -1396,6 +1572,7 @@ ScheduleTimeTrigger::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTim
 
     return false;
 }
+#endif
 
 ScheduleTriggerGroup::ScheduleTriggerGroup( RESTContentManager &objMgr )
     : objManager( objMgr )
@@ -3356,7 +3533,7 @@ ScheduleManager::addTriggerGroup( xmlDocPtr doc, xmlNode *tgElem )
                 printf( "tgObj: 0x%lx\n", (long unsigned int) tgObj );
                 printf( "ScheduleManager - trigger group id: %s\n", tgObj->getID().c_str() );
 
-                ScheduleTimeTrigger *newTrigger = new ScheduleTimeTrigger( *this );
+                ScheduleTriggerRule *newTrigger = new ScheduleTriggerRule( *this );
                 newTrigger->setID( idStr );
                 newTrigger->setScope( SER_TT_SCOPE_DAY );
                 newTrigger->setRefTime( time );
@@ -3638,12 +3815,12 @@ ScheduleManager::saveZoneGroup( ScheduleZoneGroup *zgObj )
            return true;
     
         // Start an element named zoneid. 
-        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "zoneid", "%s", ((SZRFixedDuration *)zoneRule)->getZoneID().c_str() );
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "zoneid", "%s", zoneRule->getZoneID().c_str() );
         if( rc < 0 ) 
             return true;
         
         // Start an element named duration. 
-        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "duration", "%s", ((SZRFixedDuration *)zoneRule)->getDuration().getISOString().c_str() );
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "duration", "%s", zoneRule->getDuration().getISOString().c_str() );
         if( rc < 0 ) 
             return true;
 
@@ -3722,7 +3899,7 @@ ScheduleManager::saveTriggerGroup( ScheduleTriggerGroup *tgObj )
             return true;
     
         // Start an element named zoneid. 
-        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "reftime", "%s", ((ScheduleTimeTrigger *)trigger)->getRefTime().getExtendedISOString().c_str() );
+        rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "reftime", "%s", trigger->getRefTime().getExtendedISOString().c_str() );
         if( rc < 0 ) 
             return true;
 
