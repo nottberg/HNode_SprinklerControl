@@ -126,50 +126,6 @@ RESTContentReference::getValue()
 }
 #endif
 
-RESTContentIDStack::RESTContentIDStack()
-{
-
-}
-
-RESTContentIDStack::~RESTContentIDStack()
-{
-
-}
-
-void 
-RESTContentIDStack::clear()
-{
-    idList.clear();
-}
-
-void 
-RESTContentIDStack::pushID( std::string idStr )
-{
-    idList.push_front( idStr );
-}
-
-void 
-RESTContentIDStack::popID()
-{
-    idList.pop_front();
-}
-
-std::string 
-RESTContentIDStack::getParent( unsigned int depth )
-{
-    std::list< std::string >::iterator it;
-
-    it = idList.begin();
-    it++;
-    return *it;    
-}
-
-std::string 
-RESTContentIDStack::getLast()
-{
-    return idList.front();
-}
-
 RESTContentBase::RESTContentBase()
 {
     type   = RCNT_NOTSET;
@@ -306,10 +262,6 @@ RESTContentBase::getChildByName( std::string name )
 RESTContentTemplate::RESTContentTemplate()
 {
     staticFlag = false;
-
-    objCB     = NULL;
-    listCB    = NULL;
-    factoryCB = NULL;
 }
 
 RESTContentTemplate::~RESTContentTemplate()
@@ -341,24 +293,6 @@ RESTContentTemplate::getTemplateID()
     return templateID;
 }
 
-void 
-RESTContentTemplate::setObjectCallback( RESTContentObjectCallback *callback )
-{
-    objCB = callback;
-}
-
-void 
-RESTContentTemplate::setListCallback( RESTContentListCallback *callback )
-{
-    listCB = callback;
-}
-
-void 
-RESTContentTemplate::setFactoryCallback( RESTContentFactoryCallback *callback )
-{
-    factoryCB = callback;
-}
-
 bool 
 RESTContentTemplate::isStatic()
 {
@@ -376,14 +310,6 @@ RESTContentTemplate::clearStatic()
 {
     staticFlag = false;
 }
-
-#if 0
-void 
-RESTContentTemplate::setReferenceCallback( RESTContentReferenceCallback *callback )
-{
-    refCB = callback;
-}
-#endif
 
 void 
 RESTContentTemplate::defineField( std::string name, bool required )
@@ -476,244 +402,6 @@ RESTContentTemplate::checkForChildMatch( std::string name, RESTContentTemplate *
     *cnPtr = cnPtr2;
 
     return true;
-}
-
-bool 
-RESTContentTemplate::lookupObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType )
-{
-    std::cout << "RESTContentNode::lookupObj: " << idStack.getLast() << "|" << objType << std::endl;
-
-    // If we have a direct override call that.
-    if( factoryCB != NULL )
-    {
-        return factoryCB->lookupObj( idStack, ctObj, objType );
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        return parent->lookupObj( idStack, ctObj, objType );
-    }
-
-    // The object was not found.
-    return false;
-   
-}
-
-bool
-RESTContentTemplate::createObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType, std::string &objID )  
-{
-    std::cout << "RESTContentNode::createObj: " << idStack.getLast() << "|" << objType << std::endl;
-
-    // If we have a direct override call that.
-    if( factoryCB != NULL )
-    {
-        return factoryCB->createObj( idStack, ctObj, objType, objID );
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        return parent->createObj( idStack, ctObj, objType, objID );
-    }
-
-    // Otherwise we are done.
-    return false;
-}
-
-void 
-RESTContentTemplate::startObject( std::string objID ) 
-{
-    std::cout << "RESTContentNode::startObject: " << objID << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->startObject( objID );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->startObject( objID );
-        return;
-    }
-
-}
-
-void 
-RESTContentTemplate::fieldsValid( std::string objID ) 
-{
-    std::cout << "RESTContentNode::fieldsValid: " << objID << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->fieldsValid( objID );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->fieldsValid( objID );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::startChild( std::string objID )  
-{
-    std::cout << "RESTContentNode::startChild: " << objID << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->startChild( objID );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->startChild( objID );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::endChild( std::string objID )    
-{
-    std::cout << "RESTContentNode::endChild: " << objID << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->endChild( objID );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->endChild( objID );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::endObject( std::string objID )   
-{
-    std::cout << "RESTContentNode::endObject: " << objID << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->endObject( objID );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->endObject( objID );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::updateField( std::string objID, std::string name, std::string value )
-{
-    std::cout << "RESTContentNode::updateField: " << objID << "|" << name << "|" << value << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->updateField( objID, name, value );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->updateField( objID, name, value );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::updateRef( std::string objID, std::string name, std::string value )
-{
-    std::cout << "RESTContentNode::updateRef: " << objID << "|" << name << "|" << value << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->updateRef( objID, name, value );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->updateRef( objID, name, value );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::updateTag( std::string objID, std::string name, std::string value )
-{
-    std::cout << "RESTContentNode::updateTag: " << objID << "|" << name << "|" << value << std::endl;
-
-    // If we have a direct override call that.
-    if( objCB != NULL )
-    {
-        objCB->updateTag( objID, name, value );
-        return;
-    }
-
-    // Otherwise try our parent
-    RESTContentTemplate *parent = ( RESTContentTemplate * ) getParent();
-
-    if( parent != NULL ) 
-    {
-        parent->updateTag( objID, name, value );
-        return;
-    }
-}
-
-void 
-RESTContentTemplate::addListMember( std::string objID, std::string listID, std::string childID )
-{
-    std::cout << "RESTContentNode::addListMember: " << objID << "|" << listID << "|" << childID << std::endl;
-
-}
-
-void *
-RESTContentTemplate::resolveRef( std::string refType, std::string objID )
-{
-    std::cout << "RESTContentNode::resolveRef: " << refType << "|" << objID  << std::endl;
-
 }
 
 RESTContentNode::RESTContentNode()
@@ -1015,34 +703,6 @@ RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::str
 
     // Add the object
     addObj( type, objID );
-
-#if 0
-    // create the new object
-    node = newObject( type );
-
-    if( node == NULL )
-        return;
-
-    // Assign it's unique id
-    node->setID( getUniqueObjID( idPrefix ) );
-
-    // Add it to the vertex list
-    struct RESTCMVertex rootVProp;
-
-    rootVProp.objID = node->getID();
-
-    refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
-
-    // Record the vertext in the node object
-    node->setVertex( vertex );
-
-    // Add it to the object map
-    std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
-    objMap.insert( insPair );
-
-    // Return the new id
-    objID = node->getID();
-#endif
 }
 
 void 

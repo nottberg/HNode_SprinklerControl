@@ -16,7 +16,6 @@
 class ScheduleConfig
 {
     private:
-        //RESTContentNode *rootNode;
         xmlTextWriterPtr writer;
 
         bool getAttribute( void *docPtr, void *nodePtr, std::string attrName, std::string &result );
@@ -27,7 +26,6 @@ class ScheduleConfig
         std::string getIDField( void *docPtr, void *nodePtr );
 
         void *findMatchingElement( void *docPtr, void *nodePtr, std::string elemName );
-        void parseTree( void *docPtr, void *nodePtr, RESTContentIDStack &idStack, RESTContentTemplate *cnPtr, bool create );
 
         bool findFieldValue( std::string fieldName, RESTContentNode *cnPtr, void *docPtr, void *nodePtr );
 
@@ -44,21 +42,8 @@ class ScheduleConfig
         ScheduleConfig();
        ~ScheduleConfig();
 
-        //void clearRootNode();
-        //RESTContentNode *getRootNode();
-        //RESTContentNode *detachRootNode();
-        //static void freeDetachedRootNode( RESTContentNode *objPtr );
-
-        //bool hasRootObject( std::string objectName, RESTContentNode **objPtr );
-
-        //RESTContentNode *getObject( std::string objectName );
-
-        //virtual bool parseRawData( RESTRepresentation *repPtr ) = 0;
-        //virtual bool parseWithTemplate( RESTContentNode *templateCN, RESTRepresentation *repPtr ) = 0;
-
         bool writeConfig( std::string filePath, RESTContentManager *cnPtr );
         bool readConfig( std::string filePath, RESTContentManager *cnPtr );
-
 };
 
 #endif // __SCHEDULE_CONFIG_H__

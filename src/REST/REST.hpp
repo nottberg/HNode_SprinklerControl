@@ -252,72 +252,8 @@ class RESTContentBase
         RESTContentBase *getChildByName( std::string name );
 };
 
-// Keep a stack of the object ids as we are parsing
-class RESTContentIDStack
-{
-    private:
-        std::list< std::string > idList;
-
-    public:
-        RESTContentIDStack();
-       ~RESTContentIDStack();
-
-        void clear();
-
-        void pushID( std::string idStr );
-        void popID(); 
-
-        std::string getParent( unsigned int depth );
-        std::string getLast();
-};
-
 // Forward Declaration
-class RESTContentTemplate;
-
-class RESTContentObjectCallback
-{
-    private:
-
-    public:
-        //virtual std::string createNode( std::string type )  = 0;
-        virtual void startObject( std::string objID ) = 0;
-        virtual void fieldsValid( std::string objID ) = 0;
-        virtual void startChild( std::string objID )  = 0;
-        virtual void endChild( std::string objID )    = 0;
-        virtual void endObject( std::string objID )   = 0;
-        virtual void updateField( std::string objID, std::string name, std::string value ) = 0;
-        virtual void updateRef( std::string objID, std::string name, std::string value ) = 0;
-        virtual void updateTag( std::string objID, std::string name, std::string value ) = 0;
-};
-
-class RESTContentListCallback
-{
-    private:
-
-    public:
-        virtual void addListMember( std::string objID, std::string listID, std::string childID )    = 0;
-};
-
-class RESTContentFactoryCallback
-{
-    private:
-
-    public:
-        virtual bool lookupObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string type ) = 0;
-        virtual bool createObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string type, std::string &objID ) = 0;
-};
-
-#if 0
-class RESTContentReferenceCallback
-{
-    private:
-
-    public:
-        virtual void *resolveRef( std::string refType, std::string objID )  = 0;
-};
-#endif
-
-class RESTContentTemplate : public RESTContentBase, RESTContentObjectCallback, RESTContentListCallback, RESTContentFactoryCallback
+class RESTContentTemplate : public RESTContentBase
 {
     private:
 
@@ -329,11 +265,6 @@ class RESTContentTemplate : public RESTContentBase, RESTContentObjectCallback, R
 
         std::map< std::string, RESTContentFieldDef >     fieldDefs;
         std::map< std::string, RESTContentReferenceDef > referenceDefs;
-
-        RESTContentObjectCallback    *objCB;
-        RESTContentListCallback      *listCB;
-        RESTContentFactoryCallback   *factoryCB;
-        //RESTContentReferenceCallback *refCB;
 
     public:
         RESTContentTemplate();
@@ -348,11 +279,6 @@ class RESTContentTemplate : public RESTContentBase, RESTContentObjectCallback, R
         bool isStatic();
         void setStatic();
         void clearStatic();
-
-        void setObjectCallback( RESTContentObjectCallback *callback );
-        void setListCallback( RESTContentListCallback      *callback );
-        void setFactoryCallback( RESTContentFactoryCallback   *callback );
-        //void setReferenceCallback( RESTContentReferenceCallback *callback );
 
         void defineField( std::string name, bool required );
         void defineRef( std::string name, bool required );
@@ -369,20 +295,6 @@ class RESTContentTemplate : public RESTContentBase, RESTContentObjectCallback, R
 
         bool checkForChildMatch( std::string name, RESTContentTemplate **cnPtr );
 
-        virtual bool lookupObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType );
-        virtual bool createObj( RESTContentIDStack &idStack, RESTContentTemplate *ctObj, std::string objType, std::string &objID );
-
-        virtual void startObject( std::string objID );
-        virtual void fieldsValid( std::string objID );
-        virtual void startChild( std::string objID );
-        virtual void endChild( std::string objID );
-        virtual void endObject( std::string objID );
-        virtual void updateField( std::string objID, std::string name, std::string value );
-        virtual void updateRef( std::string objID, std::string name, std::string value );
-        virtual void updateTag( std::string objID, std::string name, std::string value );
-
-        virtual void addListMember( std::string objID, std::string listID, std::string childID );
-        virtual void *resolveRef( std::string refType, std::string objID );
 };
 
 struct RESTCMVertex 
