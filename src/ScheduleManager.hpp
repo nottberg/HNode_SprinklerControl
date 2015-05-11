@@ -319,40 +319,6 @@ class ScheduleZoneRule : public RESTContentNode, public ScheduleAction
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 };
 
-#if 0
-// Run the associated zone for a fixed duration.
-class SZRFixedDuration : public ScheduleZoneRule
-{
-    private:
-        Zone                 *zone;
-        ScheduleTimeDuration  duration;
-
-    public:
-        SZRFixedDuration( RESTContentManager &objMgr );
-       ~SZRFixedDuration();
-
-        virtual SZR_TYPE_T getType();       
-        virtual std::string getTypeStr();       
-        static  std::string getStaticTypeStr();
-
-        void setZone( Zone *zone );
-        Zone *getZone();
-        std::string getZoneID();
-
-        void setDuration( ScheduleTimeDuration &td );
-        ScheduleTimeDuration getDuration();        
-
-        virtual void start( ScheduleDateTime &curTime );
-        virtual void poll( ScheduleDateTime &curTime );
-        virtual void complete( ScheduleDateTime &curTime );
-
-        virtual void setFieldsFromContentNode( RESTContentNode *objCN );
-        virtual void setContentNodeFromFields( RESTContentNode *objCN );
-
-        virtual bool buildRCNodeTree( RESTContentNode *rootCN );
-};
-#endif
-
 typedef enum ScheduleEventRuleZoneEventPolicy 
 {
     SER_ZEP_NOTSET     = 0,
@@ -378,18 +344,11 @@ class ScheduleZoneGroup : public RESTContentNode
         SER_ZONE_EVENT_POLICY getZoneEventPolicy();
         std::string getZoneEventPolicyStr();
 
-        //void clearZoneList();
-        //void addZoneRule( ScheduleZoneRule *zoneRule );
-        //void updateZoneRule( std::string ruleID, RESTContentNode *objCN );
-        //void deleteZoneRule( std::string ruleID );
-
-        //void addZone( Zone *zone );
         void setZoneDuration( std::string zoneID, ScheduleTimeDuration &td );
-        //void removeZone( std::string zoneID );
 
-        unsigned int getZoneRuleCount();
-        ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
-        ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
+//        unsigned int getZoneRuleCount();
+//        ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
+//        ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
         void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime );
 
@@ -471,43 +430,6 @@ class ScheduleTriggerRule : public RESTContentNode
         static RESTContentTemplate *generateContentTemplate();
 };
 
-#if 0
-// A time based trigger to cause a schedule rule to be 
-// evaluated
-class ScheduleTimeTrigger : public ScheduleTriggerRule
-{
-    private:
-        //std::string        id;
-
-        SER_TT_SCOPE       scope;
-        ScheduleDateTime   refTime;
-
-    public:
-        ScheduleTimeTrigger( RESTContentManager &objMgr );
-       ~ScheduleTimeTrigger();
-
-        virtual STR_TYPE_T getType();       
-        virtual std::string getTypeStr();       
-        static  std::string getStaticTypeStr();
-
-        void setScope( SER_TT_SCOPE scopeValue );
-        SER_TT_SCOPE getScope();
-
-        bool setScopeFromStr( std::string scopeStr );
-        std::string getScopeStr();        
-
-        void setRefTime( ScheduleDateTime &refTimeValue );
-        ScheduleDateTime getRefTime();        
-
-        virtual bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
-
-        virtual void setFieldsFromContentNode( RESTContentNode *objCN );
-        virtual void setContentNodeFromFields( RESTContentNode *objCN );
-
-        virtual bool buildRCNodeTree( RESTContentNode *rootCN );
-};
-#endif
-
 // Manage a set of triggers to cause the event to fire.
 class ScheduleTriggerGroup : public RESTContentNode
 {
@@ -523,14 +445,9 @@ class ScheduleTriggerGroup : public RESTContentNode
         void setName( std::string idValue );
         std::string getName(); 
 
-        //void clearTriggerRuleList();
-        //void addTriggerRule( ScheduleTriggerRule *newTrigger );
-        //void updateTriggerRule( std::string ruleID, RESTContentNode *objCN );
-        //void deleteTriggerRule( std::string id );
-
-        unsigned int getTriggerRuleCount();
-        ScheduleTriggerRule *getTriggerRuleByIndex( unsigned int index );
-        ScheduleTriggerRule *getTriggerRuleByID( std::string ruleID );
+//        unsigned int getTriggerRuleCount();
+//        ScheduleTriggerRule *getTriggerRuleByIndex( unsigned int index );
+//        ScheduleTriggerRule *getTriggerRuleByID( std::string ruleID );
 
         bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
 
@@ -541,7 +458,6 @@ class ScheduleTriggerGroup : public RESTContentNode
         virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN );
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
-
 };
 
 class ScheduleEventRule : public RESTContentNode
@@ -552,9 +468,6 @@ class ScheduleEventRule : public RESTContentNode
 
         bool enabled;
 
-        //SER_OCURRENCE_TYPE type;
-
-        //std::string      id;
         std::string      name;
         std::string      desc;
 
