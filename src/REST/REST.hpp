@@ -534,6 +534,24 @@ class RCMException : public std::exception
         }
 };
 
+class RESTContentEdge
+{
+    private:
+        std::string srcID;
+        std::string dstID;
+        std::string edgeType;
+
+    public:
+        RESTContentEdge();
+       ~RESTContentEdge();
+
+        void setEdgeData( std::string srcNodeID, std::string dstNodeID, std::string type );
+
+        std::string getSrcID();
+        std::string getDstID();
+        std::string getEdgeType();
+};
+
 // A base class for manager objects
 class RESTContentManager
 {
@@ -548,18 +566,29 @@ class RESTContentManager
         // Keep track of next available ID
         unsigned int nextID;
 
+        // Setup the base configuration
+        void init();
+
         // Generate new objects
         std::string getUniqueObjID( std::string prefix );
         virtual RESTContentNode* newObject( unsigned int type ) = 0;
+        virtual void freeObject( RESTContentNode *objPtr ) = 0;
 
     public:
         RESTContentManager();
        ~RESTContentManager();
 
+        virtual unsigned int getTypeFromObjectElementName( std::string name ) = 0;
+
         virtual RESTContentTemplate *getContentTemplateForType( unsigned int type ) = 0;
 
+        virtual void notifyCfgChange();
+        virtual void notifyClear();
+
+        void clear();
+
         void createObj( unsigned int type, std::string idPrefix, std::string &objID );
-        void addObj( RESTContentNode *ctObj );
+        void addObj( unsigned int type, std::string objID );
 
         void updateObj( std::string objID, RESTContentNode *inputNode );
 
@@ -585,6 +614,9 @@ class RESTContentManager
         void getObjectVectorByType( unsigned int type, std::vector< RESTContentNode* > &rtnVector );
 
         void getObjectList( std::list< RESTContentNode* > &objList );
+
+        void getObjectRepresentationList( std::vector< RESTContentNode > &objList );
+        void getEdgeRepresentationList( std::vector< RESTContentEdge > &edgeList );
 
         //void addReference( std::string rootID, std::string listName, std::string tgtID );
 

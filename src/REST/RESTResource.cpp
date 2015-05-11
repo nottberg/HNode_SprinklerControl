@@ -484,6 +484,9 @@ RESTResourceRESTContentList::restPost( RESTRequest *request )
         contentMgr.createObj( objType, objPrefix, objID );
         contentMgr.updateObj( objID, helper->getRootNode() );
         contentMgr.addRelationship( listElement, parentID, objID );
+
+        // Notify that an update occurred.
+        contentMgr.notifyCfgChange();
     }
     catch( RCMException& me )
     {
@@ -616,6 +619,9 @@ RESTResourceRESTContentObject::restPut( RESTRequest *request )
 
         // Create the new object
         contentMgr.updateObj( objID, helper->getRootNode() );
+
+        // Notify that an update occurred.
+        contentMgr.notifyCfgChange();
     }
     catch( RCMException& me )
     {
@@ -659,6 +665,8 @@ RESTResourceRESTContentObject::restDelete( RESTRequest *request )
         // Attempt the delete operation.
         contentMgr.deleteObjByID( objID );
 
+        // Notify that an update occurred.
+        contentMgr.notifyCfgChange();
     }
     catch( RCMException& me )
     {

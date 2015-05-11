@@ -8,6 +8,7 @@
 
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
+#include <libxml/xpath.h>
 
 #include "REST/REST.hpp"
 #include "ScheduleConfig.hpp"
@@ -341,7 +342,7 @@ ScheduleConfig::parseTree( void *docPtr, void *nodePtr, RESTContentIDStack &idSt
 }
 
 bool
-ScheduleConfig::findFieldValue( std::string fieldName, RESTContentTemplate *cnPtr, void *docPtr, void *nodePtr )
+ScheduleConfig::findFieldValue( std::string fieldName, RESTContentNode *cnPtr, void *docPtr, void *nodePtr )
 {
     xmlChar *contentValue;
     xmlNode *curElem;
@@ -359,7 +360,7 @@ ScheduleConfig::findFieldValue( std::string fieldName, RESTContentTemplate *cnPt
                 contentValue = xmlNodeGetContent( curElem );
               
                 // Add this name value pair
-                //cnPtr->setField( (const char *)curElem->name, (const char *)contentValue );
+                cnPtr->setField( (const char *)curElem->name, (const char *)contentValue );
 
                 // Cleanup temporary copy
                 xmlFree( contentValue );
@@ -433,6 +434,7 @@ ScheduleConfig::generateObjectContent( RESTContentNode *objCN )
     if( rc < 0 ) 
         return true;
 
+    // Go throught the remaining fields.
     std::vector< RESTContentField* > fieldList = objCN->getFieldList();
 
     for( std::vector< RESTContentField* >::const_iterator it = fieldList.begin(); it != fieldList.end(); ++it )
@@ -493,12 +495,43 @@ ScheduleConfig::generateIDContent( RESTContentNode *idCN )
     return false;
 }
 
+bool
+ScheduleConfig::generateEdgeContent( RESTContentEdge *edgeCE )
+{
+    int rc;
+
+    // Start an element named edge. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rest-cm-edge" );
+    if( rc < 0 ) 
+        return true;
+
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "src" , "%s", edgeCE->getSrcID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "dst" , "%s", edgeCE->getDstID().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    rc = xmlTextWriterWriteFormatElement( writer, BAD_CAST "type" , "%s", edgeCE->getEdgeType().c_str() );
+    if( rc < 0 ) 
+        return true;
+
+    // Close the element named edge. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    return false;
+
+}
+
 #define MY_ENCODING "ISO-8859-1"
 
 bool 
-ScheduleConfig::writeConfig( std::string filePath, RESTContentNode *cnObj )
+ScheduleConfig::writeConfig( std::string filePath, RESTContentManager *objMgr )
 {
-    RESTContentNode *rootCN = cnObj;
+    //RESTContentNode *rootCN = cnObj;
     int rc;
 
     std::cout << "ScheduleConfig::writeConfig" << std::endl;
@@ -521,7 +554,56 @@ ScheduleConfig::writeConfig( std::string filePath, RESTContentNode *cnObj )
         return true;
     }
 
-    generateChildContent( rootCN );
+    // Start an element named edge. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rcm-config" );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named edge. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rcm-object-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Generate Records for all of the objects
+    std::vector< RESTContentNode > objList;
+
+    objMgr->getObjectRepresentationList( objList );
+
+    for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); ++it )
+    {
+        generateObjectContent( &(*it) );
+    }
+
+    // Close the object list. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    // Start an element named edge. 
+    rc = xmlTextWriterStartElement( writer, BAD_CAST "rcm-edge-list" );
+    if( rc < 0 ) 
+        return true;
+
+    // Generate Records for all of the edges
+    std::vector< RESTContentEdge > edgeList;
+
+    objMgr->getEdgeRepresentationList( edgeList );
+
+    for( std::vector< RESTContentEdge >::iterator it = edgeList.begin(); it != edgeList.end(); ++it )
+    {
+        generateEdgeContent( &(*it) );
+    }
+
+    // Close the edge list element. 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
+    // Close the root element 
+    rc = xmlTextWriterEndElement( writer );
+    if( rc < 0 ) 
+        return true;
+
 
     // Close out the document
     rc = xmlTextWriterEndDocument( writer );
@@ -538,17 +620,152 @@ ScheduleConfig::writeConfig( std::string filePath, RESTContentNode *cnObj )
     return false;
 }
 
-bool 
-ScheduleConfig::readConfig( std::string filePath, RESTContentTemplate *cnObj )
+void
+ScheduleConfig::readObject( xmlDocPtr doc, xmlNodePtr objNode, RESTContentManager *objMgr )
 {
-    xmlDocPtr   doc;
-    xmlNode    *rootElem;
-    xmlNode    *ruleListElem;
-    xmlNode    *zgListElem;
-    xmlNode    *tgListElem;
-    xmlNode    *curElem;
+    RESTContentNode      nodeCN;
+    RESTContentTemplate *templateNode;
+    std::string          objID;
+    unsigned int         objType;
 
-    RESTContentIDStack idStack;
+    if( strcmp( (const char *)objNode->name, "rcm-root" ) == 0 )
+    {
+        std::cout << "Root Object Special Handling" << std::endl;
+        return;    
+    }
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Determine the type value based on enclosing type string
+        objType = objMgr->getTypeFromObjectElementName( (const char *) objNode->name );
+
+        // Generate a template for acceptable data
+        templateNode = objMgr->getContentTemplateForType( objType );
+
+        if( templateNode->isObj() == false )
+        {
+            return;
+        }
+    
+        // Make sure the root level object matches
+        if( templateNode->getName() != (const char *) objNode->name )
+        {
+            std::cout << "Object name did not match.  Expecting " + templateNode->getName() + " found " + (const char *) objNode->name << std::endl;
+            //throw new RESTContentException( 1000, "Object name did not match.  Expecting " + templateCN->getName() + " found " + (const char *)rootElem->name );
+            return;
+        }
+
+        // Set the name in the generated object
+        nodeCN.setName( templateNode->getName() );
+
+        // Handle the id attribute special for the loading case, normally it is ignored for the REST side
+        // since it instead is encoded in the URL.
+        objID = getIDField( doc, objNode );
+        if( objID.empty() )
+        {
+            std::cout << "Manadatory ID field not found." << std::endl;
+            return;
+        }
+
+        // Set the id into the object
+        nodeCN.setID( objID );
+
+        std::cout << "readObject - objID: " << objID << std::endl;
+
+        // Go through the fields in the template and try to match those.
+        std::vector< RESTContentFieldDef* > fieldList = templateNode->getFieldList();
+
+        for( std::vector< RESTContentFieldDef* >::const_iterator it = fieldList.begin(); it != fieldList.end(); ++it )
+        {
+            std::cout << "Field Name: " << (*it)->getName() << std::endl;
+            if( findFieldValue( (*it)->getName(), &nodeCN, doc, objNode ) == false )
+            {
+                std::cout << "Field Not Found!" << std::endl;
+            }
+            else
+            {
+                std::string tmpStr;
+                nodeCN.getField( (*it)->getName(), tmpStr );
+                std::cout << "Field Found: " << tmpStr << std::endl;
+            }
+        }
+
+        // Add the object to the object Manager
+        objMgr->addObj( objType, objID );
+        objMgr->updateObj( objID, &nodeCN );
+    }
+    catch( RCMException& me )
+    {
+        return;
+    }
+    catch(...)
+    {
+        return;
+    }
+}
+
+void
+ScheduleConfig::readEdge( xmlDocPtr doc, xmlNodePtr edgeNode, RESTContentManager *objMgr )
+{
+    std::string  listType;
+    std::string  parentID;
+    std::string  objID;
+    xmlChar     *contentValue;
+    xmlNode     *curElem;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Find the address element
+        for( curElem = edgeNode->children; curElem; curElem = curElem->next ) 
+        {
+            if( ( curElem->type == XML_ELEMENT_NODE ) && ( xmlChildElementCount( curElem ) == 0 ) ) 
+            {
+                if( strcmp( (const char *)curElem->name, "src" ) == 0 )
+                {
+                    contentValue = xmlNodeGetContent( curElem );
+                    parentID = (const char *) contentValue;
+                    xmlFree( contentValue );
+                }
+                else if( strcmp( (const char *)curElem->name, "dst" ) == 0 )
+                {
+                    contentValue = xmlNodeGetContent( curElem );
+                    objID = (const char *) contentValue;
+                    xmlFree( contentValue );
+                }
+                else if( strcmp( (const char *)curElem->name, "type" ) == 0 )
+                {
+                    contentValue = xmlNodeGetContent( curElem );
+                    listType = (const char *) contentValue;
+                    xmlFree( contentValue );
+                }
+            }
+        }
+
+        objMgr->addRelationship( listType, parentID, objID );
+   
+    }
+    catch( RCMException& me )
+    {
+        return;
+    }
+    catch(...)
+    {
+        return;
+    }
+}
+
+bool 
+ScheduleConfig::readConfig( std::string filePath, RESTContentManager *objMgr )
+{
+    xmlDocPtr           doc;
+    xmlNode            *rootElem;
+    xmlNode            *curElem;
+    xmlXPathContextPtr  xpathCtx; 
+    xmlXPathObjectPtr   xpathObj; 
 
     doc = xmlReadFile( filePath.c_str(), NULL, 0 );
     if (doc == NULL) 
@@ -562,10 +779,87 @@ ScheduleConfig::readConfig( std::string filePath, RESTContentTemplate *cnObj )
     // Get the root element for the document
     rootElem = xmlDocGetRootElement( doc );
 
-    // Go through the config data.
-    parseTree( doc, rootElem, idStack, cnObj, true );
+    // Create xpath evaluation context 
+    xpathCtx = xmlXPathNewContext( doc );
+    if( xpathCtx == NULL ) 
+    {
+        fprintf( stderr,"Error: unable to create new XPath context\n" );
+        return true;
+    }
 
-    // Free the config document
+    // Process all of the object definitions
+    // Find the nodes from the object list.
+    std::string nodeXPath = "/rcm-config/rcm-object-list/*";
+
+    xpathObj = xmlXPathEvalExpression( (const xmlChar *) nodeXPath.c_str(), xpathCtx );
+    if( xpathObj == NULL ) 
+    {
+        fprintf( stderr,"Error: unable to evaluate xpath expression \"%s\"\n", nodeXPath.c_str() );
+        return true;
+    }
+    
+    if( xpathObj->nodesetval != NULL )
+    {    
+        int nodeCnt = xpathObj->nodesetval->nodeNr;
+
+        if( nodeCnt != 0 )
+        {
+            std::cout << "Result (%d nodes): " << nodeCnt <<std::endl;
+            for( unsigned int nodeIndx = 0; nodeIndx < nodeCnt; ++nodeIndx ) 
+            {  
+                curElem = xpathObj->nodesetval->nodeTab[ nodeIndx ];	
+
+                if( curElem->type == XML_ELEMENT_NODE ) 
+                {
+                    std::cout << "object Elem: " << curElem->name <<std::endl;
+                    readObject( doc, curElem, objMgr );
+	            } 
+            }
+        }
+    }
+
+    // Free things.
+    xmlXPathFreeObject(xpathObj);
+
+    // Process all of the edge definitions
+    // Find the edges from the edge list.
+    std::string edgeXPath = "/rcm-config/rcm-edge-list/*";
+
+    xpathObj = xmlXPathEvalExpression( (const xmlChar *) edgeXPath.c_str(), xpathCtx );
+    if( xpathObj == NULL ) 
+    {
+        fprintf( stderr,"Error: unable to evaluate xpath expression \"%s\"\n", edgeXPath.c_str() );
+        return true;
+    }
+    
+    if( xpathObj->nodesetval != NULL )
+    {    
+        int nodeCnt = xpathObj->nodesetval->nodeNr;
+
+        if( nodeCnt != 0 )
+        {
+            std::cout << "Result (%d edges): " << nodeCnt <<std::endl;
+            for( unsigned int nodeIndx = 0; nodeIndx < nodeCnt; ++nodeIndx ) 
+            {  
+                curElem = xpathObj->nodesetval->nodeTab[ nodeIndx ];	
+
+                if( curElem->type == XML_ELEMENT_NODE ) 
+                {
+                    std::cout << "edge Elem: " << curElem->name <<std::endl;
+                    readEdge( doc, curElem, objMgr );	         
+	            } 
+            }
+        }
+    }
+
+    // Free things.
+    xmlXPathFreeObject(xpathObj);
+
+    // Go through the config data.
+    //parseTree( doc, rootElem, idStack, cnObj, true );
+
+    // Free things
+    xmlXPathFreeContext(xpathCtx); 
     xmlFreeDoc(doc);
 
     return false;

@@ -318,8 +318,6 @@ hnode_load_configuration(CONTEXT *Context)
     Context->scheduleManager.setZoneManager( &Context->zoneManager );
     Context->scheduleManager.loadConfiguration();
 
-    Context->scheduleManager.saveConfiguration();
-
     return false;
 }
 

@@ -29,12 +29,16 @@ class ScheduleConfig
         void *findMatchingElement( void *docPtr, void *nodePtr, std::string elemName );
         void parseTree( void *docPtr, void *nodePtr, RESTContentIDStack &idStack, RESTContentTemplate *cnPtr, bool create );
 
-        bool findFieldValue( std::string fieldName, RESTContentTemplate *cnPtr, void *docPtr, void *nodePtr );
+        bool findFieldValue( std::string fieldName, RESTContentNode *cnPtr, void *docPtr, void *nodePtr );
 
         bool generateChildContent(  RESTContentNode *childCN );
         bool generateArrayContent( RESTContentNode *arrCN );
         bool generateObjectContent( RESTContentNode *objCN );
         bool generateIDContent( RESTContentNode *idCN );
+        bool generateEdgeContent( RESTContentEdge *edgeCE );
+
+        void readObject( xmlDocPtr doc, xmlNodePtr objNode, RESTContentManager *objMgr );
+        void readEdge( xmlDocPtr doc, xmlNodePtr edgeNode, RESTContentManager *objMgr );
 
     public:
         ScheduleConfig();
@@ -52,8 +56,8 @@ class ScheduleConfig
         //virtual bool parseRawData( RESTRepresentation *repPtr ) = 0;
         //virtual bool parseWithTemplate( RESTContentNode *templateCN, RESTRepresentation *repPtr ) = 0;
 
-        bool writeConfig( std::string filePath, RESTContentNode *cnPtr );
-        bool readConfig( std::string filePath, RESTContentTemplate *cnPtr );
+        bool writeConfig( std::string filePath, RESTContentManager *cnPtr );
+        bool readConfig( std::string filePath, RESTContentManager *cnPtr );
 
 };
 

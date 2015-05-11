@@ -890,29 +890,74 @@ RESTContentRef::getID()
 }
 #endif
 
+RESTContentEdge::RESTContentEdge()
+{
+
+}
+
+RESTContentEdge::~RESTContentEdge()
+{
+
+}
+
+void 
+RESTContentEdge::setEdgeData( std::string srcNodeID, std::string dstNodeID, std::string type )
+{
+    srcID    = srcNodeID;
+    dstID    = dstNodeID;
+    edgeType = type;
+}
+
+std::string 
+RESTContentEdge::getSrcID()
+{
+    return srcID;
+}
+
+std::string 
+RESTContentEdge::getDstID()
+{
+    return dstID;
+}
+
+std::string 
+RESTContentEdge::getEdgeType()
+{
+    return edgeType;
+}
+
 RESTContentManager::RESTContentManager()
+{
+    nextID = 0;
+
+    init();
+}
+
+RESTContentManager::~RESTContentManager()
+{
+
+}
+
+void
+RESTContentManager::init()
 {
     RESTContentNode *node;
 
-    nextID = 0;
-
     node = new RESTContentNode();
-
     node->setID( "root" );
 
     struct RESTCMVertex rootVProp;
-
     rootVProp.objID = node->getID();
 
     refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
-
     node->setVertex( vertex );
 
     std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
     objMap.insert( insPair );
 }
 
-RESTContentManager::~RESTContentManager()
+void 
+RESTContentManager::notifyCfgChange()
 {
 
 }
@@ -930,12 +975,48 @@ RESTContentManager::getUniqueObjID( std::string prefix )
 }
 
 void 
+RESTContentManager::notifyClear()
+{
+
+}
+
+void
+RESTContentManager::clear()
+{
+    // Tell upper layers first (If they care)
+    notifyClear();
+
+    // Free the existing objects
+    for( std::map< std::string, RESTContentNode* >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        // Call the allocator to free the object
+        freeObject( it->second );
+    }
+
+    // Clear out the object map
+    objMap.clear();
+
+    // Get rid of all of the graph elements
+    refGraph.clear();
+
+    // Reset the base configuraiton
+    init();
+}
+
+void 
 RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::string &objID )
 {
     RESTContentNode *node;
 
     objID.clear();
 
+    // Generate a new object ID
+    objID = getUniqueObjID( idPrefix );
+
+    // Add the object
+    addObj( type, objID );
+
+#if 0
     // create the new object
     node = newObject( type );
 
@@ -961,35 +1042,44 @@ RESTContentManager::createObj( unsigned int type, std::string idPrefix, std::str
 
     // Return the new id
     objID = node->getID();
+#endif
 }
 
 void 
-RESTContentManager::addObj( RESTContentNode *ctObj )
+RESTContentManager::addObj( unsigned int type, std::string objID )
 {
-    std::string idStr;
+    RESTContentNode *node;
 
-    idStr = ctObj->getID();
+    // create the new object
+    node = newObject( type );
+
+    if( node == NULL )
+        return;
+
+    // Assign it's unique id
+    node->setID( objID );
 
     // Add it to the vertex list
     struct RESTCMVertex rootVProp;
 
-    rootVProp.objID = idStr;
+    rootVProp.objID = node->getID();
 
     refGraphVertex_t vertex = add_vertex( rootVProp, refGraph );
 
     // Record the vertext in the node object
-    ctObj->setVertex( vertex );
+    node->setVertex( vertex );
 
     // Add it to the object map
-    std::pair< std::string, RESTContentNode* > insPair( idStr, ctObj );
+    std::pair< std::string, RESTContentNode* > insPair( node->getID(), node );
     objMap.insert( insPair );
 }
 
 void 
 RESTContentManager::updateObj( std::string objID, RESTContentNode *inputCN )
 {
-
     std::map< std::string, RESTContentNode* >::iterator it;
+
+    std::cout << "RESTContentManager::updateObj: " << objID << std::endl;
 
     // Find and validate the object
     it = objMap.find( objID );
@@ -998,6 +1088,10 @@ RESTContentManager::updateObj( std::string objID, RESTContentNode *inputCN )
     {
         // Remove the vertex
         it->second->setFieldsFromContentNode( inputCN );
+    }
+    else
+    {
+        std::cout << "RESTContentManager::updateObj - Not found" << std::endl;
     }
 }
 
@@ -1265,6 +1359,51 @@ RESTContentManager::getObjectList( std::list< RESTContentNode* > &objList )
     for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
     {
         objList.push_back( it->second );
+    }
+}
+
+void 
+RESTContentManager::getObjectRepresentationList( std::vector< RESTContentNode > &objList )
+{
+    // Clear any existing entries
+    objList.clear();
+
+    // Preallocate for all of the objects, plus a root object for the content manager itself
+    objList.resize( objMap.size() + 1 );
+
+    // Build the root object
+    objList[ 0 ].setAsObject( "rcm-root" );
+    objList[ 0 ].setID( "root" );
+//    objCN->setField( "name", getName() );
+ 
+    // Initialize the record for each object
+    unsigned int objIndex = 1;
+    for( std::map< std::string, RESTContentNode * >::iterator it = objMap.begin(); it != objMap.end(); ++it )
+    {
+        it->second->setContentNodeFromFields( &objList[ objIndex ] );
+
+        objIndex += 1;
+    } 
+}
+
+void 
+RESTContentManager::getEdgeRepresentationList( std::vector< RESTContentEdge > &edgeList )
+{
+    RESTContentEdge newEdge;
+
+    // Clear any existing entries
+    edgeList.clear();
+
+    // ...
+    boost::graph_traits< refGraph_t >::edge_iterator ei, ei_end;
+    for( tie( ei, ei_end ) = edges( refGraph ); ei != ei_end; ++ei)
+    {
+        std::string srcNodeID = refGraph[ source( *ei, refGraph ) ].objID;
+        std::string edgeType  = refGraph[ *ei ].relationID;
+        std::string dstNodeID = refGraph[ target( *ei, refGraph ) ].objID;
+        std::cout << "(" << srcNodeID << "," << edgeType << "," << dstNodeID << ") " << std::endl;
+        newEdge.setEdgeData( srcNodeID, dstNodeID, edgeType );
+        edgeList.push_back( newEdge );
     }
 }
 

@@ -537,6 +537,12 @@ ScheduleZoneRule::getStaticTypeStr()
     return "notset";
 }
 
+std::string 
+ScheduleZoneRule::getElementName()
+{
+    return "schedule-zone-rule";
+}
+
 RESTContentTemplate *
 ScheduleZoneRule::generateContentTemplate()
 {
@@ -628,6 +634,7 @@ ScheduleZoneRule::buildRCTemplateTree( RESTContentTemplate *rootCN )
     rootCN->addChild( objCN );
 }
 
+#if 0
 void 
 ScheduleZoneRule::setID( std::string idValue )
 {
@@ -639,6 +646,7 @@ ScheduleZoneRule::getID()
 {
     return id;
 }
+#endif
 
 void 
 ScheduleZoneRule::setName( std::string nameValue )
@@ -842,6 +850,12 @@ ScheduleZoneGroup::~ScheduleZoneGroup()
 
 }
 
+std::string 
+ScheduleZoneGroup::getElementName()
+{
+    return "schedule-zone-group";
+}
+
 RESTContentTemplate *
 ScheduleZoneGroup::generateContentTemplate()
 {
@@ -943,6 +957,7 @@ ScheduleZoneGroup::buildRCTemplateTree( RESTContentTemplate *rootCN )
     rootCN->addChild( objCN );
 }
 
+#if 0
 void 
 ScheduleZoneGroup::setID( std::string idValue )
 {
@@ -954,6 +969,7 @@ ScheduleZoneGroup::getID()
 {
     return id;
 }
+#endif
 
 void 
 ScheduleZoneGroup::setZoneEventPolicy( SER_ZONE_EVENT_POLICY policy )
@@ -1119,7 +1135,7 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         std::string eventName = zrObj->getID() + "-" + eventTime.getSimpleString();
 
         // Copy over identifying data
-        event->setId( id );
+        event->setId( getID() );
         event->setTitle( eventName );
 
         // Set the start time
@@ -1163,6 +1179,12 @@ ScheduleTriggerRule::ScheduleTriggerRule( RESTContentManager &objMgr )
 ScheduleTriggerRule::~ScheduleTriggerRule()
 {
 
+}
+
+std::string 
+ScheduleTriggerRule::getElementName()
+{
+    return "schedule-trigger-rule";
 }
 
 RESTContentTemplate *
@@ -1289,6 +1311,7 @@ ScheduleTriggerRule::getStaticTypeStr()
     return "notset";
 }
 
+#if 0
 void 
 ScheduleTriggerRule::setID( std::string idValue )
 {
@@ -1300,6 +1323,7 @@ ScheduleTriggerRule::getID()
 {
     return id;
 }
+#endif 
 
 void 
 ScheduleTriggerRule::setName( std::string value )
@@ -1586,6 +1610,12 @@ ScheduleTriggerGroup::~ScheduleTriggerGroup()
 
 }
 
+std::string 
+ScheduleTriggerGroup::getElementName()
+{
+    return "schedule-trigger-group";
+}
+
 RESTContentTemplate *
 ScheduleTriggerGroup::generateContentTemplate()
 {
@@ -1685,6 +1715,7 @@ ScheduleTriggerGroup::buildRCTemplateTree( RESTContentTemplate *rootCN )
     rootCN->addChild( objCN );
 }
 
+#if 0
 void 
 ScheduleTriggerGroup::setID( std::string idValue )
 {
@@ -1696,6 +1727,7 @@ ScheduleTriggerGroup::getID()
 {
     return id;
 }
+#endif
 
 void 
 ScheduleTriggerGroup::setName( std::string value )
@@ -1906,6 +1938,12 @@ ScheduleEventRule::~ScheduleEventRule()
 
 }
 
+std::string 
+ScheduleEventRule::getElementName()
+{
+    return "schedule-event-rule";
+}
+
 RESTContentTemplate *
 ScheduleEventRule::generateContentTemplate()
 {
@@ -1952,6 +1990,7 @@ ScheduleEventRule::startManually()
     fireManually = true;
 }
 
+#if 0
 void 
 ScheduleEventRule::setID( std::string idValue )
 {
@@ -1963,6 +2002,7 @@ ScheduleEventRule::getID()
 {
     return id;
 }
+#endif
 
 void 
 ScheduleEventRule::setName( std::string nameValue )
@@ -3562,6 +3602,7 @@ ScheduleManager::loadConfigNew()
 
     filePath = cfgPath + "/irrigation/test_config2.xml";
 
+#if 0
     // Generate the root level configuration object
     templateCN = new RESTContentTemplate;
     
@@ -3603,9 +3644,10 @@ ScheduleManager::loadConfigNew()
     templateCN->addChild( listCN );
 
     ScheduleEventRule::buildRCTemplateTree( listCN );
+#endif
 
     // Read everything from a file
-    cfgReader.readConfig( filePath, templateCN );
+    cfgReader.readConfig( filePath, this );
 }
 
 bool
@@ -3620,6 +3662,10 @@ ScheduleManager::loadConfiguration()
 
     std::string filePath;
 
+    // Clear out any existing items.
+    clear();
+
+#if 0
     filePath = cfgPath + "/irrigation/schedule_config.xml";
 
     doc = xmlReadFile( filePath.c_str(), NULL, 0 );
@@ -3732,6 +3778,7 @@ ScheduleManager::loadConfiguration()
 
     // Free the config document
     xmlFreeDoc(doc);
+#endif
 
     loadConfigNew();
 
@@ -4023,6 +4070,7 @@ ScheduleManager::saveConfigNew()
 
     filePath = cfgPath + "/irrigation/test_config2.xml";
 
+#if 0
     // Generate the root level configuration object
     rootCN = new RESTContentNode;
     
@@ -4036,12 +4084,12 @@ ScheduleManager::saveConfigNew()
 
     rootCN->addChild( listCN );
 
-#if 0
+
     for( std::vector<ScheduleZoneGroup *>::iterator it = zoneGroupList.begin() ; it != zoneGroupList.end(); ++it)
     {
         (*it)->buildRCNodeTree( listCN );
     }
-#endif
+
 
     // Take care of the trigger groups
     listCN = new RESTContentNode;
@@ -4051,12 +4099,12 @@ ScheduleManager::saveConfigNew()
 
     rootCN->addChild( listCN );
 
-#if 0
+
     for( std::vector<ScheduleTriggerGroup *>::iterator it = triggerGroupList.begin() ; it != triggerGroupList.end(); ++it)
     {
         (*it)->buildRCNodeTree( listCN );
     }
-#endif
+
 
     // Take care of the event groups
     listCN = new RESTContentNode;
@@ -4066,7 +4114,7 @@ ScheduleManager::saveConfigNew()
 
     rootCN->addChild( listCN );
 
-#if 0
+
     for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin() ; it != eventRuleList.end(); ++it)
     {
         (*it)->buildRCNodeTree( listCN );
@@ -4074,7 +4122,7 @@ ScheduleManager::saveConfigNew()
 #endif
 
     // Write everything out to a file
-    cfgWriter.writeConfig( filePath, rootCN );
+    cfgWriter.writeConfig( filePath, this );
 }
 
 bool
@@ -4096,7 +4144,7 @@ ScheduleManager::saveConfiguration()
 
     // Tmp Call for debug
     saveConfigNew();
-
+#if 0
     // Create a new XmlWriter for filename, with no compression. 
     writer = xmlNewTextWriterFilename( filePath.c_str(), 0 );
     if( writer == NULL ) 
@@ -4151,7 +4199,7 @@ ScheduleManager::saveConfiguration()
 
     // Write the file
     xmlFreeTextWriter( writer );
-
+#endif
     return false;
 }
 
@@ -4444,6 +4492,13 @@ ScheduleManager::newObject( unsigned int type )
     return NULL;
 }
 
+void 
+ScheduleManager::freeObject( RESTContentNode *objPtr )
+{
+    std::cout << "freeObject: " << objPtr->getID() << std::endl;
+    delete objPtr;
+}
+
 RESTContentTemplate *
 ScheduleManager::getContentTemplateForType( unsigned int type )
 {
@@ -4471,6 +4526,43 @@ ScheduleManager::getContentTemplateForType( unsigned int type )
     }
 
     return NULL;
+}
+
+unsigned int 
+ScheduleManager::getTypeFromObjectElementName( std::string name )
+{
+    if( name == ScheduleEventRule::getElementName() )
+    {
+        return SCH_ROTID_EVENTRULE;
+    }
+    else if( name == ScheduleZoneGroup::getElementName() )
+    {
+        return SCH_ROTID_ZONEGROUP;
+    }
+    else if( name == ScheduleZoneRule::getElementName() )
+    {
+        return SCH_ROTID_ZONERULE;
+    }
+    else if( name == ScheduleTriggerGroup::getElementName() )
+    {
+        return SCH_ROTID_TRIGGERGROUP;
+    }
+    else if( name == ScheduleTriggerRule::getElementName() )
+    {
+        return SCH_ROTID_TRIGGERRULE;
+    }
+    else
+    {
+        std::cerr << "ERROR: getTypeFromObjectElementName - Unrecognized element name" << std::endl;
+        return 0;
+    }
+}
+
+void 
+ScheduleManager::notifyCfgChange()
+{
+    saveConfiguration();
+    loadConfiguration();
 }
 
 unsigned int
