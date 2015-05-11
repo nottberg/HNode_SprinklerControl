@@ -560,6 +560,9 @@ class ScheduleEventRule : public RESTContentNode
 
         std::string      url;
 
+        std::string      zoneGroupID;
+        std::string      triggerGroupID;
+
         bool fireManually;
 
         bool eventsPending;
@@ -575,9 +578,6 @@ class ScheduleEventRule : public RESTContentNode
 
         void startManually();
 
-        //void setID( std::string idValue );
-        //std::string getID();
-
         void setName( std::string nameValue );
         std::string getName();
     
@@ -587,37 +587,22 @@ class ScheduleEventRule : public RESTContentNode
         void setURL( std::string urlValue );
         std::string getURL();
 
-        //void setOcurrenceType( SER_OCURRENCE_TYPE typeValue );
-        //SER_OCURRENCE_TYPE getOcurrenceType();
+        void setZoneGroupID( std::string zgID );
+        std::string getZoneGroupID();
 
-        //void setReferenceTime( ScheduleDateTime &time );
-        //void getReferenceTime( ScheduleDateTime &time );
-
-        //void clearZoneList();
-        //void addZoneRule( Zone *zone, ScheduleTimeDuration &td );
-
-//        void setZoneGroup( ScheduleZoneGroup *zg );
-//        std::string getZoneGroupID();
-
-//        void setTriggerGroup( ScheduleTriggerGroup *tg );
-//        std::string getTriggerGroupID();
+        void setTriggerGroupID( std::string tgID );
+        std::string getTriggerGroupID();
  
         virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN ); 
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
-        //bool buildRCNodeTree( RESTContentNode *rootCN );
-
         void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
-
-        //static void initRequiredFieldMap( std::map< std::string, std::string > &fieldMap );
-        //static void initOptionalFieldMap( std::map< std::string, std::string > &fieldMap );
-        //static void initUpdateFieldMap( std::map< std::string, std::string > &fieldMap );
 
         static std::string getElementName();
 
         static RESTContentTemplate *generateContentTemplate();
-        //static bool buildRCTemplateTree( RESTContentTemplate *rootCN );
+
 };
 
 class SMException : public std::exception
@@ -675,6 +660,9 @@ class ScheduleManager : public RESTContentManager
        ~ScheduleManager();
 
         void setZoneManager( ZoneManager *zoneMgr );
+
+        void setZoneStateOn( std::string zoneID );
+        void setZoneStateOff( std::string zoneID );
 
         unsigned int getZoneGroupCount();
         ScheduleZoneGroup *getZoneGroupByIndex( unsigned int index );
