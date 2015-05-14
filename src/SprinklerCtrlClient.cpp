@@ -2,9 +2,57 @@
 #include <curl/curl.h>
 
 #include <iostream>
+#include <vector>
 #include <boost/program_options.hpp>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+
 namespace po = boost::program_options;
+
+class sscReadBuf
+{
+    private:
+        unsigned char *data;
+        unsigned long size;
+
+    public:
+        sscReadBuf();
+       ~sscReadBuf();
+
+        void appendData( void *data, unsigned long length );
+
+        unsigned char *getDataPtr() { return data; }
+        unsigned long getLength() { return size; }
+};
+
+sscReadBuf::sscReadBuf()
+{
+    data = NULL;
+    size = 0;
+}
+
+sscReadBuf::~sscReadBuf()
+{
+    if( data != NULL )
+        free( data );
+}
+
+void 
+sscReadBuf::appendData( void *newdata, unsigned long length )
+{
+    data = (unsigned char *) realloc( data, size + length + 1 );
+    if( data == NULL ) 
+    {
+        // out of memory! 
+        printf("not enough memory (realloc returned NULL)\n");
+        return;
+    }
+ 
+    memcpy( &(data[size]), newdata, length );
+    size += length;
+    data[ size ] = 0;
+}
 
 static size_t
 WriteMemoryCallback( void *contents, size_t size, size_t nmemb, void *userp )
@@ -13,20 +61,10 @@ WriteMemoryCallback( void *contents, size_t size, size_t nmemb, void *userp )
 
     printf( "Content: %*.*s\n", realsize, realsize, contents );
 
+    // FIXME: Broken, because data can come in chunks 
+    ((sscReadBuf *) userp )->appendData( contents, realsize );
+
 #if 0
-    struct MemoryStruct *mem = (struct MemoryStruct *) userp;
- 
-    mem->memory = realloc( mem->memory, mem->size + realsize + 1 );
-    if( mem->memory == NULL ) 
-    {
-        // out of memory! 
-        printf("not enough memory (realloc returned NULL)\n");
-        return 0;
-    }
- 
-    memcpy( &(mem->memory[mem->size]), contents, realsize );
-    mem->size += realsize;
-    mem->memory[ mem->size ] = 0;
  #endif
 
     return realsize;
@@ -45,10 +83,196 @@ static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *stdstr)
   return retcode;
 }
 
+bool
+get_zone_list( std::vector< std::string > &idList )
+{
+    CURL *curl;
+    CURLcode res;
+    sscReadBuf rspData;
+    std::string url;
+    
+    url = "http://192.168.1.128:8200/zones";
+ 
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)&rspData );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return true;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+    }
+
+    xmlDocPtr doc; 
+
+    // The document being in memory, it have no base per RFC 2396,
+    // and the "noname.xml" argument will serve as its base.
+    doc = xmlReadMemory( (const char *)rspData.getDataPtr(), rspData.getLength(), "noname.xml", NULL, 0 );
+    if( doc == NULL ) 
+    {
+        fprintf(stderr, "Failed to parse document\n");
+	    return true;
+    }
+
+    xmlNodePtr rootNode;
+
+    rootNode = xmlDocGetRootElement( doc );
+
+    if( ( !rootNode ) || ( strcmp( (const char *)rootNode->name, "hnode-zonelist" ) != 0 ) )
+    {
+        fprintf(stderr, "Unrecognized return data.\n");
+	    return true;
+    }
+ 
+    xmlNodePtr idNode = NULL;
+
+    for( idNode = rootNode->children; idNode; idNode = idNode->next ) 
+    {
+        std::cout << idNode->name << std::endl;
+
+        if( ( idNode->type == XML_ELEMENT_NODE ) && ( strcmp( (const char *)idNode->name, "zoneid" ) == 0 ) )
+        {
+            xmlChar *idStr;
+            idStr = xmlNodeGetContent( idNode );
+            std::string tmpStr = (const char *)idStr;
+            idList.push_back( tmpStr );
+            xmlFree( idStr );
+        }
+    }
+
+    xmlFreeDoc(doc);
+
+    return false;
+}
+
+bool
+get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFields )
+{
+    CURL *curl;
+    CURLcode res;
+    sscReadBuf rspData;
+    std::string url;
+
+    if( zoneID.empty() )
+        return true;    
+
+    url = "http://192.168.1.128:8200/zones/" + zoneID;
+ 
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)&rspData );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return true;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+    }
+
+    xmlDocPtr doc; 
+
+    // The document being in memory, it have no base per RFC 2396,
+    // and the "noname.xml" argument will serve as its base.
+    doc = xmlReadMemory( (const char *)rspData.getDataPtr(), rspData.getLength(), "noname.xml", NULL, 0 );
+    if( doc == NULL ) 
+    {
+        fprintf(stderr, "Failed to parse document\n");
+	    return true;
+    }
+
+    xmlNodePtr rootNode;
+
+    rootNode = xmlDocGetRootElement( doc );
+
+    if( ( !rootNode ) || ( strcmp( (const char *)rootNode->name, "zone" ) != 0 ) )
+    {
+        fprintf(stderr, "Unrecognized return data.\n");
+	    return true;
+    }
+ 
+    xmlNodePtr zoneNode = NULL;
+
+    for( zoneNode = rootNode->children; zoneNode; zoneNode = zoneNode->next ) 
+    {
+        if( zoneNode->type == XML_ELEMENT_NODE )
+        {
+            xmlChar *tmpStr;
+            tmpStr = xmlNodeGetContent( zoneNode );
+            std::pair< std::string, std::string > entry( (const char *)zoneNode->name, (const char *)tmpStr );
+            objFields.insert( entry );
+            xmlFree( tmpStr );
+        }
+    }
+
+    xmlFreeDoc(doc);
+
+    return false;
+}
+
 int main( int argc, char* argv[] )
 {
     std::string objID;
     std::string obj2ID;
+
+    std::string descStr;
+    std::string nameStr;
+    std::string zoneListStr;
+    std::string timeListStr;
 
     // Declare the supported options.
     po::options_description desc("HNode Sprinkler Control Client");
@@ -60,6 +284,28 @@ int main( int argc, char* argv[] )
         ("update", "Update the fields in an object")
         ("delete", "Delete an existing object")
 
+        ("get-zone-list", "Get a list of available zones.")
+
+        ("new-schedule-entry", "Create a complete schedule entry, including the schedule-rule, zone-group, and trigger group.")
+
+        ("desc", po::value<std::string>(&descStr), "The value for the description field.")
+        ("name", po::value<std::string>(&nameStr), "The value for the name field.")
+
+        ("zone-list", po::value<std::string>(&zoneListStr), "Specify a comma seperated ordered list of zones by zoneID.")
+        ("time-list",  po::value<std::string>(&timeListStr), "Specify a comma seperated list of trigger times.")
+
+        ("detail", "In addition to getting object ids; also get the objects contents.")
+#if 0
+        ("get-schedule-entries", 
+        ("new-schedule-entry", "Create a new schedule entry.")
+        ("add-time-trigger",
+        ("remove-time-trigger",
+        ("add-zone",
+        ("remove-zone",
+
+        ("zone-list","Specify a comma seperated list of zones by zoneID.")
+        ("time",
+#endif
         ("event-rule", "Operate on event rules.")
         ("zone-group", "Operate on zone groups.")
         ("trigger-group", "Operate on trigger groups")
@@ -69,6 +315,7 @@ int main( int argc, char* argv[] )
         ("cmd", "dummy cmd")
         ("objid", po::value<std::string>(&objID), "The object id.")
         ("objid2", po::value<std::string>(&obj2ID), "The object id 2.")
+
 
     ;
 
@@ -85,7 +332,37 @@ int main( int argc, char* argv[] )
     // In windows, this will init the winsock stuff 
     curl_global_init(CURL_GLOBAL_ALL);
 
-    if( vm.count( "ids" ) )
+    if( vm.count( "get-zone-list" ) )
+    {
+        std::vector< std::string > idList;
+
+        if( get_zone_list( idList ) == true )
+        {
+            std::cerr << "ERROR: Unable to retrieve zone id list." << std::endl;
+            return 2;
+        }
+
+        // Output the zone IDs
+        std::cout << "=== Zone IDs (Count: " << idList.size() << " ) ===" << std::endl;
+        for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
+        {
+            std::map< std::string, std::string > objFields;
+
+            std::cout << "Zone ID: " << *it << std::endl;
+        
+            if( vm.count( "detail" ) )
+            {
+                get_zone_object( *it, objFields );
+
+                for( std::map< std::string, std::string >::iterator fi = objFields.begin(); fi != objFields.end(); ++fi )
+                {
+                    std::cout << "    " << fi->first << " : " << fi->second << std::endl;
+                }
+            }
+        }
+        std::cout << std::endl;
+    }
+    else if( vm.count( "ids" ) )
     {
         CURL *curl;
         CURLcode res;
