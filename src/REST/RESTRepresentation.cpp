@@ -322,6 +322,17 @@ RESTRepresentation::getHTTPHeader( std::string name, std::string &value )
 }
 
 bool 
+RESTRepresentation::getHTTPHeaderNameList( std::vector< std::string > &nameList )
+{
+    for( std::map<std::string, RESTRepDataItem *>::iterator it = httpHeader.begin(); it != httpHeader.end(); ++it )
+    {
+        nameList.push_back( it->first );
+    }
+
+    return false;
+}
+
+bool 
 RESTRepresentation::hasQueryParameters()
 {
     if( queryParam.empty() == true )

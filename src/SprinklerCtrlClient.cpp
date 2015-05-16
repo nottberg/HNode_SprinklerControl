@@ -264,6 +264,88 @@ get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFi
     return false;
 }
 
+static size_t 
+location_header_callback( char *buffer, size_t size, size_t nitems, void *userdata )
+{
+  size_t dataSize = nitems * size;
+
+  if( dataSize != 0 )
+  {
+      printf( "Return Header(%d) - %*.*s\n", dataSize, dataSize, dataSize, buffer );
+  }
+
+  return dataSize;
+}
+
+bool 
+create_zone_group( std::string name, std::string desc, std::string zones, std::string &zgID )
+{
+    CURL *curl;
+    CURLcode res;
+ 
+    std::string post;
+    std::string url;
+ 
+    post  = "<schedule-zone-group>";
+    post += "<name>" + name + "</name>";
+    post += "<desc>" + desc + "</desc>";
+    post += "<policy>sequential</policy>";
+    post += "</schedule-zone-group>";
+
+    url = "http://192.168.1.128:8200/schedule/zone-groups";
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
+	        
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return -1;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+    }
+
+    curl_global_cleanup();
+}
+
+bool
+create_trigger_group( std::string name, std::string desc, std::string times, std::string &tgID )
+{
+
+}
+
+bool
+create_schedule_rule( std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
+{
+
+}
+
 int main( int argc, char* argv[] )
 {
     std::string objID;
@@ -361,6 +443,14 @@ int main( int argc, char* argv[] )
             }
         }
         std::cout << std::endl;
+    }
+    else if( vm.count( "new-schedule-entry" ) )
+    {
+        std::string zgID, tgID, erID;
+
+        create_zone_group( "zgname", "zgdesc", "zone1, zone2", zgID );
+        //create_trigger_group( "tgname", "tgdesc", "", tgID );
+        //create_schedule_rule( "name", "desc", zgID, tgID, erID);
     }
     else if( vm.count( "ids" ) )
     {

@@ -101,6 +101,8 @@ class RESTRepresentation
         void addHTTPHeader( std::string name, std::string value );
         bool getHTTPHeader( std::string name, std::string &value );
 
+        bool getHTTPHeaderNameList( std::vector< std::string > &nameList );
+
         // REST_RDI_TYPE_QUERY_PARAMETER
         bool hasQueryParameters();
         void clearQueryParameters();
@@ -727,7 +729,7 @@ class RESTRequest
 
         void execute();
 
-        void sendResourceCreatedResponse( std::string resID );
+        void sendResourceCreatedResponse( std::string newResource );
 
         void sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr );
 

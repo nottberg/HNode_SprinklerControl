@@ -499,7 +499,7 @@ RESTResourceRESTContentList::restPost( RESTRequest *request )
         return;
     }
 
-    // Build a response, including the new rule id
+    // Build a response, including the new object id
     request->sendResourceCreatedResponse( objID );
 }
 

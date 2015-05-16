@@ -90,6 +90,18 @@ RESTDaemon::sendResponse( RESTRequest *request )
 
     if( response )
     {
+        std::vector< std::string > nameList;
+        std::string value;
+
+        // Add any return headers that were specified in the outResponse.
+        payload->getHTTPHeaderNameList( nameList );
+
+        for( std::vector< std::string >::iterator it = nameList.begin(); it != nameList.end(); ++it )
+        {
+            payload->getHTTPHeader( *it, value );
+            MHD_add_response_header( response, it->c_str(), value.c_str() );
+        }
+
         ret = MHD_queue_response( request->getConnection(), request->getResponseCode(), response );
         MHD_destroy_response( response );
     }

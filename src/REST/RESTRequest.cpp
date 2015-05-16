@@ -287,8 +287,13 @@ RESTRequest::execute()
 }
 
 void
-RESTRequest::sendResourceCreatedResponse( std::string resID )
+RESTRequest::sendResourceCreatedResponse( std::string newResource )
 {
+    std::string locURL = getURL() + "/" + newResource;
+
+    // Send the location header to tell where the new resource was created.
+    outRepresentation.addHTTPHeader( "Location", locURL );
+
     // Send back the response
     setResponseCode( REST_HTTP_RCODE_CREATED );
     sendResponse();
