@@ -656,8 +656,11 @@ RESTContentManager::getUniqueObjID( std::string prefix )
     char idStr[128];
 
     // Create a unique id
-    nextID += 1;
-    sprintf( idStr, "%s%d", prefix.c_str(), (int) nextID );
+    do
+    {
+        nextID += 1;
+        sprintf( idStr, "%s%d", prefix.c_str(), (int) nextID );
+    }while( objMap.find( idStr ) != objMap.end() );
 
     return idStr;
 }

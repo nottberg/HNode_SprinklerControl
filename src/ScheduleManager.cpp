@@ -556,7 +556,6 @@ ScheduleZoneRule::generateContentTemplate()
 
     // Required fields
     rtnNode->defineField( "type", true );
-    rtnNode->defineField( "name", true );
     rtnNode->defineField( "zoneid", true );
 
     return rtnNode;
@@ -567,13 +566,6 @@ ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
 {
     std::string tmpStr;
     ScheduleTimeDuration td;
-
-    objCN->getField( "name", tmpStr );
-
-    if( tmpStr.empty() == false )
-    {
-        name = tmpStr;
-    }
 
     objCN->getField( "zoneid", tmpStr );
 
@@ -609,23 +601,9 @@ ScheduleZoneRule::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setAsObject( "schedule-zone-rule" );
     objCN->setID( getID() );
     objCN->setField( "type", getTypeStr() );
-    objCN->setField( "name", getName() );
     objCN->setField( "duration", getDuration().getISOString() );
     objCN->setField( "zoneid", zoneID );
 }
-
-void 
-ScheduleZoneRule::setName( std::string nameValue )
-{
-    name = nameValue;
-}
-
-std::string 
-ScheduleZoneRule::getName()
-{
-    return name;
-}
-
 
 void 
 ScheduleZoneRule::setZoneID( std::string newZoneID )

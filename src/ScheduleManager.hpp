@@ -282,8 +282,6 @@ class ScheduleZoneRule : public RESTContentNode, public ScheduleAction
     private:
         RESTContentManager     &objManager;
 
-        std::string             name;
-
         SZR_TYPE_T              ruleType;
 
         std::string             zoneID;
