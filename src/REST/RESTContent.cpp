@@ -1396,6 +1396,8 @@ RESTContentHelperXML::parseWithTemplate( RESTContentTemplate *templateCN, RESTRe
     // Find the databuffer to parse
     dataPtr = repPtr->getSimpleContentPtr( contentType, dataLength );
 
+    std::cout << dataPtr << std::endl;
+
     // Run the simple content through the xml parser
     doc = xmlParseMemory( (const char *)dataPtr, dataLength );
     if (doc == NULL) 

@@ -368,13 +368,25 @@ typedef enum ScheduleTriggerRuleType
 typedef enum ScheduleTimeTriggerScope 
 {
     SER_TT_SCOPE_NOTSET     = 0,
-    SER_TT_SCOPE_DAY        = 1,
+    SER_TT_SCOPE_NEVER      = 1,
+    SER_TT_SCOPE_MINUTE     = 2,
+    SER_TT_SCOPE_HOUR       = 3,
+    SER_TT_SCOPE_DAY        = 4,
+    SER_TT_SCOPE_WEEK       = 5,
+    SER_TT_SCOPE_FORTNIGHT  = 6,
+    SER_TT_SCOPE_YEAR       = 7
 }SER_TT_SCOPE;
 
 static const char* SERScopeString[] =
 {
-    "notset",  // 0
-    "day"     // 1
+    "notset",    // TRS_REPEAT_NOTSET,
+    "none",      // TRS_REPEAT_NEVER,
+    "minute",    // TRS_REPEAT_MINUTE,
+    "hour",      // TRS_REPEAT_HOUR,
+    "day",       // TRS_REPEAT_DAY,
+    "week",      // TRS_REPEAT_WEEK,
+    "fortnight", // TRS_REPEAT_FORTNIGHT,
+    "year"       // TRS_REPEAT_YEAR
 };
 
 typedef enum ScheduleEventRuleType 
@@ -390,9 +402,7 @@ class ScheduleTriggerRule : public RESTContentNode
     private:
         RESTContentManager &objManager;
 
-        STR_TYPE_T     ruleType;
-
-        std::string    name;
+        STR_TYPE_T         ruleType;
 
         SER_TT_SCOPE       scope;
         ScheduleDateTime   refTime;
@@ -405,9 +415,6 @@ class ScheduleTriggerRule : public RESTContentNode
         virtual std::string getTypeStr();       
         static  std::string getStaticTypeStr();       
    
-        void setName( std::string idValue );
-        std::string getName();
-
         void setScope( SER_TT_SCOPE scopeValue );
         SER_TT_SCOPE getScope();
 
@@ -435,6 +442,7 @@ class ScheduleTriggerGroup : public RESTContentNode
         RESTContentManager &objManager;
 
         std::string name;
+        std::string desc;
 
     public:
         ScheduleTriggerGroup( RESTContentManager &objMgr);
@@ -442,6 +450,9 @@ class ScheduleTriggerGroup : public RESTContentNode
  
         void setName( std::string idValue );
         std::string getName(); 
+
+        void setDescription( std::string idValue );
+        std::string getDescription(); 
 
 //        unsigned int getTriggerRuleCount();
 //        ScheduleTriggerRule *getTriggerRuleByIndex( unsigned int index );

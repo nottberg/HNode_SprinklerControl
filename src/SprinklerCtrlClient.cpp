@@ -321,16 +321,20 @@ create_zone_rule( std::string parentID, std::string zoneID, int duration, std::s
     CURL *curl;
     CURLcode res;
  
-    std::ostringstream post;
+    std::ostringstream postStream;
+    std::string post;
+
     std::string url;
  
-    post << "<schedule-zone-rule>";
-    post << "<zoneid>" << zoneID << "</zoneid>";
-    post << "<type>" << "fixedduration" << "</type>";
-    post << "<duration>" << duration << "</duration>";
-    post << "</schedule-zone-rule>";
+    postStream << "<schedule-zone-rule>";
+    postStream << "<zoneid>" << zoneID << "</zoneid>";
+    postStream << "<type>" << "fixedduration" << "</type>";
+    postStream << "<duration>" << duration << "</duration>";
+    postStream << "</schedule-zone-rule>";
 
-    std::cout << "create_zone_rule post: " << post.str() << std::endl;
+    post = postStream.str();
+
+    std::cout << "create_zone_rule post: " << post << std::endl;
 
     url = "http://192.168.1.128:8200/schedule/zone-groups/" + parentID + "/members";
 
@@ -352,7 +356,9 @@ create_zone_rule( std::string parentID, std::string zoneID, int duration, std::s
 	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.str().c_str());
+
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
 
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &zrID);
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
@@ -475,6 +481,8 @@ create_zone_group( std::string name, std::string desc, std::string zones, std::s
 	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
 	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
 
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &zgID);
@@ -507,7 +515,7 @@ create_zone_group( std::string name, std::string desc, std::string zones, std::s
 
 
 bool
-create_trigger_group( std::string name, std::string desc, std::string times, std::string &tgID )
+create_trigger_group( std::string name, std::string desc, std::string &tgID )
 {
     CURL *curl;
     CURLcode res;
@@ -518,7 +526,6 @@ create_trigger_group( std::string name, std::string desc, std::string times, std
     post  = "<schedule-trigger-group>";
     post += "<name>" + name + "</name>";
     post += "<desc>" + desc + "</desc>";
-    post += "<type>time</type>";
     post += "</schedule-trigger-group>";
 
     url = "http://localhost:8200/schedule/trigger-groups";
@@ -541,6 +548,8 @@ create_trigger_group( std::string name, std::string desc, std::string times, std
 	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
 	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
 
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &tgID);
@@ -601,22 +610,36 @@ typedef enum TriggerRuleSpecRepeatHorizon
     TRS_REPEAT_YEAR
 } TRS_REPEAT_T;
 
+const char *gTRSScopeStrings[] =
+{
+    "none",      // TRS_REPEAT_NEVER,
+    "minute",    // TRS_REPEAT_MINUTE,
+    "hour",      // TRS_REPEAT_HOUR,
+    "day",       // TRS_REPEAT_DAY,
+    "week",      // TRS_REPEAT_WEEK,
+    "fortnight", // TRS_REPEAT_FORTNIGHT,
+    "year"       // TRS_REPEAT_YEAR
+};
+
 class TriggerRuleSpec
 {
     private:
-        TRS_REPEAT_T             repeatHorizon;
+        TRS_REPEAT_T             scope;
         boost::posix_time::ptime refTime;
 
     public:
         TriggerRuleSpec( TRS_REPEAT_T repeat, boost::posix_time::ptime time );
        ~TriggerRuleSpec();
 
+        std::string getScopeAsStr();
+        std::string getReftimeAsISOStr();
+ 
         void debugPrint();
 };
 
 TriggerRuleSpec::TriggerRuleSpec( TRS_REPEAT_T repeat, boost::posix_time::ptime time ) 
 { 
-    repeatHorizon = repeat; 
+    scope   = repeat; 
     refTime = time; 
 }
 
@@ -625,14 +648,26 @@ TriggerRuleSpec::~TriggerRuleSpec()
 
 }
 
+std::string 
+TriggerRuleSpec::getScopeAsStr()
+{
+    return gTRSScopeStrings[ scope ];
+}
+
+std::string 
+TriggerRuleSpec::getReftimeAsISOStr()
+{
+    return to_iso_string( refTime );
+}
+
 void
 TriggerRuleSpec::debugPrint()
 {
     boost::local_time::time_zone_ptr zone = get_system_timezone();
     boost::local_time::local_date_time ldtList( refTime, zone );
 
-    std::cout << "TRS - Horizon: " << repeatHorizon << std::endl;    
-    std::cout << "TRS - TRef: " << to_iso_string( refTime ) << std::endl;
+    std::cout << "TRS - scope: " << getScopeAsStr() << std::endl;    
+    std::cout << "TRS - TRef: " << getReftimeAsISOStr() << std::endl;
     std::cout << "TRS - Local: " << ldtList << std::endl;
 }
 
@@ -729,25 +764,74 @@ build_day_of_week_list( std::string timeListStr, TRS_REPEAT_T repeat, boost::gre
     }    
 }
 
-
-
-void
-createTriggerRuleSpecs( TRS_REPEAT_T repreat, std::vector< boost::local_time::local_date_time > ldtList, std::vector< TriggerRuleSpec > &trList )
+bool 
+create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
 {
-    for( std::vector< boost::local_time::local_date_time >::iterator it = ldtList.begin(); it != ldtList.end(); ++it )
+    CURL *curl;
+    CURLcode res;
+ 
+    std::ostringstream postStream;
+    std::string post;
+    std::string url;
+ 
+    postStream << "<schedule-trigger-rule>";
+    postStream << "<type>" << "time" << "</type>";
+    postStream << "<scope>" << trSpec.getScopeAsStr() << "</scope>";
+    postStream << "<reftime>" << trSpec.getReftimeAsISOStr() << "</reftime>";
+    postStream << "</schedule-trigger-rule>";
+
+    post = postStream.str();
+
+    std::cout << "create_trigger_rule post: " << post << std::endl;
+
+    url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
     {
-        std::cout << "LTD      : " << *it << std::endl;
-        std::cout << "LTD (utc): " << (*it).utc_time() << std::endl;
-        std::cout << "LTD (iso): " << to_iso_string( (*it).utc_time() ) << std::endl;
-    }    
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &trID);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
+	        
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return -1;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+    }
+
+    curl_global_cleanup();
 }
 
 void
 process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &trList )
 {
-    
-    //std::vector< boost::local_time::local_date_time > ldtList;
-
     boost::regex listSepRE(";+");
 
     boost::regex ruleRE("(Once|Minute|Hour|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Mon1|Tue1|Wed1|Thu1|Fri1|Sat1|Sun1|Mon2|Tue2|Wed2|Thu2|Fri2|Sat2|Sun2)@([0-9,:|am|pm|AM|PM]*)");
@@ -999,8 +1083,7 @@ int main( int argc, char* argv[] )
 
         // scope, start-scope, time-list, interval, repeat; next-entry
         // scope is hourly, daily, weekly, monthly
-        ("week-start-list",  po::value<std::string>(&wksListStr), "Specify a list of days and times. (i.e. Monday:6am,7pm;Tuesday:5pm;Friday:6am,7pm")
-        ("scoped-time-list",  po::value<std::string>(&sdiListStr), "Specify a start day, the duration to make events for, and the interval between start times. (i.e. Monday,2w,6h)")
+        ("time-list",  po::value<std::string>(&wksListStr), "Specify a list of days and times. (i.e. Mon:6am,7pm;Tue:5pm;Fri:6am,7pm")
 
         ("detail", "In addition to getting object ids; also get the objects contents.")
 #if 0
@@ -1106,9 +1189,23 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        create_trigger_group( nameStr, descStr, zoneListStr, zgID );
+        create_trigger_group( nameStr, descStr, tgID );
 
-        std::cout << "Trigger Group created successfully. ( ID: " << zgID << " )" << std::endl; 
+        std::cout << "Trigger Group created successfully. ( ID: " << tgID << " )" << std::endl; 
+
+        if( vm.count( "time-list" ) )
+        {
+            std::vector< TriggerRuleSpec > trList;
+            std::string trID;
+
+            process_time_set_list( wksListStr, trList );
+
+            for( std::vector< TriggerRuleSpec >::iterator it = trList.begin(); it != trList.end(); ++it )
+            {
+                it->debugPrint();
+                create_trigger_rule( tgID, *it, trID );
+            }    
+        }
     }
     else if( vm.count( "new-schedule-entry" ) )
     {
@@ -1117,17 +1214,6 @@ int main( int argc, char* argv[] )
         //create_zone_group( "zgname", "zgdesc", "zone1, zone2", zgID );
         //create_trigger_group( "tgname", "tgdesc", "", tgID );
         //create_schedule_rule( "name", "desc", zgID, tgID, erID);
-    }
-    else if( vm.count( "week-start-list" ) )
-    {
-        std::vector< TriggerRuleSpec > trList;
-        process_time_set_list( wksListStr, trList );
-
-        for( std::vector< TriggerRuleSpec >::iterator it = trList.begin(); it != trList.end(); ++it )
-        {
-            it->debugPrint();
-        }    
-
     }
     else if( vm.count( "ids" ) )
     {
@@ -1277,6 +1363,8 @@ int main( int argc, char* argv[] )
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
 	        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
 	        
             // Perform the request, res will get the return code 

@@ -825,7 +825,6 @@ ScheduleTriggerRule::generateContentTemplate()
     rtnNode->defineField( "type", true );
 
     // Optional fields
-    rtnNode->defineField( "name", false );
     rtnNode->defineField( "scope", false );
     rtnNode->defineField( "reftime", false );
 
@@ -838,11 +837,6 @@ ScheduleTriggerRule::setFieldsFromContentNode( RESTContentNode *objCN )
     std::string tmpStr;
 
     // Required Fields
-    if( objCN->getField( "name", tmpStr ) )
-    {
-        name = tmpStr;
-    }
-
     if( objCN->getField( "type", tmpStr ) )
     {
         if( tmpStr == "time" )
@@ -875,7 +869,6 @@ ScheduleTriggerRule::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setAsObject( "schedule-trigger-rule" );
     objCN->setField( "id", getID() );
     objCN->setField( "type", getTypeStr() );
-    objCN->setField( "name", getName() );
     objCN->setField( "scope", getScopeStr() );
     objCN->setField( "reftime", getRefTime().getISOString() );
 }
@@ -909,18 +902,6 @@ ScheduleTriggerRule::getStaticTypeStr()
 }
 
 void 
-ScheduleTriggerRule::setName( std::string value )
-{
-    name = value;
-}
-
-std::string 
-ScheduleTriggerRule::getName()
-{
-    return name;
-}
-
-void 
 ScheduleTriggerRule::setScope( SER_TT_SCOPE scopeValue )
 {
     scope = scopeValue;
@@ -942,7 +923,37 @@ ScheduleTriggerRule::setScopeFromStr( std::string scopeStr )
     }
     else if( scopeStr == SERScopeString[1] )
     {
+        scope = SER_TT_SCOPE_NEVER;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[2] )
+    {
+        scope = SER_TT_SCOPE_MINUTE;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[3] )
+    {
+        scope = SER_TT_SCOPE_HOUR;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[4] )
+    {
         scope = SER_TT_SCOPE_DAY;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[5] )
+    {
+        scope = SER_TT_SCOPE_WEEK;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[6] )
+    {
+        scope = SER_TT_SCOPE_FORTNIGHT;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[7] )
+    {
+        scope = SER_TT_SCOPE_YEAR;
         return false;
     }
 
@@ -1042,7 +1053,7 @@ ScheduleTriggerGroup::generateContentTemplate()
 
     // Required fields
     rtnNode->defineField( "name", true );
-    rtnNode->defineField( "policy", true );
+    rtnNode->defineField( "desc", true );
 
     return rtnNode;
 }
@@ -1057,6 +1068,11 @@ ScheduleTriggerGroup::setFieldsFromContentNode( RESTContentNode *objCN )
     {
         name = tmpStr;
     }
+
+    if( objCN->getField( "desc", tmpStr ) )
+    {
+        desc = tmpStr;
+    }
 }
 
 void
@@ -1068,6 +1084,7 @@ ScheduleTriggerGroup::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setAsObject( "schedule-trigger-group" );
     objCN->setID( getID() );
     objCN->setField( "name", getName() );
+    objCN->setField( "desc", getDescription() );
 }
 
 void 
@@ -1080,6 +1097,18 @@ std::string
 ScheduleTriggerGroup::getName()
 {
     return name;
+}
+
+void 
+ScheduleTriggerGroup::setDescription( std::string value )
+{
+    desc = value;
+}
+
+std::string 
+ScheduleTriggerGroup::getDescription()
+{
+    return desc;
 }
 
 bool 
