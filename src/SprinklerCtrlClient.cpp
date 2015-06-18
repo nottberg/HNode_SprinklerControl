@@ -783,17 +783,18 @@ build_minute_list( std::string timeListStr, std::vector< TriggerRuleSpec > &trLi
                 second = strtol( timeMatch[2].str().c_str(), NULL, 0 );
             }
         
+            td += boost::posix_time::minutes( minute );
+            td += boost::posix_time::seconds( second );
+
+            boost::local_time::local_date_time ldt( baseDate, td, zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR );
+
+            TriggerRuleSpec trSpec( TRS_REPEAT_HOUR, ldt.utc_time() ); 
+
+            trList.push_back( trSpec );
         }
    
-        td += boost::posix_time::minutes( minute );
-        td += boost::posix_time::seconds( second );
-
-        boost::local_time::local_date_time ldt( baseDate, td, zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR );
-
-        TriggerRuleSpec trSpec( TRS_REPEAT_HOUR, ldt.utc_time() ); 
-
-        trList.push_back( trSpec );
-
+        timeList++;
+       
     }  
 }
 
