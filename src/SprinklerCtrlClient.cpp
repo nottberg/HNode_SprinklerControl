@@ -747,6 +747,78 @@ process_time_of_day_list( std::string timeOfDayListStr, std::vector< boost::posi
 }
 
 void
+build_minute_list( std::string timeListStr, std::vector< TriggerRuleSpec > &trList )
+{
+    boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Monday, boost::gregorian::Jan);
+    boost::gregorian::date baseDate = fdm.get_date(2000);
+
+    boost::local_time::time_zone_ptr zone = get_system_timezone();
+    std::vector< boost::posix_time::time_duration > tdList;
+
+    boost::regex listSepRE(",+");
+
+    boost::sregex_token_iterator end;
+    boost::sregex_token_iterator timeList( timeListStr.begin(), timeListStr.end(), listSepRE, -1);
+
+    while( timeList != end )
+    {
+        boost::regex timeRE("([0-9]+[0-9]*):*([0-9]*[0-9]*)");
+        boost::cmatch timeMatch;
+        boost::posix_time::time_duration td( 0, 0, 0, 0 );
+
+        unsigned int minute = 0;
+        unsigned int second = 0;
+
+        std::string timeStr = *timeList;
+  
+        if( boost::regex_match( timeStr.c_str(), timeMatch, timeRE ) )
+        {
+            if( timeMatch[1].str().empty() == false )
+            {
+                minute = strtol( timeMatch[1].str().c_str(), NULL, 0 );
+            }
+
+            if( timeMatch[2].str().empty() == false )
+            {
+                second = strtol( timeMatch[2].str().c_str(), NULL, 0 );
+            }
+        
+        }
+   
+        td += boost::posix_time::minutes( minute );
+        td += boost::posix_time::seconds( second );
+
+        boost::local_time::local_date_time ldt( baseDate, td, zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR );
+
+        TriggerRuleSpec trSpec( TRS_REPEAT_HOUR, ldt.utc_time() ); 
+
+        trList.push_back( trSpec );
+
+    }  
+}
+
+void
+build_hour_list( std::string timeListStr, std::vector< TriggerRuleSpec > &trList )
+{
+    boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Monday, boost::gregorian::Jan);
+    boost::gregorian::date baseDate = fdm.get_date(2000);
+
+    boost::local_time::time_zone_ptr zone = get_system_timezone();
+    std::vector< boost::posix_time::time_duration > tdList;
+
+    process_time_of_day_list( timeListStr, tdList );
+
+    for( std::vector< boost::posix_time::time_duration >::iterator it = tdList.begin(); it != tdList.end(); ++it )
+    {
+        boost::local_time::local_date_time ldt( baseDate, *it, zone, boost::local_time::local_date_time::NOT_DATE_TIME_ON_ERROR );
+
+        TriggerRuleSpec trSpec( TRS_REPEAT_DAY, ldt.utc_time() ); 
+
+        trList.push_back( trSpec );
+    }    
+}
+
+void
 build_day_of_week_list( std::string timeListStr, TRS_REPEAT_T repeat, boost::gregorian::date baseDate, std::vector< TriggerRuleSpec > &trList )
 {
     boost::local_time::time_zone_ptr zone = get_system_timezone();
@@ -852,11 +924,11 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
             }
             else if( "Minute" == ruleMatch[1] )
             {
-
+                build_minute_list( ruleMatch[2], trList );
             }
             else if( "Hour" == ruleMatch[1] )
             {
-
+                build_hour_list( ruleMatch[2],  trList );
             }
             else if( "Mon" == ruleMatch[1] )
             {

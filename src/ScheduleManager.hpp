@@ -59,6 +59,9 @@ class ScheduleDateTime
         long getMinute();
         long getSecond();
 
+        long getSecondOfMinute();
+        long getMinuteOfHour();
+        long getHourOfDay();
         long getDayOfWeek();
 
         void addSeconds( long seconds );
@@ -71,7 +74,10 @@ class ScheduleDateTime
         void subHours( long hours );
         void subDays( long days );
 
-        void replaceTimeOfDay( ScheduleDateTime &time );
+        void replaceSecondScope( ScheduleDateTime &time );
+        void replaceMinuteScope( ScheduleDateTime &time );
+        void replaceHourScope( ScheduleDateTime &time );
+        void replaceDayScope( ScheduleDateTime &time );
 
         bool isBefore( ScheduleDateTime &time );
         bool isAfter( ScheduleDateTime &time ); 
@@ -406,6 +412,8 @@ class ScheduleTriggerRule : public RESTContentNode
 
         SER_TT_SCOPE       scope;
         ScheduleDateTime   refTime;
+
+        bool checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
 
     public:
         ScheduleTriggerRule( RESTContentManager &objMgr );

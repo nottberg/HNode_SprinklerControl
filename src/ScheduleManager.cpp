@@ -112,7 +112,35 @@ ScheduleDateTime::subDays( long dayValue )
 }
 
 void 
-ScheduleDateTime::replaceTimeOfDay( ScheduleDateTime &replaceTime )
+ScheduleDateTime::replaceSecondScope( ScheduleDateTime &replaceTime )
+{
+    time_duration td( time.time_of_day().hours(), time.time_of_day().minutes(), replaceTime.time.time_of_day().seconds(), 0 );
+
+    ptime newTime( time.date(), td );
+
+    time = newTime; 
+}
+
+void 
+ScheduleDateTime::replaceMinuteScope( ScheduleDateTime &replaceTime )
+{
+    time_duration td( time.time_of_day().hours(), replaceTime.time.time_of_day().minutes(), replaceTime.time.time_of_day().seconds(), 0 );
+
+    ptime newTime( time.date(), td );
+
+    time = newTime; 
+}
+
+void 
+ScheduleDateTime::replaceHourScope( ScheduleDateTime &replaceTime )
+{
+    ptime newTime( time.date(), replaceTime.time.time_of_day() );
+
+    time = newTime; 
+}
+
+void 
+ScheduleDateTime::replaceDayScope( ScheduleDateTime &replaceTime )
 {
     ptime newTime( time.date(), replaceTime.time.time_of_day() );
 
@@ -135,6 +163,24 @@ std::string
 ScheduleDateTime::getSimpleString()
 {
     return to_simple_string( time );
+}
+
+long 
+ScheduleDateTime::getSecondOfMinute()
+{
+    return time.time_of_day().seconds();
+}
+
+long 
+ScheduleDateTime::getMinuteOfHour()
+{
+    return time.time_of_day().minutes();
+}
+
+long 
+ScheduleDateTime::getHourOfDay()
+{
+    return time.time_of_day().hours();
 }
 
 long
@@ -980,32 +1026,52 @@ ScheduleTriggerRule::getRefTime()
 }
 
 bool 
-ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
 {
-    switch( ruleType )
-    {
-        case STR_TYPE_TIME:
-        {
-            ScheduleDateTime startTime;
-            ScheduleDateTime prestartTime;
+    ScheduleDateTime startTime;
+    ScheduleDateTime prestartTime;
 
-            // If we are not in the right day, then exit
-            if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+    switch( scope )
+    {
+        case SER_TT_SCOPE_NOTSET:
+        break;
+
+        case SER_TT_SCOPE_NEVER:
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( refTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleEventRule -- never - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- never - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- never - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- never - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && refTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( refTime );
+                return true;
+            }
+        break;
+
+        case SER_TT_SCOPE_MINUTE:
+            // If we are not in the right second, then exit
+            if( refTime.getSecondOfMinute() != curTime.getSecondOfMinute() )
                 return false;
 
             // We are in the ballpark so calculate the local startTime
             // based on the curTime
             startTime.setTime( curTime );
-            startTime.replaceTimeOfDay( refTime );
+            startTime.replaceSecondScope( refTime );
 
             // Schedule the event a couple of minutes before start time.
             prestartTime.setTime( startTime );
-            prestartTime.subMinutes( 2 ); 
+            prestartTime.subSeconds( 30 ); 
 
-            //printf( "ScheduleEventRule -- dow - ref: %s\n", refTime.getISOString().c_str() );
-            //printf( "ScheduleEventRule -- dow - prestart: %s\n", prestartTime.getISOString().c_str() );
-            //printf( "ScheduleEventRule -- dow - start: %s\n", startTime.getISOString().c_str() );
-            //printf( "ScheduleEventRule -- dow - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- minute - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- minute - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- minute - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- minute - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
@@ -1013,6 +1079,108 @@ ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTim
                 eventTime.setTime( startTime );
                 return true;
             }
+        break;
+
+        case SER_TT_SCOPE_HOUR:
+            // If we are not in the right minute, then exit
+            if( refTime.getMinuteOfHour() != curTime.getMinuteOfHour() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceMinuteScope( refTime );
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleEventRule -- hour - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- hour - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- hour - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- hour - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
+        break;
+
+        case SER_TT_SCOPE_DAY:
+            // If we are not in the right hour, then exit
+            if( refTime.getHourOfDay() != curTime.getHourOfDay() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceHourScope( refTime );
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleEventRule -- day - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- day - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- day - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- day - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
+        break;
+
+        case SER_TT_SCOPE_WEEK:
+            // If we are not in the right day, then exit
+            if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceHourScope( refTime );
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleEventRule -- week - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- week - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- week - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleEventRule -- week - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
+        break;
+
+        case SER_TT_SCOPE_FORTNIGHT:
+        break;
+
+        case SER_TT_SCOPE_YEAR:
+        break;
+    }
+
+    //  Did not trigger
+    return false;
+}
+
+bool 
+ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+{
+    switch( ruleType )
+    {
+        case STR_TYPE_TIME:
+        {
+            return checkForTimeTrigger( curTime, eventTime );
         }
         break;
 
