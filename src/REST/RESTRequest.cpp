@@ -302,7 +302,14 @@ RESTRequest::sendResourceCreatedResponse( std::string newResource )
 void 
 RESTRequest::sendErrorResponse( REST_HTTP_RCODE_T httpCode, unsigned long errCode, std::string errStr )
 {
+    std::string rspData = "<error>" + errStr + "</error>";
+
+    std::cout << "ErrorResponse: " << rspData << std::endl;
+
+    getOutboundRepresentation()->appendSimpleContent( (unsigned char*) rspData.c_str(), rspData.size() ); 
+
     setResponseCode( httpCode );
+
     sendResponse();
 }
 

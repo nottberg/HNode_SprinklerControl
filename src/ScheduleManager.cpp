@@ -216,6 +216,12 @@ ScheduleTimeDuration::~ScheduleTimeDuration()
 
 }
 
+void 
+ScheduleTimeDuration::setFromSeconds( unsigned long secCnt )
+{
+    td += seconds( secCnt );
+}
+
 void
 ScheduleTimeDuration::setFromString( std::string timeStr )
 {
@@ -226,6 +232,16 @@ std::string
 ScheduleTimeDuration::getISOString()
 {
     return to_iso_string( td );
+}
+
+std::string 
+ScheduleTimeDuration::getSecondsString()
+{
+    char result[64];
+
+    sprintf( result, "%ld", asTotalSeconds() );
+
+    return result;
 }
 
 long 
@@ -603,6 +619,7 @@ ScheduleZoneRule::generateContentTemplate()
     // Required fields
     rtnNode->defineField( "type", true );
     rtnNode->defineField( "zoneid", true );
+    rtnNode->defineField( "duration", true );
 
     return rtnNode;
 }
@@ -613,12 +630,16 @@ ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
     std::string tmpStr;
     ScheduleTimeDuration td;
 
+    std::cout << "ScheduleZoneRule::setFieldsFromContentNode" << std::endl;
+
     objCN->getField( "zoneid", tmpStr );
 
     if( tmpStr.empty() == false )
     {
         zoneID = tmpStr;
     }
+
+    std::cout << "ScheduleZoneRule::setFieldsFromContentNode - 1" << std::endl;
 
     // Optional Fields
     objCN->getField( "type", tmpStr );
@@ -628,14 +649,19 @@ ScheduleZoneRule::setFieldsFromContentNode( RESTContentNode *objCN )
         ruleType = SZR_TYPE_FIXED_DURATION;
     }
 
+    std::cout << "ScheduleZoneRule::setFieldsFromContentNode - 2" << std::endl;
+
     // Optional Fields
     objCN->getField( "duration", tmpStr );
 
     if( tmpStr.empty() == false )
     {
-        td.setFromString( tmpStr );
+        td.setFromSeconds( strtol( tmpStr.c_str(), NULL, 0 ) );
+        std::cout << "DStr: " << tmpStr << ", " << td.getISOString() << std::endl;
         setDuration( td );
     }
+    std::cout << "ScheduleZoneRule::setFieldsFromContentNode - 3" << std::endl;
+
 }
 
 void
@@ -647,7 +673,7 @@ ScheduleZoneRule::setContentNodeFromFields( RESTContentNode *objCN )
     objCN->setAsObject( "schedule-zone-rule" );
     objCN->setID( getID() );
     objCN->setField( "type", getTypeStr() );
-    objCN->setField( "duration", getDuration().getISOString() );
+    objCN->setField( "duration", getDuration().getSecondsString() );
     objCN->setField( "zoneid", zoneID );
 }
 
@@ -1537,9 +1563,10 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     char tmpStr[64];
     ScheduleDateTime eventTime;
 
-    //printf( "ScheduleEventRule -- start updateActiveEvents\n");
-    //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
-    //printf( "ScheduleEventRule -- type: %d\n", type);
+    printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
+    printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
 
     // Only check the rule if it is enabled.
     if( enabled == false )

@@ -98,8 +98,12 @@ class ScheduleTimeDuration
         ScheduleTimeDuration();
        ~ScheduleTimeDuration();
 
+        void setFromSeconds( unsigned long seconds );
+
         void setFromString( std::string timeStr );
+
         std::string getISOString();
+        std::string getSecondsString();
   
         long asTotalSeconds();
 };

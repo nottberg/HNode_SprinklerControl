@@ -97,7 +97,7 @@ get_zone_list( std::vector< std::string > &idList )
     sscReadBuf rspData;
     std::string url;
     
-    url = "http://192.168.1.128:8200/zones";
+    url = "http://localhost:8200/zones";
  
     // get a curl handle 
     curl = curl_easy_init();
@@ -190,7 +190,7 @@ get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFi
     if( zoneID.empty() )
         return true;    
 
-    url = "http://192.168.1.128:8200/zones/" + zoneID;
+    url = "http://localhost:8200/zones/" + zoneID;
  
     // get a curl handle 
     curl = curl_easy_init();
@@ -336,7 +336,7 @@ create_zone_rule( std::string parentID, std::string zoneID, int duration, std::s
 
     std::cout << "create_zone_rule post: " << post << std::endl;
 
-    url = "http://192.168.1.128:8200/schedule/zone-groups/" + parentID + "/members";
+    url = "http://localhost:8200/schedule/zone-groups/" + parentID + "/members";
 
     // get a curl handle 
     curl = curl_easy_init();
@@ -1101,7 +1101,68 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
 bool
 create_schedule_rule( std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
 {
+    CURL *curl;
+    CURLcode res;
+ 
+    std::ostringstream postStream;
+    std::string post;
+    std::string url;
 
+    postStream << "<schedule-event-rule>";
+    postStream << "<name>" << name << "</name>";
+    postStream << "<desc>" << desc << "</desc>";
+    postStream << "<zone-group-id>" << zgID << "</zone-group-id>";
+    postStream << "<trigger-group-id>" << tgID << "</trigger-group-id>";
+    postStream << "<enabled>" << "true" << "</enabled>";
+    postStream << "</schedule-event-rule>";
+
+    post = postStream.str();
+
+    std::cout << "create_schedule_rule post: " << post << std::endl;
+
+    url = "http://localhost:8200/schedule/rules";
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
+	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &erID);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
+	        
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return -1;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+    }
+
+    curl_global_cleanup();
 }
 
 int main( int argc, char* argv[] )
@@ -1282,11 +1343,33 @@ int main( int argc, char* argv[] )
     }
     else if( vm.count( "new-schedule-entry" ) )
     {
-        std::string zgID, tgID, erID;
+        std::string erID;
 
-        //create_zone_group( "zgname", "zgdesc", "zone1, zone2", zgID );
-        //create_trigger_group( "tgname", "tgdesc", "", tgID );
-        //create_schedule_rule( "name", "desc", zgID, tgID, erID);
+        if( !vm.count( "name" ) )
+        {
+            std::cerr << "ERROR: The --name parameter is required when creating a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        if( !vm.count( "desc" ) )
+        {
+            std::cerr << "ERROR: The --desc parameter is required when creating a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        if( !vm.count( "tgID" ) )
+        {
+            std::cerr << "ERROR: The --tgID parameter is required when creating a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        if( !vm.count( "zgID" ) )
+        {
+            std::cerr << "ERROR: The --zgID parameter is required when creating a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        create_schedule_rule( nameStr, descStr, zgID, tgID, erID);
     }
     else if( vm.count( "ids" ) )
     {
@@ -1296,15 +1379,15 @@ int main( int argc, char* argv[] )
 
         if( vm.count( "event-rule" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/rules";
+            url = "http://localhost:8200/schedule/rules";
         }
         else if( vm.count( "zone-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/zone-groups";
+            url = "http://localhost:8200/schedule/zone-groups";
         }
         else if( vm.count( "trigger-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/trigger-groups";
+            url = "http://localhost:8200/schedule/trigger-groups";
         }
         else if( vm.count( "zone-rule" ) )
         {
@@ -1315,7 +1398,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members";
+            url = "http://localhost:8200/schedule/zone-groups/" + objID + "/members";
         }
         else if( vm.count( "trigger-rule" ) )
         {
@@ -1326,7 +1409,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members";
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID + "/members";
         }
  
         // get a curl handle 
@@ -1381,17 +1464,17 @@ int main( int argc, char* argv[] )
         if( vm.count( "event-rule" ) )
         {
             post = "<schedule-event-rule><desc>Monday Morning</desc></schedule-event-rule>";
-            url = "http://192.168.1.128:8200/schedule/rules";
+            url = "http://localhost:8200/schedule/rules";
         }
         else if( vm.count( "zone-group" ) )
         {
             post = "<schedule-zone-group><name>ZG Monday</name><policy>sequential</policy></schedule-zone-group>";
-            url = "http://192.168.1.128:8200/schedule/zone-groups";
+            url = "http://localhost:8200/schedule/zone-groups";
         }
         else if( vm.count( "trigger-group" ) )
         {
             post = "<schedule-trigger-group><name>TG Monday</name><type>time</type></schedule-trigger-group>";
-            url = "http://192.168.1.128:8200/schedule/trigger-groups";
+            url = "http://localhost:8200/schedule/trigger-groups";
         }
         else if( vm.count( "zone-rule" ) )
         {
@@ -1403,7 +1486,7 @@ int main( int argc, char* argv[] )
             }
 
             post = "<schedule-zone-rule><name>Zone Rule</name><type>fixedduration</type><duration>600</duration></schedule-zone-rule>";
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members";
+            url = "http://localhost:8200/schedule/zone-groups/" + objID + "/members";
         }
         else if( vm.count( "trigger-rule" ) )
         {
@@ -1415,7 +1498,7 @@ int main( int argc, char* argv[] )
             }
 
             post = "<schedule-trigger-rule><name>Trigger Rule</name><type>time</type><scope>day</scope><reftime>20140507T173400</reftime></schedule-trigger-rule>";
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members";
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID + "/members";
         }
 
         // get a curl handle 
@@ -1473,15 +1556,15 @@ int main( int argc, char* argv[] )
 
         if( vm.count( "event-rule" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/rules/" + objID;
+            url = "http://localhost:8200/schedule/rules/" + objID;
         }
         else if( vm.count( "zone-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID;
+            url = "http://localhost:8200/schedule/zone-groups/" + objID;
         }
         else if( vm.count( "trigger-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID;
         }
         else if( vm.count( "zone-rule" ) )
         {
@@ -1492,7 +1575,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
         }
         else if( vm.count( "trigger-rule" ) )
         {
@@ -1503,7 +1586,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
         }
 
         // get a curl handle 
@@ -1565,17 +1648,17 @@ int main( int argc, char* argv[] )
         if( vm.count( "event-rule" ) )
         {
             putData = "<schedule-event-rule><desc>Monday Morning</desc></schedule-event-rule>";
-            url = "http://192.168.1.128:8200/schedule/rules/" + objID;
+            url = "http://localhost:8200/schedule/rules/" + objID;
         }
         else if( vm.count( "zone-group" ) )
         {
             putData = "<schedule-zone-group><name>Update Name</name></schedule-zone-group>";
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" +objID;
+            url = "http://localhost:8200/schedule/zone-groups/" +objID;
         }
         else if( vm.count( "trigger-group" ) )
         {
             putData = "<schedule-trigger-group><name>Update Name</name></schedule-trigger-group>";
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID;
         }
         else if( vm.count( "zone-rule" ) )
         {
@@ -1587,7 +1670,7 @@ int main( int argc, char* argv[] )
             }
 
             putData = "<schedule-zone-rule><name>Update Rule</name><duration>300</duration></schedule-zone-rule>";
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
         }
         else if( vm.count( "trigger-rule" ) )
         {
@@ -1599,7 +1682,7 @@ int main( int argc, char* argv[] )
             }
 
             putData = "<schedule-trigger-rule><name>Update Rule</name></schedule-trigger-rule>";
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
         }
 
         // get a curl handle 
@@ -1660,15 +1743,15 @@ int main( int argc, char* argv[] )
 
         if( vm.count( "event-rule" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/rules/" + objID;
+            url = "http://localhost:8200/schedule/rules/" + objID;
         }
         else if( vm.count( "zone-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID;
+            url = "http://localhost:8200/schedule/zone-groups/" + objID;
         }
         else if( vm.count( "trigger-group" ) )
         {
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID;
         }
         else if( vm.count( "zone-rule" ) )
         {
@@ -1679,7 +1762,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/zone-groups/" + objID + "/members/" + obj2ID;
         }
         else if( vm.count( "trigger-rule" ) )
         {
@@ -1690,7 +1773,7 @@ int main( int argc, char* argv[] )
                 return -1;
             }
 
-            url = "http://192.168.1.128:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
+            url = "http://localhost:8200/schedule/trigger-groups/" + objID + "/members/" + obj2ID;
         }
 
         // get a curl handle 

@@ -842,6 +842,8 @@ RESTContentManager::addRelationship( std::string relID, std::string parentID, st
     RESTContentNode *childObj;
     struct RESTCMEdge eProp;
 
+    std::cout << "addRelationship: " << relID << ", " << parentID << ", " << childID << std::endl;
+
     // Find the parent object
     it = objMap.find( parentID );
 
