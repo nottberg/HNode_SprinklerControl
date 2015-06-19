@@ -1057,6 +1057,8 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
     ScheduleDateTime startTime;
     ScheduleDateTime prestartTime;
 
+    std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
+ 
     switch( scope )
     {
         case SER_TT_SCOPE_NOTSET:
@@ -1067,10 +1069,10 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             prestartTime.setTime( refTime );
             prestartTime.subMinutes( 2 ); 
 
-            printf( "ScheduleEventRule -- never - ref: %s\n", refTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- never - prestart: %s\n", prestartTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- never - start: %s\n", startTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- never - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- never - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- never - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- never - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- never - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && refTime.isAfter( curTime ) )
@@ -1094,10 +1096,10 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             prestartTime.setTime( startTime );
             prestartTime.subSeconds( 30 ); 
 
-            printf( "ScheduleEventRule -- minute - ref: %s\n", refTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- minute - prestart: %s\n", prestartTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- minute - start: %s\n", startTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- minute - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- minute - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- minute - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- minute - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- minute - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
@@ -1121,10 +1123,10 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             prestartTime.setTime( startTime );
             prestartTime.subMinutes( 2 ); 
 
-            printf( "ScheduleEventRule -- hour - ref: %s\n", refTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- hour - prestart: %s\n", prestartTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- hour - start: %s\n", startTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- hour - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- hour - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- hour - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- hour - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- hour - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
@@ -1148,10 +1150,10 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             prestartTime.setTime( startTime );
             prestartTime.subMinutes( 2 ); 
 
-            printf( "ScheduleEventRule -- day - ref: %s\n", refTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- day - prestart: %s\n", prestartTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- day - start: %s\n", startTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- day - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- day - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- day - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- day - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- day - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
@@ -1175,10 +1177,10 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             prestartTime.setTime( startTime );
             prestartTime.subMinutes( 2 ); 
 
-            printf( "ScheduleEventRule -- week - ref: %s\n", refTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- week - prestart: %s\n", prestartTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- week - start: %s\n", startTime.getISOString().c_str() );
-            printf( "ScheduleEventRule -- week - cur: %s\n", curTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- week - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- week - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- week - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- week - cur: %s\n", curTime.getISOString().c_str() );
 
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
