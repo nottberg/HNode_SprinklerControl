@@ -120,6 +120,17 @@ ScheduleRuleResource::~ScheduleRuleResource()
 
 }
 
+ScheduleEventLogResource::ScheduleEventLogResource( ScheduleManager &mgr )
+:RESTResourceRESTStatusProvider( "/schedule/event-log", mgr, 1 )
+{
+
+}
+
+ScheduleEventLogResource::~ScheduleEventLogResource()
+{
+
+}
+
 ScheduleCalendarEventResource::ScheduleCalendarEventResource()
 {
     setURLPattern( "/calendar/events", (REST_RMETHOD_T)(REST_RMETHOD_GET) );

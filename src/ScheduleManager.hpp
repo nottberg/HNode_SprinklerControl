@@ -138,6 +138,80 @@ class ScheduleTimeIterator
         void setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval );
 };
 
+class SMException : public std::exception
+{
+    private:
+        unsigned long eCode;
+        std::string eMsg;
+
+    public:
+        SMException( unsigned long errCode, std::string errMsg )
+        {
+            eCode = errCode;
+            eMsg  = errMsg;
+        }
+
+       ~SMException() throw() {};
+
+        virtual const char* what() const throw()
+        {
+            return eMsg.c_str();
+        }
+
+        unsigned long getErrorCode() const throw()
+        {
+            return eCode;
+        }
+
+        std::string getErrorMsg() const throw()
+        {
+            return eMsg;
+        }
+};
+
+class ScheduleEventLogEntry
+{
+    private:
+        ScheduleDateTime  timestamp;
+        unsigned long     seqNum;
+        std::string       id;
+        std::string       msg;
+        RESTContentNode   extra;
+
+    public:
+        ScheduleEventLogEntry();
+       ~ScheduleEventLogEntry();
+
+        void setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg );
+        void setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg, RESTContentNode &eventData );
+        
+        std::string   getTimestampAsStr();
+        unsigned long getSequenceNumber();
+        std::string   getEventID();
+        std::string   getEventMsg();
+
+        void setContentNodeFromFields( RESTContentNode *objCN );
+};
+
+class ScheduleEventLog
+{
+    private:
+        unsigned long maxSize;
+
+        std::list< ScheduleEventLogEntry > logData;
+
+        unsigned long nextSeqNumber;
+
+    public:
+        ScheduleEventLog( unsigned long maxEntries );
+       ~ScheduleEventLog();
+
+        void populateContentNode( RESTContentNode *rootNode );
+
+        void addLogEntry( std::string eventID, std::string eventMsg );
+        void addLogEntry( std::string eventID, std::string eventMsg, RESTContentNode &eventData );
+};
+
 typedef enum ScheduleRestObjectTemplateID
 {
     SCH_ROTID_ROOT         = 0,
@@ -231,7 +305,7 @@ class ScheduleEvent
         void setReady();
         SESTATE getState();
 
-        bool processCurrent( ScheduleDateTime &curTime );
+        bool processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log );
         void processFinal();
 
         bool isComplete();
@@ -539,36 +613,7 @@ class ScheduleEventRule : public RESTContentNode
 
 };
 
-class SMException : public std::exception
-{
-    private:
-        unsigned long eCode;
-        std::string eMsg;
 
-    public:
-        SMException( unsigned long errCode, std::string errMsg )
-        {
-            eCode = errCode;
-            eMsg  = errMsg;
-        }
-
-       ~SMException() throw() {};
-
-        virtual const char* what() const throw()
-        {
-            return eMsg.c_str();
-        }
-
-        unsigned long getErrorCode() const throw()
-        {
-            return eCode;
-        }
-
-        std::string getErrorMsg() const throw()
-        {
-            return eMsg;
-        }
-};
 
 class ScheduleManager : public RESTContentManager
 {
@@ -576,6 +621,8 @@ class ScheduleManager : public RESTContentManager
         std::string cfgPath;
 
         unsigned long nextID;
+
+        ScheduleEventLog  eventLog;
 
         ScheduleEventList activeEvents;
 
@@ -588,6 +635,8 @@ class ScheduleManager : public RESTContentManager
         virtual RESTContentTemplate *getContentTemplateForType( unsigned int type );
 
         virtual void notifyCfgChange();
+
+        virtual void populateContentNodeFromStatusProvider( unsigned int id, RESTContentNode *outNode, std::map< std::string, std::string > paramMap );
 
     public:
         ScheduleManager();

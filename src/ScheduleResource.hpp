@@ -96,6 +96,15 @@ class ScheduleRuleResource : public RESTResourceRESTContentObject
        ~ScheduleRuleResource();
 };
 
+class ScheduleEventLogResource : public RESTResourceRESTStatusProvider
+{
+    private:
+
+    public:
+        ScheduleEventLogResource( ScheduleManager &mgr );
+       ~ScheduleEventLogResource();
+};
+
 class ScheduleCalendarEventResource : public RESTResource
 {
     private:

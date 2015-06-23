@@ -364,7 +364,7 @@ ScheduleEvent::getState()
 }
 
 bool 
-ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
+ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log )
 {
     //printf( "processCurrent - %s:%s - %s - %s - %s -%s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
 
@@ -391,6 +391,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
             if( actionObj != NULL )
             {
                 actionObj->complete( curTime );
+                log.addLogEntry( "sch-action-complete", "Completion for " + getId() + ":" + getTitle() );
             }
         }
     }
@@ -407,6 +408,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime )
             if( actionObj != NULL )
             {
                 actionObj->start( curTime );
+                log.addLogEntry( "sch-action-start", "Start for " + getId() + ":" + getTitle() );
             }
             
         }
@@ -1057,7 +1059,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
     ScheduleDateTime startTime;
     ScheduleDateTime prestartTime;
 
-    std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
+    //std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
  
     switch( scope )
     {
@@ -1565,10 +1567,10 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     char tmpStr[64];
     ScheduleDateTime eventTime;
 
-    printf( "ScheduleEventRule -- start updateActiveEvents\n");
-    printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
-    printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
-    printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
+    //printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    //printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
+    //printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
 
     // Only check the rule if it is enabled.
     if( enabled == false )
@@ -1633,6 +1635,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
 }
 
 ScheduleManager::ScheduleManager()
+: eventLog( 100 )
 {
     cfgPath = "/etc/hnode";  
     zoneMgr = NULL;
@@ -1768,6 +1771,8 @@ ScheduleManager::loadConfiguration()
     // Read everything from a file
     cfgReader.readConfig( filePath, this );
 
+    eventLog.addLogEntry( "sch-load-config", "The configuration file was loaded." );
+
     return false;
 }
 
@@ -1781,6 +1786,8 @@ ScheduleManager::saveConfiguration()
 
     // Write everything out to a file
     cfgWriter.writeConfig( filePath, this );
+
+    eventLog.addLogEntry( "sch-save-config", "The configuration file was saved." );
 
     return false;
 }
@@ -1829,7 +1836,7 @@ ScheduleManager::processCurrentEvents( ScheduleDateTime &curTime )
         ScheduleEvent *event = activeEvents.getEvent( index );
 
         // Perform processing for this event
-        if( event->processCurrent( curTime ) )
+        if( event->processCurrent( curTime, eventLog ) )
         {
             // State changed so see if action is necessary
             switch( event->getState() )
@@ -1989,6 +1996,12 @@ ScheduleManager::notifyCfgChange()
     saveConfiguration();
 }
 
+void 
+ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTContentNode *outNode, std::map< std::string, std::string > paramMap )
+{
+    eventLog.populateContentNode( outNode );
+}
+
 unsigned int
 ScheduleZoneGroup::getObjType()
 {
@@ -2011,5 +2024,137 @@ unsigned int
 ScheduleTriggerRule::getObjType()
 {
     return SCH_ROTID_TRIGGERRULE;
+}
+
+ScheduleEventLogEntry::ScheduleEventLogEntry()
+{
+    seqNum = 0;
+//        ScheduleDateTime  timestamp;
+//        std::string       id;
+//        std::string       msg;
+//        RESTContentNode   extra;
+
+}
+
+ScheduleEventLogEntry::~ScheduleEventLogEntry()
+{
+
+}
+
+void 
+ScheduleEventLogEntry::setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg )
+{
+    // Get the timestamp
+    timestamp.getCurrentTime();
+
+    // Set the sequence number
+    seqNum = seqNumber;
+
+    // Set the other fields
+    id  = eventID;
+    msg = eventMsg;
+}
+
+void 
+ScheduleEventLogEntry::setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg, RESTContentNode &eventData )
+{
+    setEvent( seqNumber, eventID, eventMsg );
+}
+
+std::string 
+ScheduleEventLogEntry::getTimestampAsStr()
+{
+    return timestamp.getExtendedISOString();
+}
+
+std::string 
+ScheduleEventLogEntry::getEventID()
+{
+    return id;
+}
+
+std::string 
+ScheduleEventLogEntry::getEventMsg()
+{
+    return msg;
+}
+
+void
+ScheduleEventLogEntry::setContentNodeFromFields( RESTContentNode *objCN )
+{
+    char snStr[64];
+
+    std::cout << "ScheduleEventLogEntry::setContentNodeFromFields - 1" << std::endl;
+
+    sprintf( snStr, "%d", seqNum );
+ 
+    // Fill in fields
+    objCN->setAsObject( "log-entry" );
+    objCN->setField( "timestamp", timestamp.getISOString() );
+    objCN->setField( "seqnum", snStr );
+    objCN->setField( "event-id", id );
+    objCN->setField( "event-msg", msg );
+}
+
+ScheduleEventLog::ScheduleEventLog( unsigned long maxEntries )
+{
+    nextSeqNumber = 0;
+
+    maxSize = maxEntries;
+//    std::list< ScheduleEventLogEntry > logData;
+}
+
+ScheduleEventLog::~ScheduleEventLog()
+{
+
+}
+
+void
+ScheduleEventLog::populateContentNode( RESTContentNode *rtnNode )
+{
+    // Give the root element a tag name
+    rtnNode->setAsArray( "schedule-event-log" );
+
+    for( std::list< ScheduleEventLogEntry >::iterator it = logData.begin(); it != logData.end() ; it++ )
+    {
+        RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
+
+        curNode->setAsObject( "entry" );
+        it->setContentNodeFromFields( curNode );
+
+        rtnNode->addChild( curNode );
+    }
+}
+
+void 
+ScheduleEventLog::addLogEntry( std::string eventID, std::string eventMsg )
+{
+    ScheduleEventLogEntry newEntry;
+
+    if( logData.size() > maxSize )
+    {
+        logData.pop_front();
+    }
+
+    newEntry.setEvent( nextSeqNumber, eventID, eventMsg );
+    nextSeqNumber += 1;
+
+    logData.push_back( newEntry );
+}
+
+void 
+ScheduleEventLog::addLogEntry( std::string eventID, std::string eventMsg, RESTContentNode &eventData )
+{
+    ScheduleEventLogEntry newEntry;
+
+    if( logData.size() > maxSize )
+    {
+        logData.pop_front();
+    }
+
+    newEntry.setEvent( nextSeqNumber, eventID, eventMsg, eventData );
+    nextSeqNumber += 1;
+
+    logData.push_back( newEntry );
 }
 

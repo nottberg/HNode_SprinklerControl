@@ -1215,6 +1215,8 @@ int main( int argc, char* argv[] )
 
         ("zone-list", po::value<std::string>(&zoneListStr), "Specify a comma seperated ordered list of zones specifiers. (i.e. zone1:5m,zone2:10m,zone3:1m)")
 
+        ("get-event-log", "Get the event log.")
+
         // scope, start-scope, time-list, interval, repeat; next-entry
         // scope is hourly, daily, weekly, monthly
         ("time-list",  po::value<std::string>(&wksListStr), "Specify a list of days and times. (i.e. Mon:6am,7pm;Tue:5pm;Fri:6am,7pm")
@@ -1814,6 +1816,51 @@ int main( int argc, char* argv[] )
         curl_global_cleanup();
     }
     
+    if( vm.count( "get-event-log" ) )
+    {
+        CURL *curl;
+        CURLcode res;
+        std::string url;
+
+        url = "http://localhost:8200/schedule/event-log/";
+
+        // get a curl handle 
+        curl = curl_easy_init();
+
+        if( curl ) 
+        {
+            struct curl_slist *slist = NULL;
+	  
+	        slist = curl_slist_append(slist, "Accept: */*");
+	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	        slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+            // Setup the put operation parameters				
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+            // Perform the request, res will get the return code 
+            res = curl_easy_perform(curl);
+
+            // Check for errors 
+            if( res != CURLE_OK )
+            {
+                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+                return -1;
+            }
+
+            // always cleanup 
+            curl_easy_cleanup( curl );
+            curl_slist_free_all( slist );
+        }
+
+        curl_global_cleanup();
+    }
+
     // Success
     return 0;
 }

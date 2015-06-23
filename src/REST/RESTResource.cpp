@@ -684,4 +684,54 @@ RESTResourceRESTContentObject::restDelete( RESTRequest *request )
     request->sendResponse();
 }
 
+RESTResourceRESTStatusProvider::RESTResourceRESTStatusProvider(  std::string pattern, RESTContentManager &mgr, unsigned int dataID )
+: RESTContentManagerResource( mgr )
+{
+    setURLPattern( pattern, (REST_RMETHOD_T)( REST_RMETHOD_GET | REST_RMETHOD_PUT | REST_RMETHOD_DELETE ) );
+ 
+    id = dataID;
+}
+
+RESTResourceRESTStatusProvider::~RESTResourceRESTStatusProvider()
+{
+
+}
+
+void
+RESTResourceRESTStatusProvider::restGet( RESTRequest *request )
+{
+    RESTContentHelper *helper;
+    RESTContentNode   *outNode;
+    std::map< std::string, std::string > paramMap;
+
+    // All of the routines below will throw a SMException if they encounter an error
+    // during processing.
+    try
+    {
+        // Parse the content
+        helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
+
+        // Get a pointer to the root node
+        outNode = helper->getRootNode();
+
+        // Lookup the rule object
+        contentMgr.populateContentNodeFromStatusProvider( id, outNode, paramMap );
+
+        // Make sure we have the expected object
+        helper->generateContentRepresentation( request->getOutboundRepresentation() );
+    }
+    catch( RCMException& me )
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, me.getErrorCode(), me.getErrorMsg() ); 
+        return;
+    }
+    catch(...)
+    {
+        request->sendErrorResponse( REST_HTTP_RCODE_BAD_REQUEST, 10000, "Internal Controller Error" ); 
+        return;
+    }
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
 

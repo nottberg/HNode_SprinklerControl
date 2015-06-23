@@ -499,6 +499,8 @@ class RESTContentManager
         virtual void notifyCfgChange();
         virtual void notifyClear();
 
+        virtual void populateContentNodeFromStatusProvider( unsigned int id, RESTContentNode *outNode, std::map< std::string, std::string > paramMap ) = 0;
+
         void clear();
 
         void createObj( unsigned int type, std::string idPrefix, std::string &objID );
@@ -882,6 +884,19 @@ class RESTResourceRESTContentObject : public RESTContentManagerResource
         virtual void restPut( RESTRequest *request );
 
         virtual void restDelete( RESTRequest *request );
+};
+
+// A generic interface for providers of status information, with CRUD symatics
+class RESTResourceRESTStatusProvider : public RESTContentManagerResource
+{
+    private:
+        unsigned int id;
+
+    public:
+        RESTResourceRESTStatusProvider( std::string pattern, RESTContentManager &mgr, unsigned int dataID );
+       ~RESTResourceRESTStatusProvider();
+
+        virtual void restGet( RESTRequest *request );
 };
 
 class RESTDaemon
