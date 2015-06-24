@@ -1165,6 +1165,27 @@ create_schedule_rule( std::string name, std::string desc, std::string zgID, std:
     curl_global_cleanup();
 }
 
+size_t
+schedule_event_log_reader( void *buffer, size_t size, size_t nmemb, void *userp )
+{
+    xmlParserCtxtPtr *pctxt = (xmlParserCtxtPtr *) userp;
+    xmlParserCtxtPtr ctxt   = *pctxt;
+    size_t length = size * nmemb;
+
+    if( ctxt == NULL )
+    {
+        ctxt = xmlCreatePushParserCtxt( NULL, NULL, (const char *) buffer, length, "dummy.xml" ); 
+      
+        *pctxt = ctxt;
+    }
+    else
+    {
+        xmlParseChunk( ctxt, (const char *) buffer, length, 0 );
+    }
+
+    return length;
+}
+
 int main( int argc, char* argv[] )
 {
     std::string objID;
@@ -1822,6 +1843,9 @@ int main( int argc, char* argv[] )
         CURLcode res;
         std::string url;
 
+        xmlDocPtr doc;
+        xmlParserCtxtPtr ctxt = NULL;
+
         url = "http://localhost:8200/schedule/event-log/";
 
         // get a curl handle 
@@ -1837,11 +1861,13 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
 	        
             // Perform the request, res will get the return code 
             res = curl_easy_perform(curl);
@@ -1852,6 +1878,81 @@ int main( int argc, char* argv[] )
                 fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
                 return -1;
             }
+
+            // Finished
+            xmlParseChunk( ctxt, NULL, 0, 1 );
+
+            doc = ctxt->myDoc;
+            if( ctxt->wellFormed )
+            {
+                printf("Return successfully parsed:\n");
+
+                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+                if( strcmp( (const char *)rootNode->name, "schedule-event-log" ) == 0 )
+                {
+                    xmlNode *entryNode = NULL;
+
+                    for( entryNode = rootNode->children; entryNode; entryNode = entryNode->next )
+                    {
+                        xmlNode *curNode = NULL;
+
+                        unsigned long seqNum;
+                        std::string timestamp;
+                        std::string eventID;
+                        std::string eventMsg;
+      
+                        for( curNode = entryNode->children; curNode; curNode = curNode->next )
+                        {
+                            if( strcmp( (const char *)curNode->name, "seqnum" ) == 0 )
+                            {
+                                xmlChar *content = xmlNodeGetContent( curNode );
+                                seqNum = strtol( (const char *)content, NULL, 0);
+                                xmlFree( content );
+                            }
+                            else if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
+                            {
+                                xmlChar *content = xmlNodeGetContent( curNode );
+                                timestamp = (const char *)content;
+                                xmlFree( content );
+                            }
+                            else if( strcmp( (const char *)curNode->name, "event-id" ) == 0 )
+                            {
+                                xmlChar *content = xmlNodeGetContent( curNode );
+                                eventID = (const char *)content;
+                                xmlFree( content );
+                            }
+                            else if( strcmp( (const char *)curNode->name, "event-msg" ) == 0 )
+                            {
+                                xmlChar *content = xmlNodeGetContent( curNode );
+                                eventMsg = (const char *)content;
+                                xmlFree( content );
+                            }
+                        }
+
+                        printf( "%-5ld %-20s %-25s %s\n", seqNum, timestamp.c_str(), eventID.c_str(), eventMsg.c_str() );
+                    }
+                }
+                else
+                {
+                    fprintf( stderr, "schedule event log format error\n" );
+                    return -1;
+                }
+#if 0
+                xmlChar *s;
+                int size;
+                xmlDocDumpMemory( doc, &s, &size );
+                printf("%s\n", s);
+                xmlFree( s );
+#endif
+            }
+            else
+            {
+                fprintf( stderr, "Failed to parse return data.\n" );
+            }
+
+            xmlFreeParserCtxt( ctxt );
+            xmlFreeDoc( doc );
 
             // always cleanup 
             curl_easy_cleanup( curl );
