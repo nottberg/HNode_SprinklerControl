@@ -613,7 +613,12 @@ class ScheduleEventRule : public RESTContentNode
 
 };
 
-
+typedef enum ScheduleManagerStatusProviderIDs
+{
+    SCHRSRC_STATID_STATUS,
+    SCHRSRC_STATID_EVENTLOG,
+    SCHRSRC_STATID_CALENDAR
+}SCHRSCRC_STATID_T;
 
 class ScheduleManager : public RESTContentManager
 {

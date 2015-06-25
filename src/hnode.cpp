@@ -104,6 +104,8 @@ typedef struct IrrigationNodeContext
     ScheduleTriggerRuleResource     schTriggerRuleResource;
 
     ScheduleEventLogResource      schEventLogResource;
+    ScheduleStatusResource        schStatusResource;
+    ScheduleCalendarResource      schCalendarResource;
 
     ScheduleCalendarEventResource calEventResource;
 
@@ -118,6 +120,8 @@ typedef struct IrrigationNodeContext
                               schTGResource( this->scheduleManager ),
                               schTriggerRuleListResource( this->scheduleManager ),
                               schTriggerRuleResource( this->scheduleManager ),
+                              schStatusResource( this->scheduleManager ),
+                              schCalendarResource( this->scheduleManager ),
                               schEventLogResource( this->scheduleManager ) {}
 
 }CONTEXT;
@@ -384,6 +388,8 @@ hnode_start_rest_daemon(CONTEXT *Context)
     Context->Rest.registerResource( &(Context->schTriggerRuleResource) );
 
     Context->Rest.registerResource( &(Context->schEventLogResource) );
+    Context->Rest.registerResource( &(Context->schStatusResource) );
+    Context->Rest.registerResource( &(Context->schCalendarResource) );
 
     Context->calEventResource.setScheduleManager( &Context->scheduleManager );
 

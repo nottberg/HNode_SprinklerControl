@@ -120,13 +120,35 @@ ScheduleRuleResource::~ScheduleRuleResource()
 
 }
 
+ScheduleStatusResource::ScheduleStatusResource( ScheduleManager &mgr )
+:RESTResourceRESTStatusProvider( "/schedule/status", mgr, SCHRSRC_STATID_STATUS )
+{
+
+}
+
+ScheduleStatusResource::~ScheduleStatusResource()
+{
+
+}
+
 ScheduleEventLogResource::ScheduleEventLogResource( ScheduleManager &mgr )
-:RESTResourceRESTStatusProvider( "/schedule/event-log", mgr, 1 )
+:RESTResourceRESTStatusProvider( "/schedule/event-log", mgr, SCHRSRC_STATID_EVENTLOG )
 {
 
 }
 
 ScheduleEventLogResource::~ScheduleEventLogResource()
+{
+
+}
+
+ScheduleCalendarResource::ScheduleCalendarResource( ScheduleManager &mgr )
+:RESTResourceRESTStatusProvider( "/schedule/calendar", mgr, SCHRSRC_STATID_CALENDAR )
+{
+
+}
+
+ScheduleCalendarResource::~ScheduleCalendarResource()
 {
 
 }

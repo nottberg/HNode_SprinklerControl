@@ -1999,7 +1999,49 @@ ScheduleManager::notifyCfgChange()
 void 
 ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTContentNode *outNode, std::map< std::string, std::string > paramMap )
 {
-    eventLog.populateContentNode( outNode );
+    switch( id )
+    {
+        case SCHRSRC_STATID_STATUS:
+        {
+            // Give the root element a tag name
+            outNode->setAsObject( "schedule-status" );
+
+            ScheduleDateTime timestamp;
+            timestamp.getCurrentTime();
+            outNode->setField( "timestamp", timestamp.getISOString() );
+
+#if 0
+            for( std::list< ScheduleEventLogEntry >::iterator it = logData.begin(); it != logData.end() ; it++ )
+            {
+                RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
+
+                curNode->setAsObject( "entry" );
+                it->setContentNodeFromFields( curNode );
+
+                rtnNode->addChild( curNode );
+            }
+#endif
+        }
+        break;
+
+        case SCHRSRC_STATID_EVENTLOG:
+        {
+            eventLog.populateContentNode( outNode );
+        }
+        break;
+
+        case SCHRSRC_STATID_CALENDAR:
+        {
+
+        }
+        break;
+
+        default:
+            std::cerr << "ERROR: Undefined status provider" << std::endl;
+            return;
+        break;
+    }
+
 }
 
 unsigned int

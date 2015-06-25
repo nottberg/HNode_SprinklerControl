@@ -96,6 +96,15 @@ class ScheduleRuleResource : public RESTResourceRESTContentObject
        ~ScheduleRuleResource();
 };
 
+class ScheduleStatusResource : public RESTResourceRESTStatusProvider
+{
+    private:
+
+    public:
+        ScheduleStatusResource( ScheduleManager &mgr );
+       ~ScheduleStatusResource();
+};
+
 class ScheduleEventLogResource : public RESTResourceRESTStatusProvider
 {
     private:
@@ -103,6 +112,15 @@ class ScheduleEventLogResource : public RESTResourceRESTStatusProvider
     public:
         ScheduleEventLogResource( ScheduleManager &mgr );
        ~ScheduleEventLogResource();
+};
+
+class ScheduleCalendarResource : public RESTResourceRESTStatusProvider
+{
+    private:
+
+    public:
+        ScheduleCalendarResource( ScheduleManager &mgr );
+       ~ScheduleCalendarResource();
 };
 
 class ScheduleCalendarEventResource : public RESTResource
