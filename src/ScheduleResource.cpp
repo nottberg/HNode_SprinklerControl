@@ -192,7 +192,7 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
     {
         ScheduleEventList *eventList;
 
-        eventList = schManager->getEventsForPeriod( startTime, endTime );
+        eventList = schManager->getPotentialEventsForPeriod( startTime, endTime );
 
         if( eventList != NULL )
         {

@@ -68,6 +68,7 @@ class ScheduleDateTime
         void addMinutes( long minutes );
         void addHours( long hours );
         void addDays( long days );
+        void addWeeks( long weeks );
 
         void subSeconds( long seconds );
         void subMinutes( long minutes );
@@ -432,7 +433,7 @@ class ScheduleZoneGroup : public RESTContentNode
 //        ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
 //        ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
-        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime );
+        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents, ScheduleDateTime &rearmTime );
 
         static std::string getElementName();
 
@@ -492,6 +493,7 @@ class ScheduleTriggerRule : public RESTContentNode
         ScheduleDateTime   refTime;
 
         bool checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
+        void getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
 
     public:
         ScheduleTriggerRule( RESTContentManager &objMgr );
@@ -510,7 +512,8 @@ class ScheduleTriggerRule : public RESTContentNode
         void setRefTime( ScheduleDateTime &refTimeValue );
         ScheduleDateTime getRefTime();        
 
-        virtual bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
+        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
+        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
 
         virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN );
@@ -545,6 +548,7 @@ class ScheduleTriggerGroup : public RESTContentNode
 //        ScheduleTriggerRule *getTriggerRuleByID( std::string ruleID );
 
         bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
+        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
 
         static std::string getElementName();
 
@@ -605,7 +609,8 @@ class ScheduleEventRule : public RESTContentNode
         virtual void setFieldsFromContentNode( RESTContentNode *objCN ); 
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 
-        void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime );
+        void updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents );
+        void getPotentialEventsForPeriod( ScheduleEventList &activeEvents, ScheduleDateTime startTime, ScheduleDateTime endTime );
 
         static std::string getElementName();
 
@@ -626,6 +631,8 @@ class ScheduleManager : public RESTContentManager
         std::string cfgPath;
 
         unsigned long nextID;
+
+        bool serializeEvents;
 
         ScheduleEventLog  eventLog;
 
@@ -671,7 +678,7 @@ class ScheduleManager : public RESTContentManager
         void processCurrentEvents( ScheduleDateTime &curTime );
 
         ScheduleEventList *getActiveEvents();
-        ScheduleEventList *getEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime );
+        ScheduleEventList *getPotentialEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime );
 
         void freeScheduleEventList( ScheduleEventList *listPtr );
 

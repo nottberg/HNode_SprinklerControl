@@ -947,7 +947,7 @@ RESTContentManager::getObjectByID( std::string objID )
 void 
 RESTContentManager::getIDListForRelationship( std::string parentID, std::string relID, std::vector< std::string > &idList )
 {
-    std::cout << "getRelationList: " << parentID << ", " << relID << std::endl;
+    //std::cout << "getRelationList: " << parentID << ", " << relID << std::endl;
 
     std::map< std::string, RESTContentNode* >::iterator it;
 

@@ -87,6 +87,12 @@ ScheduleDateTime::addDays( long dayValue )
 }
 
 void 
+ScheduleDateTime::addWeeks( long weekValue )
+{
+    time = time + weeks( weekValue );
+}
+
+void 
 ScheduleDateTime::subSeconds( long secValue )
 {
     time = time - seconds( secValue );
@@ -807,7 +813,7 @@ ScheduleZoneGroup::getZoneEventPolicyStr()
 }
 
 void 
-ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, ScheduleDateTime &rearmTime )
+ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents, ScheduleDateTime &rearmTime )
 {
     ScheduleDateTime eventTime;
 
@@ -816,6 +822,42 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     // Initial Time
     eventTime.setTime( curTime );
     rearmTime.setTime( curTime );
+
+    // If events are to be serialized then find the latest event
+    // in the active list and put the new events after that.
+    if( serializeEvents )
+    {
+        ScheduleDateTime lastTime;
+
+        lastTime.setTime( curTime );
+
+        // Do processing for active rules
+        for( unsigned int index = 0; index < activeEvents.getEventCount(); ++index )
+        {
+            ScheduleDateTime endTime;
+            ScheduleEvent *event = activeEvents.getEvent( index );
+
+            event->getEndTime( endTime );
+
+            if( endTime.isAfter( lastTime ) )
+            {
+                endTime.addSeconds( 1 );
+                lastTime.setTime( endTime );
+            }
+        }
+
+        printf( "ScheduleZoneGroup -- lastTime: %s\n", lastTime.getISOString().c_str() );
+
+        eventTime.setTime( lastTime );
+        rearmTime.setTime( lastTime );
+    }
+    else
+    {
+        printf( "ScheduleZoneGroup -- curTime: %s\n", curTime.getISOString().c_str() );
+
+        eventTime.setTime( curTime );
+        rearmTime.setTime( curTime );
+    }
 
     std::vector< std::string > ruleIDList;
 
@@ -1222,6 +1264,131 @@ ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTim
     return false;
 }
 
+void 
+ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+{
+    ScheduleDateTime incTime;
+
+    //std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
+ 
+    switch( scope )
+    {
+        case SER_TT_SCOPE_NOTSET:
+        break;
+
+        case SER_TT_SCOPE_NEVER:
+            // This event only happens once, so a simple check will do.
+            if( refTime.isAfter( startTime ) && refTime.isBefore( endTime ) )
+                timeList.push_back( refTime );
+        break;
+
+        case SER_TT_SCOPE_MINUTE:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceSecondScope( refTime );
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addMinutes( 1 );
+            }
+        break;
+
+        case SER_TT_SCOPE_HOUR:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceMinuteScope( refTime );
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addHours( 1 );
+            }
+        break;
+
+        case SER_TT_SCOPE_DAY:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceHourScope( refTime );
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addDays( 1 );
+            }
+        break;
+
+        case SER_TT_SCOPE_WEEK:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceHourScope( refTime );
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addWeeks( 1 );
+            }
+        break;
+
+        case SER_TT_SCOPE_FORTNIGHT:
+        break;
+
+        case SER_TT_SCOPE_YEAR:
+        break;
+    }
+
+    //  Did not trigger
+    return;
+}
+
+void 
+ScheduleTriggerRule::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+{
+    switch( ruleType )
+    {
+        case STR_TYPE_TIME:
+        {
+            getPotentialTimeTriggersForPeriod( startTime, endTime, timeList );
+            return;
+        }
+        break;
+
+        default:
+        break;
+    }
+
+    // Nothing 
+    return;
+}
+
 ScheduleTriggerGroup::ScheduleTriggerGroup( RESTContentManager &objMgr )
     : objManager( objMgr )
 {
@@ -1332,6 +1499,23 @@ ScheduleTriggerGroup::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTi
     // Nothing triggered, return nothing to do.
     return false;
 }
+
+void 
+ScheduleTriggerGroup::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+{
+    std::vector< std::string > idList;
+
+    objManager.getIDListForRelationship( getID(), "trigger-rule-list", idList );  
+
+    // Search through possible triggers, if any of them go off then we are done.
+    for( std::vector< std::string >::iterator it = idList.begin() ; it != idList.end(); ++it )
+    {
+        ScheduleTriggerRule *tgObj = (ScheduleTriggerRule *) objManager.getObjectByID( *it );
+
+        tgObj->getPotentialTriggersForPeriod( startTime, endTime, timeList );
+    }
+}
+
 
 ScheduleEventList::ScheduleEventList()
 {
@@ -1562,7 +1746,7 @@ ScheduleEventRule::setContentNodeFromFields( RESTContentNode *objCN )
 }
 
 void
-ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime )
+ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents )
 {
     char tmpStr[64];
     ScheduleDateTime eventTime;
@@ -1597,7 +1781,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         printf( "ScheduleEventRule -- manual start: %s\n", name.c_str() );
 
         // Create the events
-        zoneGroup->createZoneEvents( activeEvents, eventTime, rearmTime );
+        zoneGroup->createZoneEvents( activeEvents, eventTime, serializeEvents, rearmTime );
 
         // Clear the manual fire flag, since we only wanted to 
         // trigger it once.
@@ -1628,18 +1812,57 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     // Check if this rule triggered
     if( triggerGroup->checkForTrigger( curTime, eventTime ) )
     {
-        zoneGroup->createZoneEvents( activeEvents, eventTime, rearmTime );
+        zoneGroup->createZoneEvents( activeEvents, eventTime, serializeEvents, rearmTime );
         eventsPending = true;
     }
 
 }
 
+void
+ScheduleEventRule::getPotentialEventsForPeriod( ScheduleEventList &activeEvents, ScheduleDateTime startTime, ScheduleDateTime endTime )
+{
+    char tmpStr[64];
+    ScheduleDateTime eventTime;
+
+    //printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    //printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
+    //printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
+
+    // Only check the rule if it is enabled.
+    if( enabled == false )
+    {
+        // Skip the rule, it wasn't enabled
+        return;
+    }
+
+    // Lookup and validate the zone-group and trigger-group references
+    ScheduleZoneGroup *zoneGroup = (ScheduleZoneGroup *) objManager.getObjectByID( zoneGroupID );
+    ScheduleTriggerGroup *triggerGroup = (ScheduleTriggerGroup *) objManager.getObjectByID( triggerGroupID );
+
+    if( ( zoneGroup == NULL ) || ( triggerGroup == NULL ) )
+    {
+        // Skip the rule, zone and/or trigger groups were not valid.
+        return;
+    }
+
+    // Check if this rule triggered
+    std::vector< ScheduleDateTime > timeList;
+    triggerGroup->getPotentialTriggersForPeriod( startTime, endTime, timeList );
+    
+    for( std::vector< ScheduleDateTime >::iterator it = timeList.begin(); it != timeList.end(); it++ )
+    {
+        zoneGroup->createZoneEvents( activeEvents, eventTime, false, rearmTime );
+    }
+}
+
 ScheduleManager::ScheduleManager()
 : eventLog( 100 )
 {
-    cfgPath = "/etc/hnode";  
-    zoneMgr = NULL;
-    nextID = 1;
+    cfgPath         = "/etc/hnode";  
+    zoneMgr         = NULL;
+    nextID          = 1;
+    serializeEvents = true;
 }
 
 ScheduleManager::~ScheduleManager()
@@ -1825,7 +2048,7 @@ ScheduleManager::processCurrentEvents( ScheduleDateTime &curTime )
     // Check if the rules are going to generate any new events.
     for( std::vector< RESTContentNode* >::iterator it = rtnVector.begin(); it != rtnVector.end(); ++it )
     {
-        ((ScheduleEventRule *)*it)->updateActiveEvents( activeEvents, curTime );
+        ((ScheduleEventRule *)*it)->updateActiveEvents( activeEvents, curTime, serializeEvents );
     }
 
     //printf( "ActiveEventCount: %d\n", activeEvents.getEventCount() );
@@ -1859,31 +2082,19 @@ ScheduleManager::getActiveEvents()
 }
 
 ScheduleEventList *
-ScheduleManager::getEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime )
+ScheduleManager::getPotentialEventsForPeriod( ScheduleDateTime startTime, ScheduleDateTime endTime )
 {
     ScheduleEventList *eventList = new ScheduleEventList();
     ScheduleDateTime curTime; 
 
-    // Walk through the times at minute intervals
-    for( curTime.setTime( startTime ); curTime.isBefore( endTime ); curTime.addMinutes(1) )
+    std::vector< RESTContentNode* > rtnVector;
+
+    getObjectVectorByType( SCH_ROTID_EVENTRULE, rtnVector );
+
+    // Check if the rules are going to generate any new events.
+    for( std::vector< RESTContentNode* >::iterator it = rtnVector.begin(); it != rtnVector.end(); ++it )
     {
-
-        std::vector< RESTContentNode* > rtnVector;
-
-        getObjectVectorByType( SCH_ROTID_EVENTRULE, rtnVector );
-
-        // Check if the rules are going to generate any new events.
-        for( std::vector< RESTContentNode* >::iterator it = rtnVector.begin(); it != rtnVector.end(); ++it )
-        {
-            ((ScheduleEventRule *)*it)->updateActiveEvents( *eventList, curTime );
-        }
-#if 0
-        // Check if the rules are going to generate any new events.
-        for( std::vector<ScheduleEventRule *>::iterator it = eventRuleList.begin(); it != eventRuleList.end(); ++it )
-        {
-            (*it)->updateActiveEvents( *eventList, curTime );
-        }
-#endif
+        ((ScheduleEventRule *)*it)->getPotentialEventsForPeriod( *eventList, startTime, endTime );
     }
 
     return eventList;
@@ -2032,7 +2243,32 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
 
         case SCHRSRC_STATID_CALENDAR:
         {
+            ScheduleEventList *eventList;
+            ScheduleDateTime   startTime;
+            ScheduleDateTime   endTime;
 
+            startTime.getCurrentTime();
+
+            endTime.setTime( startTime );
+            endTime.addHours( 2 );
+
+            eventList = getPotentialEventsForPeriod( startTime, endTime );
+
+            // Do processing for active rules
+            for( unsigned int index = 0; index < eventList->getEventCount(); ++index )
+            {
+                ScheduleEvent *event = eventList->getEvent( index );
+
+                ScheduleDateTime evStart;
+                ScheduleDateTime evEnd;
+
+                event->getStartTime( evStart );
+                event->getEndTime( evEnd );
+
+                std::cout << "Event Entry -- ID: " << event->getId() << " Title: " << event->getTitle() << " Start: " << evStart.getISOString() << " End: " << evEnd.getISOString() << std::endl;
+            } 
+
+            freeScheduleEventList( eventList );
         }
         break;
 

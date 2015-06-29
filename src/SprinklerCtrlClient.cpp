@@ -1238,6 +1238,7 @@ int main( int argc, char* argv[] )
 
         ("get-event-log", "Get the event log.")
         ("get-status", "Get current schedule status.")
+        ("get-calendar", "Get the potential events for a period of time.")
 
         // scope, start-scope, time-list, interval, repeat; next-entry
         // scope is hourly, daily, weekly, monthly
@@ -2060,6 +2061,108 @@ int main( int argc, char* argv[] )
             xmlFreeParserCtxt( ctxt );
             xmlFreeDoc( doc );
 
+            // always cleanup 
+            curl_easy_cleanup( curl );
+            curl_slist_free_all( slist );
+        }
+
+        curl_global_cleanup();
+    }
+
+    if( vm.count( "get-calendar" ) )
+    {
+        CURL *curl;
+        CURLcode res;
+        std::string url;
+
+        xmlDocPtr doc;
+        xmlParserCtxtPtr ctxt = NULL;
+
+        url = "http://localhost:8200/schedule/calendar/";
+
+        // get a curl handle 
+        curl = curl_easy_init();
+
+        if( curl ) 
+        {
+            struct curl_slist *slist = NULL;
+	  
+	        slist = curl_slist_append(slist, "Accept: */*");
+	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	        slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+            // Setup the put operation parameters				
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+            //curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+            //curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+	        
+            // Perform the request, res will get the return code 
+            res = curl_easy_perform(curl);
+
+            // Check for errors 
+            if( res != CURLE_OK )
+            {
+                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+                return -1;
+            }
+#if 0
+            // Finished
+            xmlParseChunk( ctxt, NULL, 0, 1 );
+
+            doc = ctxt->myDoc;
+            if( ctxt->wellFormed )
+            {
+                printf("Return successfully parsed:\n");
+
+                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+                if( strcmp( (const char *)rootNode->name, "schedule-status" ) == 0 )
+                {
+                    xmlNode *curNode = NULL;
+
+                    unsigned long seqNum;
+                    std::string timestamp;
+                    boost::posix_time::ptime pstamp;
+      
+                    for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                    {
+                        if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( curNode );
+
+                            pstamp = boost::posix_time::from_iso_string( (const char *)content );
+
+                            boost::local_time::time_zone_ptr zone = get_system_timezone();
+                            boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                            timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                            xmlFree( content );
+                        }
+                    }
+
+                    printf( "==== Current Status ====\n" );
+                    printf( "Current Time: %s\n", timestamp.c_str() );
+                }
+                else
+                {
+                    fprintf( stderr, "schedule status format error\n" );
+                    return -1;
+                }
+            }
+            else
+            {
+                fprintf( stderr, "Failed to parse return data.\n" );
+            }
+
+            xmlFreeParserCtxt( ctxt );
+            xmlFreeDoc( doc );
+#endif
             // always cleanup 
             curl_easy_cleanup( curl );
             curl_slist_free_all( slist );
