@@ -329,6 +329,9 @@ class ScheduleEventList
 
         unsigned int getEventCount();
         ScheduleEvent *getEvent( unsigned int index );
+
+        void sortAscendingByStartTime();
+
 };
 
 class ScheduleRecurrenceRule

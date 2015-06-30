@@ -1269,7 +1269,7 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
 {
     ScheduleDateTime incTime;
 
-    //std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
+    std::cout << "ScheduleTriggerRule::getPotentialTimeTriggersForPeriod - id: " << getID() << ", " << startTime.getISOString() << ", " << endTime.getISOString() << std::endl;
  
     switch( scope )
     {
@@ -1309,9 +1309,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
             // Now walk the increment time up until we are past the endTime
             while( incTime.isBefore( endTime ) )
             {
+                std::cout << "getPotentialTimeTriggersForPeriod - hour: " << incTime.getISOString() << std::endl;
+
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
+                    std::cout << "getPotentialTimeTriggersForPeriod - add(" << timeList.size() << "): " << incTime.getISOString() << std::endl;
                     timeList.push_back( incTime );  
                 }
 
@@ -1543,6 +1546,23 @@ ScheduleEvent *
 ScheduleEventList::getEvent( unsigned int index )
 {
     return eventList[ index ];
+}
+
+static bool seCompAscendStartTime( ScheduleEvent *i, ScheduleEvent *j ) 
+{ 
+    ScheduleDateTime iTime;
+    ScheduleDateTime jTime;
+
+    i->getStartTime( iTime );
+    j->getStartTime( jTime );
+
+    return( iTime.isBefore( jTime ) );
+}
+
+void
+ScheduleEventList::sortAscendingByStartTime()
+{
+    std::sort( eventList.begin(), eventList.end(), seCompAscendStartTime);
 }
 
 void
@@ -1822,7 +1842,7 @@ void
 ScheduleEventRule::getPotentialEventsForPeriod( ScheduleEventList &activeEvents, ScheduleDateTime startTime, ScheduleDateTime endTime )
 {
     char tmpStr[64];
-    ScheduleDateTime eventTime;
+    ScheduleDateTime dummyTime;
 
     //printf( "ScheduleEventRule -- start updateActiveEvents\n");
     //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
@@ -1852,7 +1872,7 @@ ScheduleEventRule::getPotentialEventsForPeriod( ScheduleEventList &activeEvents,
     
     for( std::vector< ScheduleDateTime >::iterator it = timeList.begin(); it != timeList.end(); it++ )
     {
-        zoneGroup->createZoneEvents( activeEvents, eventTime, false, rearmTime );
+        zoneGroup->createZoneEvents( activeEvents, *it, false, dummyTime );
     }
 }
 
@@ -2097,6 +2117,9 @@ ScheduleManager::getPotentialEventsForPeriod( ScheduleDateTime startTime, Schedu
         ((ScheduleEventRule *)*it)->getPotentialEventsForPeriod( *eventList, startTime, endTime );
     }
 
+    // Sort the generated list into chronological order
+    eventList->sortAscendingByStartTime();
+
     return eventList;
 }
 
@@ -2254,6 +2277,17 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
 
             eventList = getPotentialEventsForPeriod( startTime, endTime );
 
+            // Give the root element a tag name
+            outNode->setAsObject( "schedule-event-calendar" );
+
+            outNode->setField( "period-start", startTime.getISOString() );
+            outNode->setField( "period-end", endTime.getISOString() );
+
+            RESTContentNode *evList = RESTContentHelperFactory::newContentNode();
+
+            evList->setAsArray( "event-list" );
+            outNode->addChild( evList );
+
             // Do processing for active rules
             for( unsigned int index = 0; index < eventList->getEventCount(); ++index )
             {
@@ -2266,9 +2300,21 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
                 event->getEndTime( evEnd );
 
                 std::cout << "Event Entry -- ID: " << event->getId() << " Title: " << event->getTitle() << " Start: " << evStart.getISOString() << " End: " << evEnd.getISOString() << std::endl;
+
+                RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
+
+                curNode->setAsObject( "event" );
+
+                curNode->setField( "id", event->getId() );
+                curNode->setField( "title", event->getTitle() );
+                curNode->setField( "start-time", evStart.getISOString() );
+                curNode->setField( "end-time", evEnd.getISOString() );
+
+                evList->addChild( curNode );
             } 
 
             freeScheduleEventList( eventList );
+
         }
         break;
 
