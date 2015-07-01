@@ -1904,7 +1904,7 @@ int main( int argc, char* argv[] )
                         boost::posix_time::ptime pstamp;
                         std::string eventID;
                         std::string eventMsg;
-      
+
                         for( curNode = entryNode->children; curNode; curNode = curNode->next )
                         {
                             if( strcmp( (const char *)curNode->name, "seqnum" ) == 0 )
@@ -2093,13 +2093,13 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-            //curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-            //curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
 	        
             // Perform the request, res will get the return code 
             res = curl_easy_perform(curl);
@@ -2110,7 +2110,7 @@ int main( int argc, char* argv[] )
                 fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
                 return -1;
             }
-#if 0
+
             // Finished
             xmlParseChunk( ctxt, NULL, 0, 1 );
 
@@ -2121,38 +2121,86 @@ int main( int argc, char* argv[] )
 
                 xmlNodePtr rootNode = xmlDocGetRootElement( doc );
 
-                if( strcmp( (const char *)rootNode->name, "schedule-status" ) == 0 )
+                if( strcmp( (const char *)rootNode->name, "schedule-event-calendar" ) == 0 )
                 {
                     xmlNode *curNode = NULL;
 
-                    unsigned long seqNum;
-                    std::string timestamp;
-                    boost::posix_time::ptime pstamp;
-      
                     for( curNode = rootNode->children; curNode; curNode = curNode->next )
                     {
-                        if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
+                        if( strcmp( (const char *)curNode->name, "period-start" ) == 0 )
                         {
-                            xmlChar *content = xmlNodeGetContent( curNode );
 
-                            pstamp = boost::posix_time::from_iso_string( (const char *)content );
+                        }
+                        else if( strcmp( (const char *)curNode->name, "period-end" ) == 0 )
+                        {
 
-                            boost::local_time::time_zone_ptr zone = get_system_timezone();
-                            boost::local_time::local_date_time ltstamp( pstamp, zone );
+                        } 
+                        else if( strcmp( (const char *)curNode->name, "event-list" ) == 0 )
+                        {
+                            xmlNodePtr entryNode = NULL;
 
-                            timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
+                            boost::posix_time::ptime pstamp;
+                            std::string startTime;
+                            std::string endTime;
+                            std::string eventID;
+                            std::string eventTitle;
 
-                            xmlFree( content );
+                            // <event><end-time>20150701T135200</end-time><id>zg1</id><start-time>20150701T135000</start-time><title>zr2-2015-Jul-01 13:50:00</title></event>
+
+                            for( entryNode = curNode->children; entryNode; entryNode = entryNode->next )
+                            {
+                                xmlNodePtr childNode = NULL;
+
+                                for( childNode = entryNode->children; childNode; childNode = childNode->next )
+                                {
+
+                                    if( strcmp( (const char *)childNode->name, "start-time" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        startTime = (const char *)content;
+
+                                        pstamp = boost::posix_time::from_iso_string( startTime );
+
+                                        boost::local_time::time_zone_ptr zone = get_system_timezone();
+                                        boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                                        startTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                                        xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "end-time" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        endTime = (const char *)content;
+
+                                        pstamp = boost::posix_time::from_iso_string( endTime );
+
+                                        boost::local_time::time_zone_ptr zone = get_system_timezone();
+                                        boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                                        endTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                                        xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "id" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        eventID = (const char *)content;
+                                        xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "title" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        eventTitle = (const char *)content;
+                                        xmlFree( content );
+                                    }
+                                }
+
+                                printf( "%-22s %-22s %-5s %s\n", startTime.c_str(), endTime.c_str(), eventID.c_str(), eventTitle.c_str() );
+
+                            }
                         }
                     }
-
-                    printf( "==== Current Status ====\n" );
-                    printf( "Current Time: %s\n", timestamp.c_str() );
-                }
-                else
-                {
-                    fprintf( stderr, "schedule status format error\n" );
-                    return -1;
                 }
             }
             else
@@ -2162,7 +2210,7 @@ int main( int argc, char* argv[] )
 
             xmlFreeParserCtxt( ctxt );
             xmlFreeDoc( doc );
-#endif
+
             // always cleanup 
             curl_easy_cleanup( curl );
             curl_slist_free_all( slist );
