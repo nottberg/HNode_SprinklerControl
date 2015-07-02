@@ -606,7 +606,8 @@ typedef enum TriggerRuleSpecRepeatHorizon
     TRS_REPEAT_HOUR,
     TRS_REPEAT_DAY,
     TRS_REPEAT_WEEK,
-    TRS_REPEAT_FORTNIGHT,
+    TRS_REPEAT_EVEN_WEEK,
+    TRS_REPEAT_ODD_WEEK,
     TRS_REPEAT_YEAR
 } TRS_REPEAT_T;
 
@@ -617,7 +618,8 @@ const char *gTRSScopeStrings[] =
     "hour",      // TRS_REPEAT_HOUR,
     "day",       // TRS_REPEAT_DAY,
     "week",      // TRS_REPEAT_WEEK,
-    "fortnight", // TRS_REPEAT_FORTNIGHT,
+    "even_week", // TRS_REPEAT_EVEN_WEEK,
+    "odd_week",  // TRS_REPEAT_ODD_WEEK,
     "year"       // TRS_REPEAT_YEAR
 };
 
@@ -907,7 +909,7 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
 {
     boost::regex listSepRE(";+");
 
-    boost::regex ruleRE("(Once|Minute|Hour|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Mon1|Tue1|Wed1|Thu1|Fri1|Sat1|Sun1|Mon2|Tue2|Wed2|Thu2|Fri2|Sat2|Sun2)@([0-9,:|am|pm|AM|PM]*)");
+    boost::regex ruleRE("(Once|Minute|Hour|Mon|Tue|Wed|Thu|Fri|Sat|Sun|EMon|ETue|EWed|EThu|EFri|ESat|ESun|OMon|OTue|OWed|OThu|OFri|OSat|OSun)@([0-9,:|am|pm|AM|PM]*)");
 
     boost::sregex_token_iterator dayAndTime( timeListStr.begin(), timeListStr.end(), listSepRE, -1);
     boost::sregex_token_iterator end;
@@ -980,110 +982,110 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
  
                 build_day_of_week_list( ruleMatch[2], TRS_REPEAT_WEEK, d,  trList );
             }
-            else if( "Mon1" == ruleMatch[1] )
+            else if( "EMon" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Monday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Tue1" == ruleMatch[1] )
+            else if( "ETue" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Tuesday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Wed1" == ruleMatch[1] )
+            else if( "EWed" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Wednesday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Thu1" == ruleMatch[1] )
+            else if( "EThu" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Thursday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Fri1" == ruleMatch[1] )
+            else if( "EFri" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Friday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Sat1" == ruleMatch[1] )
+            else if( "ESat" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Saturday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Sun1" == ruleMatch[1] )
+            else if( "ESun" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Sunday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_EVEN_WEEK, d,  trList );
             }
-            else if( "Mon2" == ruleMatch[1] )
+            else if( "OMon" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Monday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
 
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Tue2" == ruleMatch[1] )
+            else if( "OTue" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Tuesday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Wed2" == ruleMatch[1] )
+            else if( "OWed" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Wednesday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Thu2" == ruleMatch[1] )
+            else if( "OThu" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Thursday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Fri2" == ruleMatch[1] )
+            else if( "OFri" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Friday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Sat2" == ruleMatch[1] )
+            else if( "OSat" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Saturday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
-            else if( "Sun2" == ruleMatch[1] )
+            else if( "OSun" == ruleMatch[1] )
             {
                 boost::gregorian::first_day_of_the_week_in_month fdm( boost::gregorian::Sunday, boost::gregorian::Jan);
                 boost::gregorian::date d = fdm.get_date(2000);
                 d += boost::gregorian::days(7);
  
-                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_FORTNIGHT, d,  trList );
+                build_day_of_week_list( ruleMatch[2], TRS_REPEAT_ODD_WEEK, d,  trList );
             }
             else
             {

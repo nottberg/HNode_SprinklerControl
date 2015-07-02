@@ -63,6 +63,7 @@ class ScheduleDateTime
         long getMinuteOfHour();
         long getHourOfDay();
         long getDayOfWeek();
+        long getWeekNumber();
 
         void addSeconds( long seconds );
         void addMinutes( long minutes );
@@ -461,8 +462,9 @@ typedef enum ScheduleTimeTriggerScope
     SER_TT_SCOPE_HOUR       = 3,
     SER_TT_SCOPE_DAY        = 4,
     SER_TT_SCOPE_WEEK       = 5,
-    SER_TT_SCOPE_FORTNIGHT  = 6,
-    SER_TT_SCOPE_YEAR       = 7
+    SER_TT_SCOPE_EVEN_WEEK  = 6,
+    SER_TT_SCOPE_ODD_WEEK   = 7,
+    SER_TT_SCOPE_YEAR       = 8
 }SER_TT_SCOPE;
 
 static const char* SERScopeString[] =
@@ -473,7 +475,8 @@ static const char* SERScopeString[] =
     "hour",      // TRS_REPEAT_HOUR,
     "day",       // TRS_REPEAT_DAY,
     "week",      // TRS_REPEAT_WEEK,
-    "fortnight", // TRS_REPEAT_FORTNIGHT,
+    "even_week", // TRS_REPEAT_EVEN_WEEK,
+    "odd_week",  // TRS_REPEAT_ODD_WEEK,
     "year"       // TRS_REPEAT_YEAR
 };
 

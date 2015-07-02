@@ -195,6 +195,12 @@ ScheduleDateTime::getDayOfWeek()
     return time.date().day_of_week();
 }
 
+long
+ScheduleDateTime::getWeekNumber()
+{
+    return time.date().week_number();
+}
+
 std::string
 ScheduleDateTime::getISOString()
 {
@@ -1064,10 +1070,15 @@ ScheduleTriggerRule::setScopeFromStr( std::string scopeStr )
     }
     else if( scopeStr == SERScopeString[6] )
     {
-        scope = SER_TT_SCOPE_FORTNIGHT;
+        scope = SER_TT_SCOPE_EVEN_WEEK;
         return false;
     }
     else if( scopeStr == SERScopeString[7] )
+    {
+        scope = SER_TT_SCOPE_ODD_WEEK;
+        return false;
+    }
+    else if( scopeStr == SERScopeString[8] )
     {
         scope = SER_TT_SCOPE_YEAR;
         return false;
@@ -1234,7 +1245,68 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             }
         break;
 
-        case SER_TT_SCOPE_FORTNIGHT:
+        case SER_TT_SCOPE_EVEN_WEEK:
+            // If we are not in the right day, then exit
+            if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceHourScope( refTime );
+
+            // It the adjusted start time doesn't fall on an even week
+            // then this isn't a match
+            if( ( startTime.getWeekNumber() & 0x1 ) != 0 )
+                return false;
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleTriggerRule -- even_week - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- even_week - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- even_week - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- even_week - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
+        break;
+
+        case SER_TT_SCOPE_ODD_WEEK:
+            // If we are not in the right day, then exit
+            if( refTime.getDayOfWeek() != curTime.getDayOfWeek() )
+                return false;
+
+            // We are in the ballpark so calculate the local startTime
+            // based on the curTime
+            startTime.setTime( curTime );
+            startTime.replaceHourScope( refTime );
+
+            // It the adjusted start time doesn't fall on an odd week
+            // then this isn't a match
+            if( ( startTime.getWeekNumber() & 0x1 ) == 0 )
+                return false;
+
+            // Schedule the event a couple of minutes before start time.
+            prestartTime.setTime( startTime );
+            prestartTime.subMinutes( 2 ); 
+
+            printf( "ScheduleTriggerRule -- odd_week - ref: %s\n", refTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- odd_week - prestart: %s\n", prestartTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- odd_week - start: %s\n", startTime.getISOString().c_str() );
+            printf( "ScheduleTriggerRule -- odd_week - cur: %s\n", curTime.getISOString().c_str() );
+
+            // Schedule events a bit before their actual start times.
+            if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
+            {
+                eventTime.setTime( startTime );
+                return true;
+            }
         break;
 
         case SER_TT_SCOPE_YEAR:
@@ -1361,7 +1433,56 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
             }
         break;
 
-        case SER_TT_SCOPE_FORTNIGHT:
+        case SER_TT_SCOPE_EVEN_WEEK:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceHourScope( refTime );
+
+            // If the first time isn't in an even week, then add a week
+            // to move from odd to even.
+            if( ( incTime.getWeekNumber() & 0x1 ) != 0 )
+            {
+                incTime.addWeeks( 1 );
+            }
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addWeeks( 2 );
+            }
+        break;
+
+        case SER_TT_SCOPE_ODD_WEEK:
+            // Move the start time to the first possible occurrence.
+            incTime.setTime( startTime );
+            incTime.replaceHourScope( refTime );
+
+            // If the first time isn't is an even week, then add a week
+            // to move from even to odd.
+            if( ( incTime.getWeekNumber() & 0x1 ) == 0 )
+            {
+                incTime.addWeeks( 1 );
+            }
+
+            // Now walk the increment time up until we are past the endTime
+            while( incTime.isBefore( endTime ) )
+            {
+                // Check if this time qualifies.
+                if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
+                {
+                    timeList.push_back( incTime );  
+                }
+
+                // Try the next time.
+                incTime.addWeeks( 2 );
+            }
         break;
 
         case SER_TT_SCOPE_YEAR:
