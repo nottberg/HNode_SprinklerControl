@@ -259,6 +259,15 @@ RESTRepresentation::getURIParameter( std::string name, std::string &value )
     return false;
 }
 
+void 
+RESTRepresentation::getURIParameterMap( std::map< std::string, std::string > &paramMap )
+{
+    for( std::map<std::string, RESTRepDataItem *>::iterator it = uriParam.begin(); it != uriParam.end(); it++ )
+    {
+        paramMap.insert( std::pair< std::string, std::string> ( it->first, it->second->getDataAsStr() ) );
+    }
+}
+
 bool 
 RESTRepresentation::hasHTTPHeaders()
 {
@@ -391,6 +400,15 @@ RESTRepresentation::getQueryParameter( std::string name, std::string &value )
     value = it->second->getDataAsStr();
     
     return false;
+}
+
+void 
+RESTRepresentation::getQueryParameterMap( std::map< std::string, std::string > &paramMap )
+{
+    for( std::map<std::string, RESTRepDataItem *>::iterator it = queryParam.begin(); it != queryParam.end(); it++ )
+    {
+        paramMap.insert( std::pair< std::string, std::string > ( it->first, it->second->getDataAsStr() ) );
+    }
 }
 
 bool 

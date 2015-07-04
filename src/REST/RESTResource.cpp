@@ -708,6 +708,9 @@ RESTResourceRESTStatusProvider::restGet( RESTRequest *request )
     // during processing.
     try
     {
+        // Get parameters from the request
+        request->getInboundRepresentation()->getQueryParameterMap( paramMap );
+
         // Parse the content
         helper = RESTContentHelperFactory::getResponseSimpleContentHelper( request->getInboundRepresentation() ); 
 

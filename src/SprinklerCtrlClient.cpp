@@ -1206,6 +1206,8 @@ int main( int argc, char* argv[] )
     std::string wksListStr;
     std::string sdiListStr;
 
+    std::string periodStr;
+
     // Declare the supported options.
     po::options_description desc("HNode Sprinkler Control Client");
     desc.add_options()
@@ -1247,6 +1249,9 @@ int main( int argc, char* argv[] )
         ("time-list",  po::value<std::string>(&wksListStr), "Specify a list of days and times. (i.e. Mon:6am,7pm;Tue:5pm;Fri:6am,7pm")
 
         ("detail", "In addition to getting object ids; also get the objects contents.")
+
+        ("period",  po::value<std::string>(&periodStr), "Specify a calendar period. (today, week, twoweek, month)")
+
 #if 0
         ("get-schedule-entries", 
         ("new-schedule-entry", "Create a new schedule entry.")
@@ -2081,6 +2086,77 @@ int main( int argc, char* argv[] )
         xmlParserCtxtPtr ctxt = NULL;
 
         url = "http://localhost:8200/schedule/calendar/";
+
+        if( vm.count( "period" ) == 0 )
+        {
+            // Default to getting the current days events
+            periodStr = "day";
+        }
+
+        boost::local_time::time_zone_ptr zone = get_system_timezone();
+        boost::posix_time::time_duration std( 0, 0, 0, 0 );
+        boost::posix_time::time_duration etd( 23, 59, 59, 0 );
+
+        if( periodStr == "day" )
+        {
+            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+
+            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+            boost::local_time::local_date_time end( ltstamp.date(), etd, zone, false );  
+
+            url += "?startTime=";
+            url += to_iso_string( start.utc_time() );
+            url += "&endTime=";
+            url += to_iso_string( end.utc_time() );
+        } 
+        else if( periodStr == "week" )
+        {
+            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+            unsigned long dayofWeek = ltstamp.date().day_of_week();
+            ltstamp -= boost::gregorian::days( dayofWeek );
+
+            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+            boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(6)), etd, zone, false );  
+
+            url += "?startTime=";
+            url += to_iso_string( start.utc_time() );
+            url += "&endTime=";
+            url += to_iso_string( end.utc_time() );
+        }
+        else if( periodStr == "twoweek" )
+        {
+            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+            unsigned long dayofWeek = ltstamp.date().day_of_week();
+            ltstamp -= boost::gregorian::days( dayofWeek );
+
+            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+            boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(13)), etd, zone, false );  
+
+            url += "?startTime=";
+            url += to_iso_string( start.utc_time() );
+            url += "&endTime=";
+            url += to_iso_string( end.utc_time() );
+        }
+        else if( periodStr == "month" )
+        {
+            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+
+            unsigned long dayofMonth = ltstamp.date().day();
+            unsigned long endofMonth = ltstamp.date().end_of_month().day();
+
+            boost::local_time::local_date_time start( (ltstamp.date() - boost::gregorian::days(dayofMonth-1)), std, zone, false );  
+            boost::local_time::local_date_time end( (start.date() + boost::gregorian::days(endofMonth-1)), etd, zone, false );  
+
+            url += "?startTime=";
+            url += to_iso_string( start.utc_time() );
+            url += "&endTime=";
+            url += to_iso_string( end.utc_time() );
+        }
+        else
+        {
+            std::cerr << "ERROR: Requested period is not supportted." << std::endl;
+            return -1;
+        }
 
         // get a curl handle 
         curl = curl_easy_init();

@@ -2391,10 +2391,28 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
             ScheduleDateTime   startTime;
             ScheduleDateTime   endTime;
 
-            startTime.getCurrentTime();
+            std::map< std::string, std::string >::iterator it = paramMap.find( "startTime" );
+ 
+            if( it == paramMap.end() )
+            { 
+                startTime.getCurrentTime();
+            }
+            else
+            {
+                startTime.setTimeFromISOString( it->second );
+            }
 
-            endTime.setTime( startTime );
-            endTime.addHours( 2 );
+            it = paramMap.find( "endTime" );
+ 
+            if( it == paramMap.end() )
+            { 
+                endTime.setTime( startTime );
+                endTime.addHours( 2 );
+            }
+            else
+            {
+                endTime.setTimeFromISOString( it->second );
+            }
 
             eventList = getPotentialEventsForPeriod( startTime, endTime );
 

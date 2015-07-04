@@ -94,6 +94,7 @@ class RESTRepresentation
         void clearURIParameters();
         void addURIParameter( std::string name, std::string value );
         bool getURIParameter( std::string name, std::string &value );
+        void getURIParameterMap( std::map< std::string, std::string > &paramMap );
 
         // REST_RDI_TYPE_HTTP_HEADER
         bool hasHTTPHeaders();
@@ -108,6 +109,7 @@ class RESTRepresentation
         void clearQueryParameters();
         void addQueryParameter( std::string name, std::string value );
         bool getQueryParameter( std::string name, std::string &value );
+        void getQueryParameterMap( std::map< std::string, std::string > &paramMap );
 
         // REST_RDI_TYPE_ENCODED_PARAMETER
         // REST_RDI_TYPE_ENCODED_FILE
