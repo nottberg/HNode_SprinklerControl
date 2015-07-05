@@ -79,7 +79,8 @@ class ScheduleDateTime
         void replaceSecondScope( ScheduleDateTime &time );
         void replaceMinuteScope( ScheduleDateTime &time );
         void replaceHourScope( ScheduleDateTime &time );
-        void replaceDayScope( ScheduleDateTime &time );
+
+        void advanceToMatchingWeekDay( ScheduleDateTime &time );
 
         bool isBefore( ScheduleDateTime &time );
         bool isAfter( ScheduleDateTime &time ); 

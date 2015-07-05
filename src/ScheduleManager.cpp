@@ -146,11 +146,32 @@ ScheduleDateTime::replaceHourScope( ScheduleDateTime &replaceTime )
 }
 
 void 
-ScheduleDateTime::replaceDayScope( ScheduleDateTime &replaceTime )
+ScheduleDateTime::advanceToMatchingWeekDay( ScheduleDateTime &targetTime )
 {
-    ptime newTime( time.date(), replaceTime.time.time_of_day() );
+    unsigned long curDayOfWeek = time.date().day_of_week();
+    unsigned long tgtDayOfWeek = targetTime.time.date().day_of_week();
+
+    std::cout << "advance: " << curDayOfWeek << " : " << tgtDayOfWeek << std::endl;
+
+    std::cout << "t1: " << time << std::endl;
+
+    if( curDayOfWeek > tgtDayOfWeek )
+    {
+        time += days( ((7 - curDayOfWeek) + tgtDayOfWeek) );
+    }
+    else if( curDayOfWeek < tgtDayOfWeek )
+    {
+        time += days( (tgtDayOfWeek - curDayOfWeek) );
+    }
+
+    std::cout << "t2: " << time << std::endl;
+
+    ptime newTime( time.date(), targetTime.time.time_of_day() );
 
     time = newTime; 
+
+    std::cout << "t3: " << time << std::endl;
+
 }
 
 bool 
@@ -1417,7 +1438,7 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
         case SER_TT_SCOPE_WEEK:
             // Move the start time to the first possible occurrence.
             incTime.setTime( startTime );
-            incTime.replaceHourScope( refTime );
+            incTime.advanceToMatchingWeekDay( refTime );
 
             // Now walk the increment time up until we are past the endTime
             while( incTime.isBefore( endTime ) )
@@ -1436,7 +1457,7 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
         case SER_TT_SCOPE_EVEN_WEEK:
             // Move the start time to the first possible occurrence.
             incTime.setTime( startTime );
-            incTime.replaceHourScope( refTime );
+            incTime.advanceToMatchingWeekDay( refTime );
 
             // If the first time isn't in an even week, then add a week
             // to move from odd to even.
@@ -1462,7 +1483,7 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
         case SER_TT_SCOPE_ODD_WEEK:
             // Move the start time to the first possible occurrence.
             incTime.setTime( startTime );
-            incTime.replaceHourScope( refTime );
+            incTime.advanceToMatchingWeekDay( refTime );
 
             // If the first time isn't is an even week, then add a week
             // to move from even to odd.
