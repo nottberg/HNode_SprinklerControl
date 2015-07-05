@@ -1408,6 +1408,7 @@ int main( int argc, char* argv[] )
         CURL *curl;
         CURLcode res;
         std::string url;
+        sscReadBuf rspData;
 
         if( vm.count( "event-rule" ) )
         {
@@ -1465,7 +1466,7 @@ int main( int argc, char* argv[] )
 	        
             // Setup the read callback 
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)NULL );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *) &rspData );
 
             // Perform the request, res will get the return code 
             res = curl_easy_perform(curl);
@@ -1578,6 +1579,7 @@ int main( int argc, char* argv[] )
         CURL *curl;
         CURLcode res;
         std::string url;
+        sscReadBuf rspData;
 
         // erID must have been specified
         if( !vm.count( "objid" ) )
@@ -1642,7 +1644,7 @@ int main( int argc, char* argv[] )
 	        
             // Setup the read callback 
             curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)NULL );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *) &rspData );
 
             // Perform the request, res will get the return code 
             res = curl_easy_perform(curl);

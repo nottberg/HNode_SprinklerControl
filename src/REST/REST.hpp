@@ -311,7 +311,7 @@ struct RESTCMEdge
     std::string relationID; 
 };
 
-typedef boost::adjacency_list< boost::vecS, boost::vecS, boost::undirectedS, RESTCMVertex, RESTCMEdge > refGraph_t;
+typedef boost::adjacency_list< boost::listS, boost::listS, boost::undirectedS, RESTCMVertex, RESTCMEdge > refGraph_t;
 typedef boost::graph_traits< refGraph_t >::vertex_descriptor refGraphVertex_t;
 
 class RESTContentNode : public RESTContentBase
