@@ -499,7 +499,8 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
             if( actionObj != NULL )
             {
                 actionObj->complete( curTime );
-                log.addLogEntry( "sch-action-complete", "Completion for " + getId() + ":" + getDescription() );
+                std::string logStr = "Zone " + zRecord.getZoneName() + " for " + getDurationStr() + " has finished. ( id: " + getId() + " ) ";
+                log.addLogEntry( "sch-action-complete", logStr );
             }
         }
     }
@@ -516,7 +517,8 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
             if( actionObj != NULL )
             {
                 actionObj->start( curTime );
-                log.addLogEntry( "sch-action-start", "Start for " + getId() + ":" + getDescription() );
+                std::string logStr = "Zone " + zRecord.getZoneName() + " for " + getDurationStr() + " is starting. ( id: " + getId() + " ) ";
+                log.addLogEntry( "sch-action-start", logStr );
             }
             
         }
