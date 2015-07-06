@@ -209,7 +209,7 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
                 rspData += "</id>";
        
                 rspData += "<title>";
-                rspData += event->getTitle();
+                rspData += event->getDescription();
                 rspData += "</title>";
 
                 ScheduleDateTime eventTime;

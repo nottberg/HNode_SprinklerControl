@@ -2223,7 +2223,9 @@ int main( int argc, char* argv[] )
                             std::string startTime;
                             std::string endTime;
                             std::string eventID;
-                            std::string eventTitle;
+                            std::string zoneName;
+                            std::string triggerName;
+                            std::string duration;
 
                             // <event><end-time>20150701T135200</end-time><id>zg1</id><start-time>20150701T135000</start-time><title>zr2-2015-Jul-01 13:50:00</title></event>
 
@@ -2268,15 +2270,58 @@ int main( int argc, char* argv[] )
                                         eventID = (const char *)content;
                                         xmlFree( content );
                                     }
-                                    else if( strcmp( (const char *)childNode->name, "title" ) == 0 )
+                                    else if( strcmp( (const char *)childNode->name, "zone-name" ) == 0 )
                                     {
                                         xmlChar *content = xmlNodeGetContent( childNode );
-                                        eventTitle = (const char *)content;
+                                        zoneName = (const char *)content;
                                         xmlFree( content );
                                     }
+                                    else if( strcmp( (const char *)childNode->name, "trigger-name" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        triggerName = (const char *)content;
+                                        xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "duration" ) == 0 )
+                                    {
+                                        xmlChar *content = xmlNodeGetContent( childNode );
+                                        duration = (const char *)content;
+                                        xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "erID" ) == 0 )
+                                    {
+                                        //xmlChar *content = xmlNodeGetContent( childNode );
+                                        //eventTitle = (const char *)content;
+                                        //xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "zgID" ) == 0 )
+                                    {
+                                        //xmlChar *content = xmlNodeGetContent( childNode );
+                                        //eventTitle = (const char *)content;
+                                        //xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "zrID" ) == 0 )
+                                    {
+                                        //xmlChar *content = xmlNodeGetContent( childNode );
+                                        //eventTitle = (const char *)content;
+                                        //xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "tgID" ) == 0 )
+                                    {
+                                        //xmlChar *content = xmlNodeGetContent( childNode );
+                                        //eventTitle = (const char *)content;
+                                        //xmlFree( content );
+                                    }
+                                    else if( strcmp( (const char *)childNode->name, "trID" ) == 0 )
+                                    {
+                                        //xmlChar *content = xmlNodeGetContent( childNode );
+                                        //eventTitle = (const char *)content;
+                                        //xmlFree( content );
+                                    }
+
                                 }
 
-                                printf( "%-22s %-22s %-5s %s\n", startTime.c_str(), endTime.c_str(), eventID.c_str(), eventTitle.c_str() );
+                                printf( "%-22s %-22s %-10s %-20s %-20s %s\n", startTime.c_str(), endTime.c_str(), duration.c_str(), zoneName.c_str(), triggerName.c_str(), eventID.c_str() );
 
                             }
                         }

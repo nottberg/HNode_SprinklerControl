@@ -261,6 +261,12 @@ ScheduleTimeDuration::setFromString( std::string timeStr )
     td = duration_from_string( timeStr );
 }
 
+void 
+ScheduleTimeDuration::setFromTimeDifference( ScheduleDateTime &start, ScheduleDateTime &end )
+{
+    td = end.time - start.time;
+}
+
 std::string
 ScheduleTimeDuration::getISOString()
 {
@@ -275,6 +281,42 @@ ScheduleTimeDuration::getSecondsString()
     sprintf( result, "%ld", asTotalSeconds() );
 
     return result;
+}
+
+std::string 
+ScheduleTimeDuration::getAsHMSString()
+{
+    std::string rtnStr;
+    bool spaces = false;
+    char result[64];
+
+    if( (long) td.hours() )
+    {
+        sprintf( result, "%ld hrs", (long) td.hours() );
+        rtnStr += result;
+        spaces = true;
+    }    
+
+    if( (long) td.minutes() )
+    {
+        if( spaces == true )
+            rtnStr += " ";
+
+        sprintf( result, "%ld min", (long) td.minutes() );
+        rtnStr += result;
+        spaces = true;
+    }
+
+    if( (long) td.seconds() )
+    {
+        if( spaces == true )
+            rtnStr += " ";
+
+        sprintf( result, "%ld sec", (long) td.seconds() );
+        rtnStr += result;
+    }
+
+    return rtnStr;
 }
 
 long 
@@ -327,28 +369,61 @@ ScheduleEvent::~ScheduleEvent()
 
 }
 
-void 
-ScheduleEvent::setId( std::string idStr )
-{
-    id = idStr;
-}
-
 std::string 
 ScheduleEvent::getId()
 {
+    std::string id = tRecord.getERID() + tRecord.getGroupID() + tRecord.getRuleID() + zRecord.getGroupID() + zRecord.getRuleID() + "-" + tRecord.getEventTime().getISOString();
+
     return id;
 }
 
-void 
-ScheduleEvent::setTitle( std::string titleStr )
+std::string 
+ScheduleEvent::getDescription()
 {
-    title = titleStr;
+    // "Zone:  NorthPlanter  Duration:  5 minutes  Trigger: Twice A Day    
+    std::string desc = "Zone: " + zRecord.getZoneName();
+
+    ScheduleTimeDuration td;
+    td.setFromTimeDifference( start, end );
+    desc += "  Duration: " + td.getAsHMSString();
+
+    std::cout << "ScheduleEvent::getDescription(): " << tRecord.getTriggerName() << std::endl;
+
+    desc += "  Trigger: " + tRecord.getTriggerName();
+
+    return desc;
 }
 
 std::string 
-ScheduleEvent::getTitle()
+ScheduleEvent::getDurationStr()
 {
-    return title;
+    ScheduleTimeDuration td;
+    td.setFromTimeDifference( start, end );
+    return td.getAsHMSString();
+}
+
+void 
+ScheduleEvent::setTriggerRecord( ScheduleTriggerRecord &tRec )
+{
+    tRecord = tRec;
+}
+
+ScheduleTriggerRecord &
+ScheduleEvent::getTriggerRecord()
+{
+    return tRecord;
+}
+
+void 
+ScheduleEvent::setZoneRecord( ScheduleZoneRecord &zRec )
+{
+    zRecord = zRec;
+}
+
+ScheduleZoneRecord &
+ScheduleEvent::getZoneRecord()
+{
+    return zRecord;
 }
 
 void 
@@ -399,7 +474,7 @@ ScheduleEvent::getState()
 bool 
 ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log )
 {
-    //printf( "processCurrent - %s:%s - %s - %s - %s -%s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
+    //printf( "processCurrent - %s:%s - %s - %s - %s -%s\n", getId().c_str(), getDescription().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
 
     if( recycle.isBefore( curTime ) )
     {
@@ -407,8 +482,8 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
         if( state == SESTATE_COMPLETE )
         {
             state = SESTATE_RECYCLE;
-            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
-            printf( "processCurrent - %s:%s - Recycle\n", getId().c_str(), getTitle().c_str() );               
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getDescription().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
+            printf( "processCurrent - %s:%s - Recycle\n", getId().c_str(), getDescription().c_str() );               
         }   
     }
 
@@ -418,13 +493,13 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
         if( state == SESTATE_RUNNING )
         {
             state = SESTATE_COMPLETE;
-            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
-            printf( "processCurrent - %s:%s - Completing\n", getId().c_str(), getTitle().c_str() );               
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getDescription().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
+            printf( "processCurrent - %s:%s - Completing\n", getId().c_str(), getDescription().c_str() );               
 
             if( actionObj != NULL )
             {
                 actionObj->complete( curTime );
-                log.addLogEntry( "sch-action-complete", "Completion for " + getId() + ":" + getTitle() );
+                log.addLogEntry( "sch-action-complete", "Completion for " + getId() + ":" + getDescription() );
             }
         }
     }
@@ -435,13 +510,13 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
         if( state == SESTATE_READY )
         {
             state = SESTATE_RUNNING;
-            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getTitle().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
-            printf( "processCurrent - %s:%s - Starting\n", getId().c_str(), getTitle().c_str() );   
+            printf( "processCurrent - %s:%s - start: %s - cur: %s - end: %s - recycle: %s\n", getId().c_str(), getDescription().c_str(), start.getISOString().c_str(), curTime.getISOString().c_str(), end.getISOString().c_str(), recycle.getISOString().c_str() );
+            printf( "processCurrent - %s:%s - Starting\n", getId().c_str(), getDescription().c_str() );   
 
             if( actionObj != NULL )
             {
                 actionObj->start( curTime );
-                log.addLogEntry( "sch-action-start", "Start for " + getId() + ":" + getTitle() );
+                log.addLogEntry( "sch-action-start", "Start for " + getId() + ":" + getDescription() );
             }
             
         }
@@ -451,7 +526,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
     if( state == SESTATE_RUNNING )
     {
         state = SESTATE_RUNNING;
-        //printf( "processCurrent - %s:%s - Running\n", getId().c_str(), getTitle().c_str() ); 
+        //printf( "processCurrent - %s:%s - Running\n", getId().c_str(), getDescription().c_str() ); 
 
         // Let the action perform polling steps.
         if( actionObj != NULL )
@@ -463,7 +538,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
     // This event should be started
     //if( state == SESTATE_COMPLETE )
     //{
-    //    printf( "processCurrent - %s:%s - Completed\n", getId().c_str(), getTitle().c_str() );               
+    //    printf( "processCurrent - %s:%s - Completed\n", getId().c_str(), getDescription().c_str() );               
     //}
 
 
@@ -474,7 +549,7 @@ ScheduleEvent::processCurrent( ScheduleDateTime &curTime, ScheduleEventLog &log 
 void 
 ScheduleEvent::processFinal()
 {
-    printf( "processCurrent - %s:%s - %s\n", getId().c_str(), getTitle().c_str(), recycle.getISOString().c_str() );
+    printf( "processCurrent - %s:%s - %s\n", getId().c_str(), getDescription().c_str(), recycle.getISOString().c_str() );
 
 }
 
@@ -724,6 +799,12 @@ ScheduleZoneRule::getZoneID()
     return zoneID;
 }
 
+std::string 
+ScheduleZoneRule::getZoneName()
+{
+    return ( (ScheduleManager &) objManager ).getZoneName( zoneID );
+}
+
 void 
 ScheduleZoneRule::setDuration( ScheduleTimeDuration &td )
 {
@@ -840,15 +921,16 @@ ScheduleZoneGroup::getZoneEventPolicyStr()
 }
 
 void 
-ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents, ScheduleDateTime &rearmTime )
+ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleTriggerRecord &tRecord, bool serializeEvents, ScheduleDateTime &rearmTime )
 {
     ScheduleDateTime eventTime;
 
     printf( "ScheduleZoneGroup -- start createZoneEvents\n");
+    std::cout << "ScheduleZoneGroup::createZoneEvents0: " << tRecord.getTriggerName() << std::endl;
 
     // Initial Time
-    eventTime.setTime( curTime );
-    rearmTime.setTime( curTime );
+    eventTime.setTime( tRecord.getEventTime() );
+    rearmTime.setTime( tRecord.getEventTime() );
 
     // If events are to be serialized then find the latest event
     // in the active list and put the new events after that.
@@ -856,7 +938,7 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     {
         ScheduleDateTime lastTime;
 
-        lastTime.setTime( curTime );
+        lastTime.setTime( tRecord.getEventTime() );
 
         // Do processing for active rules
         for( unsigned int index = 0; index < activeEvents.getEventCount(); ++index )
@@ -880,10 +962,10 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     }
     else
     {
-        printf( "ScheduleZoneGroup -- curTime: %s\n", curTime.getISOString().c_str() );
+        printf( "ScheduleZoneGroup -- curTime: %s\n", tRecord.getEventTime().getISOString().c_str() );
 
-        eventTime.setTime( curTime );
-        rearmTime.setTime( curTime );
+        eventTime.setTime( tRecord.getEventTime() );
+        rearmTime.setTime( tRecord.getEventTime() );
     }
 
     std::vector< std::string > ruleIDList;
@@ -897,13 +979,20 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
     {
         ScheduleZoneRule *zrObj = (ScheduleZoneRule *) objManager.getObjectByID( *it );
 
+        ScheduleZoneRecord zRecord;
+
+        zRecord.setERID( tRecord.getERID() );
+        zRecord.setGroupID( getID() );
+        zRecord.setRuleID( *it );
+        zRecord.setZoneName( zrObj->getZoneName() );
+
         ScheduleEvent *event = new ScheduleEvent;
 
-        std::string eventName = zrObj->getID() + "-" + eventTime.getSimpleString();
-
         // Copy over identifying data
-        event->setId( getID() );
-        event->setTitle( eventName );
+        event->setTriggerRecord( tRecord );
+        event->setZoneRecord( zRecord );
+
+        std::cout << "ScheduleZoneGroup::createZoneEvents: " << event->getTriggerRecord().getTriggerName() << std::endl;
 
         // Set the start time
         event->setStartTime( eventTime );
@@ -932,6 +1021,152 @@ ScheduleZoneGroup::createZoneEvents( ScheduleEventList &activeEvents, ScheduleDa
         event->setReady();
         activeEvents.addEvent( event ); 
     }
+}
+
+ScheduleZoneRecord::ScheduleZoneRecord()
+{
+
+}
+
+ScheduleZoneRecord::~ScheduleZoneRecord()
+{
+
+}
+
+void 
+ScheduleZoneRecord::setERID( std::string idStr )
+{
+    eventRuleID = idStr;
+}
+
+void 
+ScheduleZoneRecord::setGroupID( std::string idStr )
+{
+    groupID = idStr;
+}
+
+void 
+ScheduleZoneRecord::setRuleID( std::string idStr )
+{
+    ruleID = idStr;
+}
+
+void 
+ScheduleZoneRecord::setZoneName( std::string nameStr )
+{
+    zoneName = nameStr;
+}
+
+std::string 
+ScheduleZoneRecord::getERID()
+{
+    return eventRuleID;
+}
+
+std::string 
+ScheduleZoneRecord::getGroupID()
+{
+    return groupID;
+}
+
+std::string 
+ScheduleZoneRecord::getRuleID()
+{
+    return ruleID;
+}
+
+std::string 
+ScheduleZoneRecord::getZoneName()
+{
+    return zoneName;
+}
+
+ScheduleTriggerRecord::ScheduleTriggerRecord()
+{
+    manual = false;
+}
+
+ScheduleTriggerRecord::~ScheduleTriggerRecord()
+{
+
+}
+
+void 
+ScheduleTriggerRecord::setManualTrigger()
+{
+    manual = true;
+}
+
+void 
+ScheduleTriggerRecord::clearManualTrigger()
+{
+    manual = false;
+}
+
+bool 
+ScheduleTriggerRecord::wasManuallyTriggered()
+{
+    return manual;
+}
+
+void 
+ScheduleTriggerRecord::setERID( std::string idStr )
+{
+    eventRuleID = idStr;
+}
+
+void 
+ScheduleTriggerRecord::setGroupID( std::string idStr )
+{
+    groupID = idStr;
+}
+
+void 
+ScheduleTriggerRecord::setRuleID( std::string idStr )
+{
+    ruleID = idStr;
+}
+
+void 
+ScheduleTriggerRecord::setTriggerName( std::string nameStr )
+{
+    triggerName = nameStr;
+}
+
+void 
+ScheduleTriggerRecord::setEventTime( ScheduleDateTime &evTime )
+{
+    eventTime.setTime( evTime );
+}
+
+std::string 
+ScheduleTriggerRecord::getERID()
+{
+    return eventRuleID;
+}
+
+std::string 
+ScheduleTriggerRecord::getGroupID()
+{
+    return groupID;
+}
+
+std::string 
+ScheduleTriggerRecord::getRuleID()
+{
+    return ruleID;
+}
+
+std::string 
+ScheduleTriggerRecord::getTriggerName()
+{
+    return triggerName;
+}
+
+ScheduleDateTime &
+ScheduleTriggerRecord::getEventTime()
+{
+    return eventTime;
 }
 
 ScheduleTriggerRule::ScheduleTriggerRule( RESTContentManager &objMgr )
@@ -1128,13 +1363,17 @@ ScheduleTriggerRule::getRefTime()
 }
 
 bool 
-ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord ) // ScheduleDateTime &eventTime )
 {
     ScheduleDateTime startTime;
     ScheduleDateTime prestartTime;
 
     //std::cout << "ScheduleTriggerRule::checkForTimeTrigger - id: " << getID() << ", " << curTime.getISOString() <<std::endl;
- 
+
+    // Record which rule potentially fired.
+    tRecord.setRuleID( getID() ); 
+
+    // Determine if the event will fire and at what time
     switch( scope )
     {
         case SER_TT_SCOPE_NOTSET:
@@ -1153,7 +1392,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && refTime.isAfter( curTime ) )
             {
-                eventTime.setTime( refTime );
+                tRecord.setEventTime( refTime );
                 return true;
             }
         break;
@@ -1180,7 +1419,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1207,7 +1446,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1234,7 +1473,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1261,7 +1500,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1293,7 +1532,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1325,7 +1564,7 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
             // Schedule events a bit before their actual start times.
             if( prestartTime.isBefore( curTime ) && startTime.isAfter( curTime ) )
             {
-                eventTime.setTime( startTime );
+                tRecord.setEventTime( startTime );
                 return true;
             }
         break;
@@ -1339,13 +1578,13 @@ ScheduleTriggerRule::checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDat
 }
 
 bool 
-ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord ) // ScheduleDateTime &eventTime )
 {
     switch( ruleType )
     {
         case STR_TYPE_TIME:
         {
-            return checkForTimeTrigger( curTime, eventTime );
+            return checkForTimeTrigger( curTime, tRecord ); // eventTime );
         }
         break;
 
@@ -1358,7 +1597,7 @@ ScheduleTriggerRule::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTim
 }
 
 void 
-ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList )
 {
     ScheduleDateTime incTime;
 
@@ -1372,7 +1611,14 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
         case SER_TT_SCOPE_NEVER:
             // This event only happens once, so a simple check will do.
             if( refTime.isAfter( startTime ) && refTime.isBefore( endTime ) )
-                timeList.push_back( refTime );
+            {
+                ScheduleTriggerRecord tRec;
+
+                tRec.setRuleID( getID() );
+                tRec.setEventTime( refTime );
+
+                tList.push_back( tRec );
+            }
         break;
 
         case SER_TT_SCOPE_MINUTE:
@@ -1386,7 +1632,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1407,8 +1658,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    std::cout << "getPotentialTimeTriggersForPeriod - add(" << timeList.size() << "): " << incTime.getISOString() << std::endl;
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1427,7 +1682,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1446,7 +1706,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1472,7 +1737,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1498,7 +1768,12 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
                 // Check if this time qualifies.
                 if( incTime.isAfter( startTime ) && incTime.isBefore( endTime ) )
                 {
-                    timeList.push_back( incTime );  
+                    ScheduleTriggerRecord tRec;
+
+                    tRec.setRuleID( getID() );
+                    tRec.setEventTime( incTime );
+
+                    tList.push_back( tRec );
                 }
 
                 // Try the next time.
@@ -1515,13 +1790,13 @@ ScheduleTriggerRule::getPotentialTimeTriggersForPeriod( ScheduleDateTime &startT
 }
 
 void 
-ScheduleTriggerRule::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+ScheduleTriggerRule::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList )
 {
     switch( ruleType )
     {
         case STR_TYPE_TIME:
         {
-            getPotentialTimeTriggersForPeriod( startTime, endTime, timeList );
+            getPotentialTimeTriggersForPeriod( startTime, endTime, tList );
             return;
         }
         break;
@@ -1622,9 +1897,12 @@ ScheduleTriggerGroup::getDescription()
 }
 
 bool 
-ScheduleTriggerGroup::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime )
+ScheduleTriggerGroup::checkForTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord )
 {
     std::vector< std::string > idList;
+
+    tRecord.setGroupID( getID() );
+    tRecord.setTriggerName( getName() );
 
     objManager.getIDListForRelationship( getID(), "trigger-rule-list", idList );  
 
@@ -1633,20 +1911,20 @@ ScheduleTriggerGroup::checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTi
     {
         ScheduleTriggerRule *tgObj = (ScheduleTriggerRule *) objManager.getObjectByID( *it );
 
-        if( tgObj->checkForTrigger( curTime, eventTime ) == true )
+        if( tgObj->checkForTrigger( curTime, tRecord ) == true )
         {
             // At least one triggered, return that.
             // Short circuit, no need to check the rest.
             return true;
         }
     }
-
+   
     // Nothing triggered, return nothing to do.
     return false;
 }
 
 void 
-ScheduleTriggerGroup::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList )
+ScheduleTriggerGroup::getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList )
 {
     std::vector< std::string > idList;
 
@@ -1657,8 +1935,9 @@ ScheduleTriggerGroup::getPotentialTriggersForPeriod( ScheduleDateTime &startTime
     {
         ScheduleTriggerRule *tgObj = (ScheduleTriggerRule *) objManager.getObjectByID( *it );
 
-        tgObj->getPotentialTriggersForPeriod( startTime, endTime, timeList );
+        tgObj->getPotentialTriggersForPeriod( startTime, endTime, tList );
     }
+
 }
 
 
@@ -1912,6 +2191,7 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
 {
     char tmpStr[64];
     ScheduleDateTime eventTime;
+    ScheduleTriggerRecord tRecord;
 
     //printf( "ScheduleEventRule -- start updateActiveEvents\n");
     //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
@@ -1927,9 +2207,8 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
 
     // Lookup and validate the zone-group and trigger-group references
     ScheduleZoneGroup *zoneGroup = (ScheduleZoneGroup *) objManager.getObjectByID( zoneGroupID );
-    ScheduleTriggerGroup *triggerGroup = (ScheduleTriggerGroup *) objManager.getObjectByID( triggerGroupID );
 
-    if( ( zoneGroup == NULL ) || ( triggerGroup == NULL ) )
+    if( zoneGroup == NULL )
     {
         // Skip the rule, zone and/or trigger groups were not valid.
         return;
@@ -1941,9 +2220,16 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
     if( fireManually )
     {
         printf( "ScheduleEventRule -- manual start: %s\n", name.c_str() );
+        
+        eventTime.getCurrentTime();
+
+        tRecord.setERID( getID() );
+        tRecord.setManualTrigger();
+        tRecord.setEventTime( eventTime );
+        tRecord.setTriggerName( "Manual" );
 
         // Create the events
-        zoneGroup->createZoneEvents( activeEvents, eventTime, serializeEvents, rearmTime );
+        zoneGroup->createZoneEvents( activeEvents, tRecord, serializeEvents, rearmTime );
 
         // Clear the manual fire flag, since we only wanted to 
         // trigger it once.
@@ -1971,10 +2257,26 @@ ScheduleEventRule::updateActiveEvents( ScheduleEventList &activeEvents, Schedule
         }
     }
 
-    // Check if this rule triggered
-    if( triggerGroup->checkForTrigger( curTime, eventTime ) )
+    // Lookup and validate the zone-group and trigger-group references
+    ScheduleTriggerGroup *triggerGroup = (ScheduleTriggerGroup *) objManager.getObjectByID( triggerGroupID );
+
+    if( triggerGroup == NULL )
     {
-        zoneGroup->createZoneEvents( activeEvents, eventTime, serializeEvents, rearmTime );
+        // Skip the rule, trigger groups were not valid.
+        return;
+    }
+
+    std::string triggerRuleID;
+
+    // Check if this rule triggered
+
+    tRecord.setERID( getID() );
+    tRecord.setGroupID( triggerGroupID );
+    tRecord.setTriggerName( triggerGroup->getName() );
+
+    if( triggerGroup->checkForTrigger( curTime, tRecord ) )
+    {
+        zoneGroup->createZoneEvents( activeEvents, tRecord, serializeEvents, rearmTime );
         eventsPending = true;
     }
 
@@ -2009,11 +2311,15 @@ ScheduleEventRule::getPotentialEventsForPeriod( ScheduleEventList &activeEvents,
     }
 
     // Check if this rule triggered
-    std::vector< ScheduleDateTime > timeList;
-    triggerGroup->getPotentialTriggersForPeriod( startTime, endTime, timeList );
+    std::vector< ScheduleTriggerRecord > tList;
+    triggerGroup->getPotentialTriggersForPeriod( startTime, endTime, tList );
     
-    for( std::vector< ScheduleDateTime >::iterator it = timeList.begin(); it != timeList.end(); it++ )
+    for( std::vector< ScheduleTriggerRecord >::iterator it = tList.begin(); it != tList.end(); it++ )
     {
+        it->setERID( getID() );
+        it->setGroupID( triggerGroupID );
+        it->setTriggerName( triggerGroup->getName() );
+
         zoneGroup->createZoneEvents( activeEvents, *it, false, dummyTime );
     }
 }
@@ -2036,6 +2342,27 @@ void
 ScheduleManager::setZoneManager( ZoneManager *zMgr )
 {
     zoneMgr = zMgr;
+}
+
+std::string 
+ScheduleManager::getZoneName( std::string zoneID )
+{
+    std::string rtnStr;
+    Zone *zone = NULL;
+
+    if( zoneMgr == NULL )
+    {
+        return rtnStr;
+    }
+
+    zone = zoneMgr->getZoneByID( zoneID );
+
+    if( zone == NULL )
+    {
+        return rtnStr;
+    }
+
+    return zone->getName();
 }
 
 void 
@@ -2459,17 +2786,24 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
                 event->getStartTime( evStart );
                 event->getEndTime( evEnd );
 
-                std::cout << "Event Entry -- ID: " << event->getId() << " Title: " << event->getTitle() << " Start: " << evStart.getISOString() << " End: " << evEnd.getISOString() << std::endl;
+                std::cout << "Event Entry -- ID: " << event->getId() << " Title: " << event->getDescription() << " Start: " << evStart.getISOString() << " End: " << evEnd.getISOString() << std::endl;
 
                 RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
 
                 curNode->setAsObject( "event" );
 
                 curNode->setField( "id", event->getId() );
-                curNode->setField( "title", event->getTitle() );
                 curNode->setField( "start-time", evStart.getISOString() );
                 curNode->setField( "end-time", evEnd.getISOString() );
-
+                curNode->setField( "zone-name", event->getZoneRecord().getZoneName() );
+                curNode->setField( "trigger-name", event->getTriggerRecord().getTriggerName() );
+                curNode->setField( "duration", event->getDurationStr() );  
+                curNode->setField( "erID", event->getTriggerRecord().getERID() );
+                curNode->setField( "zgID", event->getZoneRecord().getGroupID() );
+                curNode->setField( "zrID", event->getZoneRecord().getRuleID() );
+                curNode->setField( "tgID", event->getTriggerRecord().getGroupID() );
+                curNode->setField( "trID", event->getTriggerRecord().getRuleID() );
+          
                 evList->addChild( curNode );
             } 
 

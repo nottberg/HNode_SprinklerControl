@@ -105,9 +105,12 @@ class ScheduleTimeDuration
 
         void setFromString( std::string timeStr );
 
+        void setFromTimeDifference( ScheduleDateTime &start, ScheduleDateTime &end );
+
         std::string getISOString();
         std::string getSecondsString();
-  
+        std::string getAsHMSString();
+
         long asTotalSeconds();
 };
 
@@ -260,6 +263,63 @@ class ZoneAction : public ScheduleAction
 };
 #endif
 
+class ScheduleTriggerRecord
+{
+    private:
+        std::string  eventRuleID;
+        std::string  groupID;
+        std::string  ruleID;
+        std::string  triggerName;
+
+        ScheduleDateTime eventTime;
+
+        bool             manual;
+
+    public:
+        ScheduleTriggerRecord();
+       ~ScheduleTriggerRecord();
+
+        void setManualTrigger();
+        void clearManualTrigger();
+        bool wasManuallyTriggered();
+
+        void setERID( std::string idStr );
+        void setGroupID( std::string idStr );
+        void setRuleID( std::string idStr );
+        void setTriggerName( std::string nameStr );
+        void setEventTime( ScheduleDateTime &evTime );
+       
+        std::string getERID();
+        std::string getGroupID();
+        std::string getRuleID();
+        std::string getTriggerName();
+        ScheduleDateTime &getEventTime();
+
+};
+
+class ScheduleZoneRecord
+{
+    private:
+        std::string  eventRuleID;
+        std::string  groupID;
+        std::string  ruleID;
+        std::string  zoneName;  
+
+    public:
+        ScheduleZoneRecord();
+       ~ScheduleZoneRecord();
+
+        void setERID( std::string idStr );
+        void setGroupID( std::string idStr );
+        void setRuleID( std::string idStr );
+        void setZoneName( std::string nameStr );
+
+        std::string getERID();
+        std::string getGroupID();
+        std::string getRuleID();
+        std::string getZoneName();
+};
+
 typedef enum ScheduleEventExecState
 {
     SESTATE_IDLE,
@@ -272,14 +332,10 @@ typedef enum ScheduleEventExecState
 class ScheduleEvent
 {
     private:
-
-        ScheduleEventRule *parentRule;
-
         SESTATE            state;
 
-        std::string        id;
-        std::string        title;
-        std::string        url;
+        ScheduleTriggerRecord tRecord;
+        ScheduleZoneRecord    zRecord;
 
         ScheduleDateTime   start;
         ScheduleDateTime   end;
@@ -291,11 +347,15 @@ class ScheduleEvent
         ScheduleEvent();
        ~ScheduleEvent();
 
-        void setId( std::string );
         std::string getId();
+        std::string getDescription();
+        std::string getDurationStr();
 
-        void setTitle( std::string );
-        std::string getTitle();
+        void setTriggerRecord( ScheduleTriggerRecord &tRec );
+        ScheduleTriggerRecord &getTriggerRecord();
+
+        void setZoneRecord( ScheduleZoneRecord &tRec );
+        ScheduleZoneRecord &getZoneRecord();
 
         void setStartTime( ScheduleDateTime &time );
         void getStartTime( ScheduleDateTime &time );
@@ -392,6 +452,7 @@ class ScheduleZoneRule : public RESTContentNode, public ScheduleAction
 
         void setZoneID( std::string idStr );
         std::string getZoneID();
+        std::string getZoneName();
 
         void setDuration( ScheduleTimeDuration &td );
         ScheduleTimeDuration getDuration();   
@@ -438,7 +499,7 @@ class ScheduleZoneGroup : public RESTContentNode
 //        ScheduleZoneRule *getZoneRuleByIndex( unsigned int index );
 //        ScheduleZoneRule *getZoneRuleByID( std::string ruleID );
 
-        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleDateTime &curTime, bool serializeEvents, ScheduleDateTime &rearmTime );
+        void createZoneEvents( ScheduleEventList &activeEvents, ScheduleTriggerRecord &tRecord, bool serializeEvents, ScheduleDateTime &rearmTime );
 
         static std::string getElementName();
 
@@ -448,6 +509,8 @@ class ScheduleZoneGroup : public RESTContentNode
         virtual void setFieldsFromContentNode( RESTContentNode *objCN );
         virtual void setContentNodeFromFields( RESTContentNode *objCN );
 };
+
+
 
 typedef enum ScheduleTriggerRuleType
 {
@@ -499,8 +562,8 @@ class ScheduleTriggerRule : public RESTContentNode
         SER_TT_SCOPE       scope;
         ScheduleDateTime   refTime;
 
-        bool checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
-        void getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
+        bool checkForTimeTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord );
+        void getPotentialTimeTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList );
 
     public:
         ScheduleTriggerRule( RESTContentManager &objMgr );
@@ -519,8 +582,8 @@ class ScheduleTriggerRule : public RESTContentNode
         void setRefTime( ScheduleDateTime &refTimeValue );
         ScheduleDateTime getRefTime();        
 
-        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
-        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
+        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord ); //ScheduleDateTime &eventTime, std::string &triggerRuleID );
+        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList );
 
         virtual unsigned int getObjType();
         virtual void setFieldsFromContentNode( RESTContentNode *objCN );
@@ -554,8 +617,8 @@ class ScheduleTriggerGroup : public RESTContentNode
 //        ScheduleTriggerRule *getTriggerRuleByIndex( unsigned int index );
 //        ScheduleTriggerRule *getTriggerRuleByID( std::string ruleID );
 
-        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleDateTime &eventTime );
-        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleDateTime > &timeList );
+        bool checkForTrigger( ScheduleDateTime &curTime, ScheduleTriggerRecord &tRecord ); //ScheduleDateTime &eventTime );
+        void getPotentialTriggersForPeriod( ScheduleDateTime &startTime, ScheduleDateTime &endTime, std::vector< ScheduleTriggerRecord > &tList );
 
         static std::string getElementName();
 
@@ -662,6 +725,8 @@ class ScheduleManager : public RESTContentManager
        ~ScheduleManager();
 
         void setZoneManager( ZoneManager *zoneMgr );
+
+        std::string getZoneName( std::string zoneID );
 
         void setZoneStateOn( std::string zoneID );
         void setZoneStateOff( std::string zoneID );
