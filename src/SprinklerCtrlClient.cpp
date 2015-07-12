@@ -14,6 +14,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "REST/REST.hpp"
+
 namespace po = boost::program_options;
 
 class sscReadBuf
@@ -112,7 +114,7 @@ get_zone_list( std::vector< std::string > &idList )
 
         // Setup the post operation parameters				
 	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -205,7 +207,7 @@ get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFi
 
         // Setup the post operation parameters				
 	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -280,6 +282,7 @@ bool hasEnding( std::string const &fullString, std::string const &ending )
     return false;
 }
 
+#if 0
 static size_t 
 location_header_callback( char *buffer, size_t size, size_t nitems, void *userdata )
 {
@@ -314,71 +317,39 @@ location_header_callback( char *buffer, size_t size, size_t nitems, void *userda
 
   return dataSize;
 }
+#endif
 
 bool 
 create_zone_rule( std::string parentID, std::string zoneID, int duration, std::string &zrID )
 {
-    CURL *curl;
-    CURLcode res;
- 
-    std::ostringstream postStream;
-    std::string post;
+    RESTHttpClient client;
+    char durStr[32];
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + parentID + "/members";
 
-    std::string url;
- 
-    postStream << "<schedule-zone-rule>";
-    postStream << "<zoneid>" << zoneID << "</zoneid>";
-    postStream << "<type>" << "fixedduration" << "</type>";
-    postStream << "<duration>" << duration << "</duration>";
-    postStream << "</schedule-zone-rule>";
+    client.setRequest( RHC_REQTYPE_POST, url );
 
-    post = postStream.str();
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    std::cout << "create_zone_rule post: " << post << std::endl;
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
 
-    url = "http://localhost:8200/schedule/zone-groups/" + parentID + "/members";
+    objNode->setAsObject( "schedule-zone-rule" );
+    objNode->setField( "zoneid", zoneID );
+    objNode->setField( "type", "fixedduration" );
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    sprintf( durStr, "%d", duration );
+    objNode->setField( "duration", durStr );
 
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
 
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+    client.makeRequest();
 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+    client.getLocationHeaderTerminal( zrID );
 
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &zrID);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
-	        
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return -1;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-    }
-
-    curl_global_cleanup();
+    std::cout << "zrID: " << zrID << std::endl;
 }
 
 
@@ -449,137 +420,67 @@ create_from_zone_list( std::string parentID, std::string name, std::string zoneL
 bool 
 create_zone_group( std::string name, std::string desc, std::string zones, std::string &zgID )
 {
-    CURL *curl;
-    CURLcode res;
- 
-    std::string post;
-    std::string url;
- 
-    post  = "<schedule-zone-group>";
-    post += "<name>" + name + "</name>";
-    post += "<desc>" + desc + "</desc>";
-    post += "<policy>sequential</policy>";
-    post += "</schedule-zone-group>";
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/zone-groups";
 
-    url = "http://localhost:8200/schedule/zone-groups";
+    client.setRequest( RHC_REQTYPE_POST, url );
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    if( curl ) 
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-zone-group" );
+    objNode->setField( "name", name );
+    objNode->setField( "desc", desc );
+    objNode->setField( "policy", "sequential" );
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+
+    client.getLocationHeaderTerminal( zgID );
+
+    std::cout << "zgID: " << zgID << std::endl;
+
+    // If there is also a zone list then continue processing
+    if( zones.size() )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
-
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &zgID);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
-	        
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return -1;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // If there is also a zone list then continue processing
-        if( zones.size() )
-        {
-            create_from_zone_list( zgID, "zonerule", zones );
-        }
+        create_from_zone_list( zgID, "zonerule", zones );
     }
-
-
-    curl_global_cleanup();
 }
 
 
 bool
 create_trigger_group( std::string name, std::string desc, std::string &tgID )
 {
-    CURL *curl;
-    CURLcode res;
- 
-    std::string post;
-    std::string url;
- 
-    post  = "<schedule-trigger-group>";
-    post += "<name>" + name + "</name>";
-    post += "<desc>" + desc + "</desc>";
-    post += "</schedule-trigger-group>";
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups";
 
-    url = "http://localhost:8200/schedule/trigger-groups";
+    client.setRequest( RHC_REQTYPE_POST, url );
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
 
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+    objNode->setAsObject( "schedule-trigger-group" );
+    objNode->setField( "name", name );
+    objNode->setField( "desc", desc );
 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
 
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &tgID);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
-	        
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
+    client.makeRequest();
 
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return -1;
-        }
+    client.getLocationHeaderTerminal( tgID );
 
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-/*
-        // If there is also a zone list then continue processing
-        if( zones.size() )
-        {
-            create_from_zone_list( zgID, "zonerule", zones );
-        }
-*/
-    }
-
-
-    curl_global_cleanup();
+    std::cout << "tgID: " << tgID << std::endl;
 }
 
 boost::local_time::time_zone_ptr
@@ -842,66 +743,31 @@ build_day_of_week_list( std::string timeListStr, TRS_REPEAT_T repeat, boost::gre
 bool 
 create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
 {
-    CURL *curl;
-    CURLcode res;
- 
-    std::ostringstream postStream;
-    std::string post;
-    std::string url;
- 
-    postStream << "<schedule-trigger-rule>";
-    postStream << "<type>" << "time" << "</type>";
-    postStream << "<scope>" << trSpec.getScopeAsStr() << "</scope>";
-    postStream << "<reftime>" << trSpec.getReftimeAsISOStr() << "</reftime>";
-    postStream << "</schedule-trigger-rule>";
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
 
-    post = postStream.str();
+    client.setRequest( RHC_REQTYPE_POST, url );
 
-    std::cout << "create_trigger_rule post: " << post << std::endl;
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    objNode->setAsObject( "schedule-trigger-rule" );
+    objNode->setField( "type", "time" );
+    objNode->setField( "scope", trSpec.getScopeAsStr() );
+    objNode->setField( "reftime", trSpec.getReftimeAsISOStr() );
 
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
 
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+    client.makeRequest();
 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
+    client.getLocationHeaderTerminal( trID );
 
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &trID);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
-	        
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return -1;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-    }
-
-    curl_global_cleanup();
+    std::cout << "trID: " << trID << std::endl;
 }
 
 void
@@ -1103,69 +969,41 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
 bool
 create_schedule_rule( std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
 {
-    CURL *curl;
-    CURLcode res;
- 
-    std::ostringstream postStream;
-    std::string post;
-    std::string url;
+    RESTHttpClient client;
+    std::string locID;
 
-    postStream << "<schedule-event-rule>";
-    postStream << "<name>" << name << "</name>";
-    postStream << "<desc>" << desc << "</desc>";
-    postStream << "<zone-group-id>" << zgID << "</zone-group-id>";
-    postStream << "<trigger-group-id>" << tgID << "</trigger-group-id>";
-    postStream << "<enabled>" << "true" << "</enabled>";
-    postStream << "</schedule-event-rule>";
+    client.setRequest( RHC_REQTYPE_POST, "http://localhost:8200/schedule/rules" );
 
-    post = postStream.str();
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    std::cout << "create_schedule_rule post: " << post << std::endl;
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
 
-    url = "http://localhost:8200/schedule/rules";
+    objNode->setAsObject( "schedule-event-rule" );
+    objNode->setField( "name", name );
+    objNode->setField( "desc", desc );
+    objNode->setField( "zone-group-id", zgID );
+    objNode->setField( "trigger-group-id", tgID );
+    objNode->setField( "enabled", "true" );
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
 
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+    client.makeRequest();
 
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+    client.getLocationHeaderTerminal( locID );
 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, post.size()); 
-	    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.c_str());
-
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &erID);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, location_header_callback);
-	        
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return -1;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-    }
-
-    curl_global_cleanup();
+    std::cout << "New ObjID: " << locID << std::endl;
 }
+
+#if 0
+    std::string contentType;
+    unsigned char *data;
+    unsigned long length;
+    data = client.getOutboundRepresentation().getSimpleContentPtr( contentType, length );
+    printf( "%*.*s\n", length, length, data );
+#endif
 
 size_t
 schedule_event_log_reader( void *buffer, size_t size, size_t nmemb, void *userp )
@@ -1186,6 +1024,702 @@ schedule_event_log_reader( void *buffer, size_t size, size_t nmemb, void *userp 
     }
 
     return length;
+}
+
+void get_trigger_rule_detail( std::string tgID, std::string id )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members/" + id;
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	       
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== Trigger Rule ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            // <schedule-trigger-rule></schedule-trigger-rule>
+            // id: tr11
+            // reftime: 20000106T143500
+            // scope: week
+            // type: time
+            if( strcmp( (const char *)rootNode->name, "schedule-trigger-rule" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                std::string refTimeStr;
+                std::string scope;
+                std::string type;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "reftime" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        refTimeStr = (const char *) content;
+                        xmlFree( content );
+                    }
+                    else if( strcmp( (const char *)curNode->name, "scope" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        scope = (const char *) content;
+                        xmlFree( content );
+                    }
+                    else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        type = (const char *) content;
+                        xmlFree( content );
+                    }
+                }
+
+                std::cout << "Type: " << type << " Scope: " << scope << " RefTime: " << refTimeStr << std::endl;
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void
+get_trigger_rule_list( std::string tgID, bool details )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    sscReadBuf rspData;
+
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members";
+ 
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== ID List ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            if( strcmp( (const char *)rootNode->name, "trigger-rule-list" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "%s\n", (const char *)content );
+
+                        if( details )
+                        {
+                            get_trigger_rule_detail( tgID, (const char*) content );
+                        }
+                       
+                        xmlFree( content );
+                    }
+                }
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void get_trigger_group_detail( std::string id )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/trigger-groups/" + id;
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	       
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== Trigger Group ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            // <schedule-trigger-group><desc>Every Odd Thursday</desc><id>tg10</id><name>EveryOddThu</name></schedule-trigger-group>
+            if( strcmp( (const char *)rootNode->name, "schedule-trigger-group" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "desc: %s\n", (const char *)content );
+                        xmlFree( content );
+                    }
+                    else if( strcmp( (const char *)curNode->name, "name" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "name: %s\n", (const char *)content );
+                        xmlFree( content );
+                    }
+                }
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        get_trigger_rule_list( id, true );
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void get_zone_rule_detail( std::string zgID, std::string id )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members/" + id;
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	       
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== Zone Rule ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            // <schedule-zone-rule><duration>120</duration><id>zr3</id><type>fixedduration</type><zoneid>zone2</zoneid></schedule-zone-rule>
+            if( strcmp( (const char *)rootNode->name, "schedule-zone-rule" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                std::string durStr;
+                std::string zoneid;
+                std::string type;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "duration" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        durStr = (const char *) content;
+                        xmlFree( content );
+                    }
+                    else if( strcmp( (const char *)curNode->name, "zoneid" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        zoneid = (const char *) content;
+                        xmlFree( content );
+                    }
+                    else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        type = (const char *) content;
+                        xmlFree( content );
+                    }
+                }
+
+                std::cout << "Type: " << type << " Duration: " << durStr << " zID: " << zoneid << std::endl;
+
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void
+get_zone_rule_list( std::string zgID, bool details )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    sscReadBuf rspData;
+
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
+ 
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== ID List ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            if( strcmp( (const char *)rootNode->name, "zone-rule-list" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "%s\n", (const char *)content );
+
+                        if( details )
+                        {
+                            get_zone_rule_detail( zgID, (const char*) content );
+                        }
+                       
+                        xmlFree( content );
+                    }
+                }
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void get_zone_group_detail( std::string id )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/zone-groups/" + id;
+
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	       
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== Zone Group ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            // <schedule-zone-group><id>zg1</id><policy>sequential</policy></schedule-zone-group>
+            if( strcmp( (const char *)rootNode->name, "schedule-zone-group" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+                    if( strcmp( (const char *)curNode->name, "policy" ) == 0 )
+                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "policy: %s\n", (const char *)content );
+                        xmlFree( content );
+                    }
+                }
+
+                get_zone_rule_list( id, true );
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
+}
+
+void get_event_rule_detail( std::string id )
+{
+    CURL *curl;
+    CURLcode res;
+    std::string url;
+    
+    xmlDocPtr doc;
+    xmlParserCtxtPtr ctxt = NULL;
+
+    url = "http://localhost:8200/schedule/rules/" + id;
+ 
+    // get a curl handle 
+    curl = curl_easy_init();
+
+    if( curl ) 
+    {
+        struct curl_slist *slist = NULL;
+	  
+	    slist = curl_slist_append(slist, "Accept: */*");
+	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+        // Setup the post operation parameters				
+	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	       
+        // Setup the read callback 
+        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+        // Perform the request, res will get the return code 
+        res = curl_easy_perform(curl);
+
+        // Check for errors 
+        if( res != CURLE_OK )
+        {
+            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+            return;
+        }
+
+        // always cleanup 
+        curl_easy_cleanup( curl );
+        curl_slist_free_all( slist );
+
+        // Finished
+        xmlParseChunk( ctxt, NULL, 0, 1 );
+
+        doc = ctxt->myDoc;
+        if( ctxt->wellFormed )
+        {
+            printf("=== Event Rule ===\n");
+
+            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+            //<schedule-event-rule>
+            //  <desc>Description Test</desc>
+            //  <enabled>true</enabled>
+            //  <id>er1</id>
+            //  <name>oddthu2</name>
+            //  <trigger-group-id>tg10</trigger-group-id>
+            //  <url></url>
+            //  <zone-group-id>zg1</zone-group-id>
+            //</schedule-event-rule>
+            if( strcmp( (const char *)rootNode->name, "schedule-event-rule" ) == 0 )
+            {
+                xmlNode *curNode = NULL;
+
+                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                {
+//                    if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
+//                    {
+                        xmlChar *content = xmlNodeGetContent( curNode );
+                        printf( "%s: %s\n", (const char *)curNode->name, (const char *)content );
+                        xmlFree( content );
+//                    }
+
+                      if( strcmp( (const char *)curNode->name, "trigger-group-id" ) == 0 )
+                      {
+                          xmlChar *content = xmlNodeGetContent( curNode );
+                          get_trigger_group_detail((const char *)content );
+                          xmlFree( content );          
+                      }
+                      else if( strcmp( (const char *)curNode->name, "zone-group-id" ) == 0 )
+                      {
+                          xmlChar *content = xmlNodeGetContent( curNode );
+                          get_zone_group_detail( (const char *)content );                          
+                          xmlFree( content );
+                      }
+
+                }
+            }
+        }
+        else
+        {
+            fprintf( stderr, "Failed to parse return data.\n" );
+        }
+
+        xmlFreeParserCtxt( ctxt );
+        xmlFreeDoc( doc );
+
+    }
+
+    curl_global_cleanup();
 }
 
 int main( int argc, char* argv[] )
@@ -1231,7 +1765,8 @@ int main( int argc, char* argv[] )
         ("add-trigger", "Add a new trigger to a trigger group. Requires the --tgID parameter.")
         ("delete-trigger", "Delete a trigger from a trigger group. Requires the --tgID and --triggerID parameters.")
 
-        ("new-schedule-entry", "Create a schedule entry. Requires the --name, --desc, --zgID, --tgID parameters.")
+        ("schedule-events", "Get a list of schedule events.  Specify the --detail parameter to get more than ids." )
+        ("new-schedule-event", "Create a schedule event. Requires the --name, --desc, --zgID, --tgID parameters.")
 
         ("zgID", po::value<std::string>(&zgID), "Specify the ID of a zone group to use with the command.")        
         ("tgID", po::value<std::string>(&tgID), "Specify the ID of a trigger group to use with the command.")        
@@ -1252,17 +1787,6 @@ int main( int argc, char* argv[] )
 
         ("period",  po::value<std::string>(&periodStr), "Specify a calendar period. (today, week, twoweek, month)")
 
-#if 0
-        ("get-schedule-entries", 
-        ("new-schedule-entry", "Create a new schedule entry.")
-        ("add-time-trigger",
-        ("remove-time-trigger",
-        ("add-zone",
-        ("remove-zone",
-
-        ("zone-list","Specify a comma seperated list of zones by zoneID.")
-        ("time",
-#endif
         ("event-rule", "Operate on event rules.")
         ("zone-group", "Operate on zone groups.")
         ("trigger-group", "Operate on trigger groups")
@@ -1373,7 +1897,7 @@ int main( int argc, char* argv[] )
             }    
         }
     }
-    else if( vm.count( "new-schedule-entry" ) )
+    else if( vm.count( "new-schedule-event" ) )
     {
         std::string erID;
 
@@ -1458,7 +1982,7 @@ int main( int argc, char* argv[] )
 
             // Setup the post operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1547,7 +2071,7 @@ int main( int argc, char* argv[] )
 
             // Setup the post operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1636,7 +2160,7 @@ int main( int argc, char* argv[] )
 
             // Setup the post operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1732,7 +2256,7 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1823,7 +2347,7 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -1872,7 +2396,7 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -2000,7 +2524,7 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -2173,7 +2697,7 @@ int main( int argc, char* argv[] )
 
             // Setup the put operation parameters				
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
 	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
 	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
 	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -2339,6 +2863,98 @@ int main( int argc, char* argv[] )
             // always cleanup 
             curl_easy_cleanup( curl );
             curl_slist_free_all( slist );
+        }
+
+        curl_global_cleanup();
+    }
+    else if( vm.count( "schedule-events" ) )
+    {
+        CURL *curl;
+        CURLcode res;
+        std::string url;
+        sscReadBuf rspData;
+
+        xmlDocPtr doc;
+        xmlParserCtxtPtr ctxt = NULL;
+
+        url = "http://localhost:8200/schedule/rules";
+ 
+        // get a curl handle 
+        curl = curl_easy_init();
+
+        if( curl ) 
+        {
+            struct curl_slist *slist = NULL;
+	  
+	        slist = curl_slist_append(slist, "Accept: */*");
+	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
+	        slist = curl_slist_append(slist, "Content-Type: text/xml");
+
+            // Setup the post operation parameters				
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
+	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
+	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
+	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+	        
+            // Setup the read callback 
+            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
+            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+
+            // Perform the request, res will get the return code 
+            res = curl_easy_perform(curl);
+
+            // Check for errors 
+            if( res != CURLE_OK )
+            {
+                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
+                return -1;
+            }
+
+            // always cleanup 
+            curl_easy_cleanup( curl );
+            curl_slist_free_all( slist );
+
+            // Finished
+            xmlParseChunk( ctxt, NULL, 0, 1 );
+
+            doc = ctxt->myDoc;
+            if( ctxt->wellFormed )
+            {
+                printf("=== ID List ===\n");
+
+                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+                if( strcmp( (const char *)rootNode->name, "event-rule-list" ) == 0 )
+                {
+                    xmlNode *curNode = NULL;
+
+                    for( curNode = rootNode->children; curNode; curNode = curNode->next )
+                    {
+                        if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( curNode );
+                            printf( "%s\n", (const char *)content );
+
+                            if( vm.count( "detail" ) )
+                            {
+                                get_event_rule_detail( (const char*) content );
+                            }
+                       
+                            xmlFree( content );
+                        }
+                    }
+                }
+            }
+            else
+            {
+                fprintf( stderr, "Failed to parse return data.\n" );
+            }
+
+            xmlFreeParserCtxt( ctxt );
+            xmlFreeDoc( doc );
+
         }
 
         curl_global_cleanup();

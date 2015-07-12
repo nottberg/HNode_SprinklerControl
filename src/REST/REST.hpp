@@ -143,7 +143,7 @@ class RESTRepresentation
 
         void appendSimpleContent( unsigned char *contentPtr, unsigned long contentLength );
 
-
+        unsigned long getSimpleContentLength();
         unsigned char* getSimpleContentPtr( std::string &contentType, unsigned long &contentLength );
 };
 
@@ -933,6 +933,48 @@ class RESTDaemon
 
         int sendResponse( RESTRequest *request );
 
+};
+
+typedef enum RESTHttpClientRequestType
+{
+    RHC_REQTYPE_GET,
+    RHC_REQTYPE_POST,
+    RHC_REQTYPE_PUT,
+    RHC_REQTYPE_DELETE
+}RHC_REQTYPE_T;
+
+class RESTHttpClient
+{
+    private:
+        RHC_REQTYPE_T  rType;
+        std::string    bURL;
+
+        bool debug;
+        unsigned long timeout;
+        unsigned long sentLength;
+
+        RESTRepresentation outData;
+        RESTRepresentation inData;
+
+        static size_t processResponseHeader( void *buffer, size_t size, size_t nmemb, void *userp );
+        static size_t processInboundData( void *buffer, size_t size, size_t nmemb, void *userp );
+        static size_t processOutboundData( void *buffer, size_t size, size_t nmemb, void *userp );
+
+    public:
+        RESTHttpClient();
+       ~RESTHttpClient();
+
+        void setRequest( RHC_REQTYPE_T reqType, std::string baseURL );
+
+        RESTRepresentation &getInboundRepresentation();
+        RESTRepresentation &getOutboundRepresentation();
+
+        void makeRequest();
+
+        unsigned int reqResult();
+
+        bool getLocationHeaderURL( std::string &url );
+        bool getLocationHeaderTerminal( std::string &termStr );
 };
 
 #endif // __REST_H__

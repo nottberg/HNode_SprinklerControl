@@ -31,6 +31,9 @@ SET( HNODE_SPRINKLER_CTRL_SRC
 
 SET( HNODE_SPRINKLER_CTRL_CLIENT_SRC
      ${CMAKE_SOURCE_DIR}/src/SprinklerCtrlClient.cpp
+     ${CMAKE_SOURCE_DIR}/src/REST/RESTRepresentation.cpp
+     ${CMAKE_SOURCE_DIR}/src/REST/RESTContent.cpp
+     ${CMAKE_SOURCE_DIR}/src/REST/RESTHttpClient.cpp
 )
 
 SET(Boost_USE_STATIC_LIBS OFF)

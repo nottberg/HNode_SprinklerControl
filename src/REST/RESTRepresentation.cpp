@@ -718,6 +718,15 @@ RESTRepresentation::appendSimpleContent( unsigned char *contentPtr, unsigned lon
     simpleContent->addData( simpleContent->getLength(), (const char *)contentPtr, contentLength ); 
 }
 
+unsigned long 
+RESTRepresentation::getSimpleContentLength()
+{
+    if( simpleContent == NULL )
+        return 0;
+
+    return simpleContent->getLength();
+}
+
 unsigned char* 
 RESTRepresentation::getSimpleContentPtr( std::string &contentType, unsigned long &contentLength )
 {
