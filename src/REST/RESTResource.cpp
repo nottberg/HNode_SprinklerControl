@@ -452,10 +452,10 @@ RESTResourceRESTContentList::restGet( RESTRequest *request )
 void
 RESTResourceRESTContentList::restPost( RESTRequest *request )
 {
-    RESTContentHelper *helper;
-    RESTContentTemplate  *templateNode;
-    RESTContentNode   *objNode;
-    std::string        objID;
+    RESTContentHelper   *helper;
+    RESTContentTemplate *templateNode;
+    RESTContentNode     *objNode;
+    std::string          objID;
 
     std::cout << "RESTResourceRESTContentList::restPost" << std::endl;
 

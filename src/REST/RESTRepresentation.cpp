@@ -116,7 +116,7 @@ RESTRepDataItem::appendDataToBuffer( const char *buffer, size_t length )
     unsigned char *tmpBuf;
     unsigned long  neededBytes;
 
-    printf("RESTRepDataItem::appendData -- size: %ld\n", length);
+    //printf("RESTRepDataItem::appendData -- size: %ld\n", length);
     
     // Calculate the number of bytes needed
     neededBytes = dataLength + length;
@@ -712,8 +712,8 @@ RESTRepresentation::appendSimpleContent( unsigned char *contentPtr, unsigned lon
     if( simpleContent == NULL )
         return;
 
-    printf( "appendSimpleContent -- new Length: %ld\n", contentLength );
-    printf( "appendSimpleContent -- cur Length: %ld\n", simpleContent->getLength() );
+    //printf( "appendSimpleContent -- new Length: %ld\n", contentLength );
+    //printf( "appendSimpleContent -- cur Length: %ld\n", simpleContent->getLength() );
 
     simpleContent->addData( simpleContent->getLength(), (const char *)contentPtr, contentLength ); 
 }

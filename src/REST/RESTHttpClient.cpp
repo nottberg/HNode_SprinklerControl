@@ -11,7 +11,7 @@
 RESTHttpClient::RESTHttpClient()
 {
     rType   = RHC_REQTYPE_GET;
-    debug   = true;
+    debug   = false;
     timeout = 30;
 }
 
@@ -123,6 +123,9 @@ RESTHttpClient::makeRequest()
 
             // Add the parameter text
             url += it->first + "=" + it->second;   
+
+            // Bump parameter count
+            pCnt += 1;
         }
     }
 
@@ -215,6 +218,7 @@ RESTHttpClient::makeRequest()
 	    curl_easy_setopt( curl, CURLOPT_HTTPHEADER, slist );
 
         // Init tracking varaiables before execution
+        inData.setSimpleContent("*/*");
         sentLength = 0;
 
         // Perform the request, res will get the return code 

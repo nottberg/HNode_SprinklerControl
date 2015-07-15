@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <curl/curl.h>
+//#include <curl/curl.h>
 
 #include <iostream>
 #include <vector>
@@ -18,260 +18,6 @@
 
 namespace po = boost::program_options;
 
-class sscReadBuf
-{
-    private:
-        unsigned char *data;
-        unsigned long size;
-
-    public:
-        sscReadBuf();
-       ~sscReadBuf();
-
-        void appendData( void *data, unsigned long length );
-
-        unsigned char *getDataPtr() { return data; }
-        unsigned long getLength() { return size; }
-};
-
-sscReadBuf::sscReadBuf()
-{
-    data = NULL;
-    size = 0;
-}
-
-sscReadBuf::~sscReadBuf()
-{
-    if( data != NULL )
-        free( data );
-}
-
-void 
-sscReadBuf::appendData( void *newdata, unsigned long length )
-{
-    data = (unsigned char *) realloc( data, size + length + 1 );
-    if( data == NULL ) 
-    {
-        // out of memory! 
-        printf("not enough memory (realloc returned NULL)\n");
-        return;
-    }
- 
-    memcpy( &(data[size]), newdata, length );
-    size += length;
-    data[ size ] = 0;
-}
-
-static size_t
-WriteMemoryCallback( void *contents, size_t size, size_t nmemb, void *userp )
-{
-    size_t realsize = size * nmemb;
-
-    printf( "Content: %*.*s\n", (int)realsize, (int)realsize, (char*)contents );
-
-    // FIXME: Broken, because data can come in chunks 
-    ((sscReadBuf *) userp )->appendData( contents, realsize );
-
-#if 0
- #endif
-
-    return realsize;
-}
-
-static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *stdstr)
-{
-  std::string *data = (std::string *)stdstr;
-
-  size_t retcode;
- 
-  retcode = size * nmemb;
-
-  memcpy( ptr, data->c_str(), retcode );
- 
-  return retcode;
-}
-
-bool
-get_zone_list( std::vector< std::string > &idList )
-{
-    CURL *curl;
-    CURLcode res;
-    sscReadBuf rspData;
-    std::string url;
-    
-    url = "http://localhost:8200/zones";
- 
-    // get a curl handle 
-    curl = curl_easy_init();
-
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	        
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)&rspData );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return true;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-    }
-
-    xmlDocPtr doc; 
-
-    // The document being in memory, it have no base per RFC 2396,
-    // and the "noname.xml" argument will serve as its base.
-    doc = xmlReadMemory( (const char *)rspData.getDataPtr(), rspData.getLength(), "noname.xml", NULL, 0 );
-    if( doc == NULL ) 
-    {
-        fprintf(stderr, "Failed to parse document\n");
-	    return true;
-    }
-
-    xmlNodePtr rootNode;
-
-    rootNode = xmlDocGetRootElement( doc );
-
-    if( ( !rootNode ) || ( strcmp( (const char *)rootNode->name, "hnode-zonelist" ) != 0 ) )
-    {
-        fprintf(stderr, "Unrecognized return data.\n");
-	    return true;
-    }
- 
-    xmlNodePtr idNode = NULL;
-
-    for( idNode = rootNode->children; idNode; idNode = idNode->next ) 
-    {
-        std::cout << idNode->name << std::endl;
-
-        if( ( idNode->type == XML_ELEMENT_NODE ) && ( strcmp( (const char *)idNode->name, "zoneid" ) == 0 ) )
-        {
-            xmlChar *idStr;
-            idStr = xmlNodeGetContent( idNode );
-            std::string tmpStr = (const char *)idStr;
-            idList.push_back( tmpStr );
-            xmlFree( idStr );
-        }
-    }
-
-    xmlFreeDoc(doc);
-
-    return false;
-}
-
-bool
-get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFields )
-{
-    CURL *curl;
-    CURLcode res;
-    sscReadBuf rspData;
-    std::string url;
-
-    if( zoneID.empty() )
-        return true;    
-
-    url = "http://localhost:8200/zones/" + zoneID;
- 
-    // get a curl handle 
-    curl = curl_easy_init();
-
-    if( curl ) 
-    {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	        
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, (void *)&rspData );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return true;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-    }
-
-    xmlDocPtr doc; 
-
-    // The document being in memory, it have no base per RFC 2396,
-    // and the "noname.xml" argument will serve as its base.
-    doc = xmlReadMemory( (const char *)rspData.getDataPtr(), rspData.getLength(), "noname.xml", NULL, 0 );
-    if( doc == NULL ) 
-    {
-        fprintf(stderr, "Failed to parse document\n");
-	    return true;
-    }
-
-    xmlNodePtr rootNode;
-
-    rootNode = xmlDocGetRootElement( doc );
-
-    if( ( !rootNode ) || ( strcmp( (const char *)rootNode->name, "zone" ) != 0 ) )
-    {
-        fprintf(stderr, "Unrecognized return data.\n");
-	    return true;
-    }
- 
-    xmlNodePtr zoneNode = NULL;
-
-    for( zoneNode = rootNode->children; zoneNode; zoneNode = zoneNode->next ) 
-    {
-        if( zoneNode->type == XML_ELEMENT_NODE )
-        {
-            xmlChar *tmpStr;
-            tmpStr = xmlNodeGetContent( zoneNode );
-            std::pair< std::string, std::string > entry( (const char *)zoneNode->name, (const char *)tmpStr );
-            objFields.insert( entry );
-            xmlFree( tmpStr );
-        }
-    }
-
-    xmlFreeDoc(doc);
-
-    return false;
-}
-
 bool hasEnding( std::string const &fullString, std::string const &ending ) 
 {
     if( fullString.length() >= ending.length() ) 
@@ -281,43 +27,6 @@ bool hasEnding( std::string const &fullString, std::string const &ending )
 
     return false;
 }
-
-#if 0
-static size_t 
-location_header_callback( char *buffer, size_t size, size_t nitems, void *userdata )
-{
-  size_t dataSize = nitems * size;
-  std::string *strPtr = (std::string *) userdata;
-
-  if( dataSize != 0 )
-  {
-      std::string dataStr( buffer, dataSize );
-
-      if( dataStr.find( "Location:" ) != std::string::npos )
-      {
-          printf( "Return Header(%d) - %*.*s\n", (int)dataSize, (int)dataSize, (int)dataSize, buffer );
-
-          std::string locData( buffer, dataSize );
-
-          boost::regex re("/+");
-          boost::sregex_token_iterator i( locData.begin(), locData.end(), re, -1);
-          boost::sregex_token_iterator j;
-
-          while( i != j )
-          {
-              std::string tmpStr = *i;
-              boost::trim( tmpStr );
-
-              std::cout << "Location ID: " << tmpStr << std::endl;
-              *strPtr = tmpStr;
-              i++;
-          }
-      }
-  }
-
-  return dataSize;
-}
-#endif
 
 bool 
 create_zone_rule( std::string parentID, std::string zoneID, int duration, std::string &zrID )
@@ -351,8 +60,6 @@ create_zone_rule( std::string parentID, std::string zoneID, int duration, std::s
 
     std::cout << "zrID: " << zrID << std::endl;
 }
-
-
 
 bool 
 create_from_zone_list( std::string parentID, std::string name, std::string zoneList )
@@ -1026,700 +733,1243 @@ schedule_event_log_reader( void *buffer, size_t size, size_t nmemb, void *userp 
     return length;
 }
 
-void get_trigger_rule_detail( std::string tgID, std::string id )
+
+
+void
+get_event_log()
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
 
-    url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members/" + id;
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/event-log/" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
 
-    if( curl ) 
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	       
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== Trigger Rule ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            // <schedule-trigger-rule></schedule-trigger-rule>
-            // id: tr11
-            // reftime: 20000106T143500
-            // scope: week
-            // type: time
-            if( strcmp( (const char *)rootNode->name, "schedule-trigger-rule" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                std::string refTimeStr;
-                std::string scope;
-                std::string type;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-                    if( strcmp( (const char *)curNode->name, "reftime" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        refTimeStr = (const char *) content;
-                        xmlFree( content );
-                    }
-                    else if( strcmp( (const char *)curNode->name, "scope" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        scope = (const char *) content;
-                        xmlFree( content );
-                    }
-                    else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        type = (const char *) content;
-                        xmlFree( content );
-                    }
-                }
-
-                std::cout << "Type: " << type << " Scope: " << scope << " RefTime: " << refTimeStr << std::endl;
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    printf("Return successfully parsed:\n");
+
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( strcmp( (const char *)rootNode->name, "schedule-event-log" ) == 0 )
+    {
+        xmlNode *entryNode = NULL;
+
+        for( entryNode = rootNode->children; entryNode; entryNode = entryNode->next )
+        {
+            xmlNode *curNode = NULL;
+
+            unsigned long seqNum;
+            std::string timestamp;
+            boost::posix_time::ptime pstamp;
+            std::string eventID;
+            std::string eventMsg;
+
+            for( curNode = entryNode->children; curNode; curNode = curNode->next )
+            {
+                if( strcmp( (const char *)curNode->name, "seqnum" ) == 0 )
+                {
+                    xmlChar *content = xmlNodeGetContent( curNode );
+                    seqNum = strtol( (const char *)content, NULL, 0);
+                    xmlFree( content );
+                }
+                else if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
+                {
+                    xmlChar *content = xmlNodeGetContent( curNode );
+                    timestamp = (const char *)content;
+
+                    pstamp = boost::posix_time::from_iso_string( timestamp );
+
+                    boost::local_time::time_zone_ptr zone = get_system_timezone();
+                    boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                    timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                    xmlFree( content );
+                }
+                else if( strcmp( (const char *)curNode->name, "event-id" ) == 0 )
+                {
+                    xmlChar *content = xmlNodeGetContent( curNode );
+                    eventID = (const char *)content;
+                    xmlFree( content );
+                }
+                else if( strcmp( (const char *)curNode->name, "event-msg" ) == 0 )
+                {
+                    xmlChar *content = xmlNodeGetContent( curNode );
+                    eventMsg = (const char *)content;
+                    xmlFree( content );
+                }
+            }
+
+            printf( "%-5ld %-25s %-25s %s\n", seqNum, timestamp.c_str(), eventID.c_str(), eventMsg.c_str() );
+        }
+    }
+
+    xmlFreeDoc( doc );
 }
 
 void
-get_trigger_rule_list( std::string tgID, bool details )
+get_status()
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    sscReadBuf rspData;
-
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
 
-    url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members";
- 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/status/" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    if( curl ) 
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	        
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== ID List ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            if( strcmp( (const char *)rootNode->name, "trigger-rule-list" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-                    if( strcmp( (const char *)curNode->name, "id" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "%s\n", (const char *)content );
-
-                        if( details )
-                        {
-                            get_trigger_rule_detail( tgID, (const char*) content );
-                        }
-                       
-                        xmlFree( content );
-                    }
-                }
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    printf("Return successfully parsed:\n");
+
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( strcmp( (const char *)rootNode->name, "schedule-status" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        unsigned long seqNum;
+        std::string timestamp;
+        boost::posix_time::ptime pstamp;
+      
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+
+                pstamp = boost::posix_time::from_iso_string( (const char *)content );
+
+                boost::local_time::time_zone_ptr zone = get_system_timezone();
+                boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                xmlFree( content );
+            }
+        }
+
+        printf( "==== Current Status ====\n" );
+        printf( "Current Time: %s\n", timestamp.c_str() );
+    }
+
+    xmlFreeDoc( doc );
 }
 
-void get_trigger_group_detail( std::string id )
+void
+get_calendar( std::string periodStr )
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
 
-    url = "http://localhost:8200/schedule/trigger-groups/" + id;
+    // Setup
+    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/calendar/" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
-    // get a curl handle 
-    curl = curl_easy_init();
-
-    if( curl ) 
+    // Determine the data range parameters
+    if( periodStr.empty() )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
+        // Default to getting the current days events
+        periodStr = "day";
+    }
 
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	       
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
+    boost::local_time::time_zone_ptr zone = get_system_timezone();
+    boost::posix_time::time_duration std( 0, 0, 0, 0 );
+    boost::posix_time::time_duration etd( 23, 59, 59, 0 );
 
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
+    if( periodStr == "day" )
+    {
+        boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
 
-        // Check for errors 
-        if( res != CURLE_OK )
+        boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+        boost::local_time::local_date_time end( ltstamp.date(), etd, zone, false );  
+
+        client.getOutboundRepresentation().addQueryParameter( "startTime", to_iso_string( start.utc_time() ) );
+        client.getOutboundRepresentation().addQueryParameter( "endTime", to_iso_string( end.utc_time() ) );
+    } 
+    else if( periodStr == "week" )
+    {
+        boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+        unsigned long dayofWeek = ltstamp.date().day_of_week();
+        ltstamp -= boost::gregorian::days( dayofWeek );
+
+        boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+        boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(6)), etd, zone, false );  
+
+        client.getOutboundRepresentation().addQueryParameter( "startTime", to_iso_string( start.utc_time() ) );
+        client.getOutboundRepresentation().addQueryParameter( "endTime", to_iso_string( end.utc_time() ) );
+    }
+    else if( periodStr == "twoweek" )
+    {
+        boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+        unsigned long dayofWeek = ltstamp.date().day_of_week();
+        ltstamp -= boost::gregorian::days( dayofWeek );
+
+        boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
+        boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(13)), etd, zone, false );  
+
+        client.getOutboundRepresentation().addQueryParameter( "startTime", to_iso_string( start.utc_time() ) );
+        client.getOutboundRepresentation().addQueryParameter( "endTime", to_iso_string( end.utc_time() ) );
+    }
+    else if( periodStr == "month" )
+    {
+        boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
+
+        unsigned long dayofMonth = ltstamp.date().day();
+        unsigned long endofMonth = ltstamp.date().end_of_month().day();
+
+        boost::local_time::local_date_time start( (ltstamp.date() - boost::gregorian::days(dayofMonth-1)), std, zone, false );  
+        boost::local_time::local_date_time end( (start.date() + boost::gregorian::days(endofMonth-1)), etd, zone, false );  
+
+        client.getOutboundRepresentation().addQueryParameter( "startTime", to_iso_string( start.utc_time() ) );
+        client.getOutboundRepresentation().addQueryParameter( "endTime", to_iso_string( end.utc_time() ) );
+    }
+    else
+    {
+        std::cerr << "ERROR: Requested period is not supported." << std::endl;
+        return;
+    }
+
+    // Acquire the calendar data
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return;
+    }
+
+    // Parse and display the response data
+    printf("Return successfully parsed:\n");
+
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( strcmp( (const char *)rootNode->name, "schedule-event-calendar" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
         {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== Trigger Group ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            // <schedule-trigger-group><desc>Every Odd Thursday</desc><id>tg10</id><name>EveryOddThu</name></schedule-trigger-group>
-            if( strcmp( (const char *)rootNode->name, "schedule-trigger-group" ) == 0 )
+            if( strcmp( (const char *)curNode->name, "period-start" ) == 0 )
             {
-                xmlNode *curNode = NULL;
 
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
+            }
+            else if( strcmp( (const char *)curNode->name, "period-end" ) == 0 )
+            {
+
+            } 
+            else if( strcmp( (const char *)curNode->name, "event-list" ) == 0 )
+            {
+                xmlNodePtr entryNode = NULL;
+
+                boost::posix_time::ptime pstamp;
+                std::string startTime;
+                std::string endTime;
+                std::string eventID;
+                std::string zoneName;
+                std::string triggerName;
+                std::string duration;
+
+                // <event><end-time>20150701T135200</end-time><id>zg1</id><start-time>20150701T135000</start-time><title>zr2-2015-Jul-01 13:50:00</title></event>
+                for( entryNode = curNode->children; entryNode; entryNode = entryNode->next )
                 {
-                    if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
+                    xmlNodePtr childNode = NULL;
+
+                    for( childNode = entryNode->children; childNode; childNode = childNode->next )
                     {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "desc: %s\n", (const char *)content );
-                        xmlFree( content );
+                        if( strcmp( (const char *)childNode->name, "start-time" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            startTime = (const char *)content;
+
+                            pstamp = boost::posix_time::from_iso_string( startTime );
+
+                            boost::local_time::time_zone_ptr zone = get_system_timezone();
+                            boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                            startTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "end-time" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            endTime = (const char *)content;
+
+                            pstamp = boost::posix_time::from_iso_string( endTime );
+
+                            boost::local_time::time_zone_ptr zone = get_system_timezone();
+                            boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+                            endTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
+
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "id" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            eventID = (const char *)content;
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "zone-name" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            zoneName = (const char *)content;
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "trigger-name" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            triggerName = (const char *)content;
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "duration" ) == 0 )
+                        {
+                            xmlChar *content = xmlNodeGetContent( childNode );
+                            duration = (const char *)content;
+                            xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "erID" ) == 0 )
+                        {
+                            //xmlChar *content = xmlNodeGetContent( childNode );
+                            //eventTitle = (const char *)content;
+                            //xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "zgID" ) == 0 )
+                        {
+                            //xmlChar *content = xmlNodeGetContent( childNode );
+                            //eventTitle = (const char *)content;
+                            //xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "zrID" ) == 0 )
+                        {
+                            //xmlChar *content = xmlNodeGetContent( childNode );
+                            //eventTitle = (const char *)content;
+                            //xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "tgID" ) == 0 )
+                        {
+                            //xmlChar *content = xmlNodeGetContent( childNode );
+                            //eventTitle = (const char *)content;
+                            //xmlFree( content );
+                        }
+                        else if( strcmp( (const char *)childNode->name, "trID" ) == 0 )
+                        {
+                            //xmlChar *content = xmlNodeGetContent( childNode );
+                            //eventTitle = (const char *)content;
+                            //xmlFree( content );
+                        }
+
                     }
-                    else if( strcmp( (const char *)curNode->name, "name" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "name: %s\n", (const char *)content );
-                        xmlFree( content );
-                    }
+
+                    printf( "%-22s %-22s %-10s %-20s %-20s %s\n", startTime.c_str(), endTime.c_str(), duration.c_str(), zoneName.c_str(), triggerName.c_str(), eventID.c_str() );
+
                 }
             }
         }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        get_trigger_rule_list( id, true );
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
     }
 
-    curl_global_cleanup();
+    xmlFreeDoc( doc );
+
+}
+
+void 
+get_objects_for_ids( std::string url, std::string objName, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+{
+
+    for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
+    {
+        RESTHttpClient     client;
+        RESTContentHelper *helper;
+
+        std::string extURL = url + "/" + *it;
+ 
+        // Acquire the log data
+        client.setRequest( RHC_REQTYPE_GET, extURL );
+        client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+        client.makeRequest();
+
+        // Allocate the appropriate type of helper to parse the content
+        helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getInboundRepresentation() );
+
+        // Parse the content based on the template ( throws an exception for missing content )
+        helper->parseRawData( &client.getInboundRepresentation() ); 
+
+        // Copy it to the list
+        objList.push_back( *(helper->getRootNode()) );
+
+        // Free the helper
+        RESTContentHelperFactory::freeContentHelper( helper );
+    }
+}
+
+void 
+get_list_of_ids( std::string url, std::string listName, std::vector< std::string > &idList )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( strcmp( (const char *)rootNode->name, listName.c_str() ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                idList.push_back( (const char *)content );
+                xmlFree( content );
+            }
+        }
+    }
+}
+
+void 
+display_id_list( std::string title, std::vector< std::string > &idList )
+{
+    std::cout << "==== " << title << " ====" << std::endl;
+
+    for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
+    {
+        std::cout << *it << std::endl;
+    }
+}
+
+void 
+display_rawobj( std::string title, RESTContentNode &obj )
+{
+    std::vector< RESTContentField* > fields;
+
+    std::cout << "==== " << title << " ====" << std::endl;
+
+    fields = obj.getFieldList();
+     
+    for( std::vector< RESTContentField* >::iterator fit = fields.begin(); fit != fields.end(); fit++ )
+    {
+        std::cout << (*fit)->getName() << ": " << (*fit)->getValue() << std::endl;
+    }
+}
+
+void 
+display_rawobj_list( std::string title, std::vector< RESTContentNode > &objList )
+{
+    std::cout << "==== " << title << " ====" << std::endl;
+
+    for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+    {  
+        std::cout << std::endl;
+
+        std::string title = "Object( id: " + it->getID() + " )";
+        display_rawobj( title, *it );
+    }
+}
+
+bool
+get_zone_ids( std::vector< std::string > &idList )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/zones" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return true;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( strcmp( (const char *)rootNode->name, "hnode-zonelist" ) == 0 )
+    {
+        xmlNodePtr idNode = NULL;
+
+        for( idNode = rootNode->children; idNode; idNode = idNode->next ) 
+        {
+            std::cout << idNode->name << std::endl;
+
+            if( ( idNode->type == XML_ELEMENT_NODE ) && ( strcmp( (const char *)idNode->name, "zoneid" ) == 0 ) )
+            {
+                xmlChar *idStr;
+                idStr = xmlNodeGetContent( idNode );
+                std::string tmpStr = (const char *)idStr;
+                idList.push_back( tmpStr );
+                xmlFree( idStr );
+            }
+        }
+    }
+
+    xmlFreeDoc(doc);
+
+    return false;
+}
+
+bool
+get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFields )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/zones/" + zoneID );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return true;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    if( ( !rootNode ) || ( strcmp( (const char *)rootNode->name, "zone" ) != 0 ) )
+    {
+        fprintf(stderr, "Unrecognized return data.\n");
+	    return true;
+    }
+ 
+    xmlNodePtr zoneNode = NULL;
+
+    for( zoneNode = rootNode->children; zoneNode; zoneNode = zoneNode->next ) 
+    {
+        if( zoneNode->type == XML_ELEMENT_NODE )
+        {
+            xmlChar *tmpStr;
+            tmpStr = xmlNodeGetContent( zoneNode );
+            std::pair< std::string, std::string > entry( (const char *)zoneNode->name, (const char *)tmpStr );
+            objFields.insert( entry );
+            xmlFree( tmpStr );
+        }
+    }
+
+    xmlFreeDoc(doc);
+
+    return false;
+}
+
+void
+get_zone_list( bool detail )
+{
+    std::vector< std::string > idList;
+
+    std::cout << "ZL: " << detail << std::endl;
+
+    if( get_zone_ids( idList ) == true )
+    {
+        std::cerr << "ERROR: Unable to retrieve zone id list." << std::endl;
+        return;
+    }
+
+    // Output the zone IDs
+    std::cout << "=== Zone IDs (Count: " << idList.size() << " ) ===" << std::endl;
+    for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
+    {
+        std::map< std::string, std::string > objFields;
+
+        std::cout << "Zone ID: " << *it << std::endl;
+        
+        if( detail )
+        {
+            get_zone_object( *it, objFields );
+
+            for( std::map< std::string, std::string >::iterator fi = objFields.begin(); fi != objFields.end(); ++fi )
+            {
+                std::cout << "    " << fi->first << " : " << fi->second << std::endl;
+            }
+        }
+    }
+
+    std::cout << std::endl;
 }
 
 void get_zone_rule_detail( std::string zgID, std::string id )
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members/" + id;
 
-    url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members/" + id;
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
 
-    if( curl ) 
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	       
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== Zone Rule ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            // <schedule-zone-rule><duration>120</duration><id>zr3</id><type>fixedduration</type><zoneid>zone2</zoneid></schedule-zone-rule>
-            if( strcmp( (const char *)rootNode->name, "schedule-zone-rule" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                std::string durStr;
-                std::string zoneid;
-                std::string type;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-                    if( strcmp( (const char *)curNode->name, "duration" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        durStr = (const char *) content;
-                        xmlFree( content );
-                    }
-                    else if( strcmp( (const char *)curNode->name, "zoneid" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        zoneid = (const char *) content;
-                        xmlFree( content );
-                    }
-                    else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        type = (const char *) content;
-                        xmlFree( content );
-                    }
-                }
-
-                std::cout << "Type: " << type << " Duration: " << durStr << " zID: " << zoneid << std::endl;
-
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== Zone Rule ===\n");
+
+    // <schedule-zone-rule><duration>120</duration><id>zr3</id><type>fixedduration</type><zoneid>zone2</zoneid></schedule-zone-rule>
+    if( strcmp( (const char *)rootNode->name, "schedule-zone-rule" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        std::string durStr;
+        std::string zoneid;
+        std::string type;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "duration" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                durStr = (const char *) content;
+                xmlFree( content );
+            }
+            else if( strcmp( (const char *)curNode->name, "zoneid" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                zoneid = (const char *) content;
+                xmlFree( content );
+            }
+            else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                type = (const char *) content;
+                xmlFree( content );
+            }
+        }
+
+        std::cout << "Type: " << type << " Duration: " << durStr << " zID: " << zoneid << std::endl;
+    }
+
+    xmlFreeDoc( doc );
 }
 
 void
 get_zone_rule_list( std::string zgID, bool details )
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    sscReadBuf rspData;
-
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
 
-    url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
- 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    if( curl ) 
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	        
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== ID List ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            if( strcmp( (const char *)rootNode->name, "zone-rule-list" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-                    if( strcmp( (const char *)curNode->name, "id" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "%s\n", (const char *)content );
-
-                        if( details )
-                        {
-                            get_zone_rule_detail( zgID, (const char*) content );
-                        }
-                       
-                        xmlFree( content );
-                    }
-                }
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== ID List ===\n");
+
+    if( strcmp( (const char *)rootNode->name, "zone-rule-list" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "%s\n", (const char *)content );
+
+                if( details )
+                {
+                    get_zone_rule_detail( zgID, (const char*) content );
+                }
+                       
+                xmlFree( content );
+            }
+        }
+    }
+
+    xmlFreeDoc( doc );
+
 }
 
 void get_zone_group_detail( std::string id )
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + id;
 
-    url = "http://localhost:8200/schedule/zone-groups/" + id;
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
 
-    if( curl ) 
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	       
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== Zone Group ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            // <schedule-zone-group><id>zg1</id><policy>sequential</policy></schedule-zone-group>
-            if( strcmp( (const char *)rootNode->name, "schedule-zone-group" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-                    if( strcmp( (const char *)curNode->name, "policy" ) == 0 )
-                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "policy: %s\n", (const char *)content );
-                        xmlFree( content );
-                    }
-                }
-
-                get_zone_rule_list( id, true );
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== Zone Group ===\n");
+
+    // <schedule-zone-group><id>zg1</id><policy>sequential</policy></schedule-zone-group>
+    if( strcmp( (const char *)rootNode->name, "schedule-zone-group" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "policy" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "policy: %s\n", (const char *)content );
+                xmlFree( content );
+            }
+        }
+
+        get_zone_rule_list( id, true );
+    }
+
+    xmlFreeDoc( doc );
+}
+
+void get_trigger_rule_detail( std::string tgID, std::string id )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members/" + id;
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== Trigger Rule ===\n");
+
+    // <schedule-trigger-rule></schedule-trigger-rule>
+    // id: tr11
+    // reftime: 20000106T143500
+    // scope: week
+    // type: time
+    if( strcmp( (const char *)rootNode->name, "schedule-trigger-rule" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        std::string refTimeStr;
+        std::string scope;
+        std::string type;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "reftime" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                refTimeStr = (const char *) content;
+                xmlFree( content );
+            }
+            else if( strcmp( (const char *)curNode->name, "scope" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                scope = (const char *) content;
+                xmlFree( content );
+            }
+            else if( strcmp( (const char *)curNode->name, "type" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                type = (const char *) content;
+                xmlFree( content );
+            }
+            
+            std::cout << "Type: " << type << " Scope: " << scope << " RefTime: " << refTimeStr << std::endl;
+        }
+    }
+
+}
+
+void
+get_trigger_rule_list( std::string tgID, bool details )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members";
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== ID List ===\n");
+
+    if( strcmp( (const char *)rootNode->name, "trigger-rule-list" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "id" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "%s\n", (const char *)content );
+
+                if( details )
+                {
+                    get_trigger_rule_detail( tgID, (const char*) content );
+                }
+                       
+                xmlFree( content );
+            }
+        }
+    }
+}
+
+void get_trigger_group_detail( std::string id )
+{
+    RESTHttpClient client;
+    xmlDocPtr doc;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + id;
+
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
+
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
+    {
+        return;
+    }
+
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== Trigger Group ===\n");
+
+    // <schedule-trigger-group><desc>Every Odd Thursday</desc><id>tg10</id><name>EveryOddThu</name></schedule-trigger-group>
+    if( strcmp( (const char *)rootNode->name, "schedule-trigger-group" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+            if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "desc: %s\n", (const char *)content );
+                xmlFree( content );
+            }
+            else if( strcmp( (const char *)curNode->name, "name" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "name: %s\n", (const char *)content );
+                xmlFree( content );
+            }
+        }
+    }
+
+    get_trigger_rule_list( id, true );
 }
 
 void get_event_rule_detail( std::string id )
 {
-    CURL *curl;
-    CURLcode res;
-    std::string url;
-    
+    RESTHttpClient client;
     xmlDocPtr doc;
-    xmlParserCtxtPtr ctxt = NULL;
+    std::string contentType;
+    unsigned long dataLength;
+    unsigned char *dataPtr;
+    std::string url = "http://localhost:8200/schedule/rules/" + id;
 
-    url = "http://localhost:8200/schedule/rules/" + id;
- 
-    // get a curl handle 
-    curl = curl_easy_init();
+    // Acquire the log data
+    client.setRequest( RHC_REQTYPE_GET, url );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+    client.makeRequest();
 
-    if( curl ) 
+    // Get access to the returned data
+    dataPtr = client.getInboundRepresentation().getSimpleContentPtr( contentType, dataLength );
+
+    // Run it through the xml parser
+    doc = xmlReadMemory( (const char *)dataPtr, dataLength, "noname.xml", NULL, 0 );
+
+    if( doc == NULL )
     {
-        struct curl_slist *slist = NULL;
-	  
-	    slist = curl_slist_append(slist, "Accept: */*");
-	    // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	    slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-        // Setup the post operation parameters				
-	    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	    curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	    curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	    curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	       
-        // Setup the read callback 
-        curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-        curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-        // Perform the request, res will get the return code 
-        res = curl_easy_perform(curl);
-
-        // Check for errors 
-        if( res != CURLE_OK )
-        {
-            fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-            return;
-        }
-
-        // always cleanup 
-        curl_easy_cleanup( curl );
-        curl_slist_free_all( slist );
-
-        // Finished
-        xmlParseChunk( ctxt, NULL, 0, 1 );
-
-        doc = ctxt->myDoc;
-        if( ctxt->wellFormed )
-        {
-            printf("=== Event Rule ===\n");
-
-            xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-            //<schedule-event-rule>
-            //  <desc>Description Test</desc>
-            //  <enabled>true</enabled>
-            //  <id>er1</id>
-            //  <name>oddthu2</name>
-            //  <trigger-group-id>tg10</trigger-group-id>
-            //  <url></url>
-            //  <zone-group-id>zg1</zone-group-id>
-            //</schedule-event-rule>
-            if( strcmp( (const char *)rootNode->name, "schedule-event-rule" ) == 0 )
-            {
-                xmlNode *curNode = NULL;
-
-                for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                {
-//                    if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
-//                    {
-                        xmlChar *content = xmlNodeGetContent( curNode );
-                        printf( "%s: %s\n", (const char *)curNode->name, (const char *)content );
-                        xmlFree( content );
-//                    }
-
-                      if( strcmp( (const char *)curNode->name, "trigger-group-id" ) == 0 )
-                      {
-                          xmlChar *content = xmlNodeGetContent( curNode );
-                          get_trigger_group_detail((const char *)content );
-                          xmlFree( content );          
-                      }
-                      else if( strcmp( (const char *)curNode->name, "zone-group-id" ) == 0 )
-                      {
-                          xmlChar *content = xmlNodeGetContent( curNode );
-                          get_zone_group_detail( (const char *)content );                          
-                          xmlFree( content );
-                      }
-
-                }
-            }
-        }
-        else
-        {
-            fprintf( stderr, "Failed to parse return data.\n" );
-        }
-
-        xmlFreeParserCtxt( ctxt );
-        xmlFreeDoc( doc );
-
+        return;
     }
 
-    curl_global_cleanup();
+    // Parse and display the response data
+    xmlNodePtr rootNode = xmlDocGetRootElement( doc );
+
+    printf("=== Event Rule ===\n");
+
+    //<schedule-event-rule>
+    //  <desc>Description Test</desc>
+    //  <enabled>true</enabled>
+    //  <id>er1</id>
+    //  <name>oddthu2</name>
+    //  <trigger-group-id>tg10</trigger-group-id>
+    //  <url></url>
+    //  <zone-group-id>zg1</zone-group-id>
+    //</schedule-event-rule>
+    if( strcmp( (const char *)rootNode->name, "schedule-event-rule" ) == 0 )
+    {
+        xmlNode *curNode = NULL;
+
+        for( curNode = rootNode->children; curNode; curNode = curNode->next )
+        {
+//          if( strcmp( (const char *)curNode->name, "desc" ) == 0 )
+//          {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                printf( "%s: %s\n", (const char *)curNode->name, (const char *)content );
+                xmlFree( content );
+//          }
+
+            if( strcmp( (const char *)curNode->name, "trigger-group-id" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                get_trigger_group_detail((const char *)content );
+                xmlFree( content );          
+            }
+            else if( strcmp( (const char *)curNode->name, "zone-group-id" ) == 0 )
+            {
+                xmlChar *content = xmlNodeGetContent( curNode );
+                get_zone_group_detail( (const char *)content );                          
+                xmlFree( content );
+            }
+        }
+    }
+}
+
+void get_zone_group_rules( bool detail, std::string zgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+{
+    idList.clear();
+    objList.clear();
+
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
+
+    get_list_of_ids( url, "zone-rule-list", idList );
+
+    if( detail )
+    {
+        get_objects_for_ids( url, "tmpname", idList, objList );
+    }
+
+}
+
+void 
+get_zone_group_details( std::string zgID, RESTContentNode &zgObj, std::vector< RESTContentNode > &zroList )
+{
+    std::vector< std::string > idList;
+    std::vector< RESTContentNode > objList;
+
+    std::string url = "http://localhost:8200/schedule/zone-groups";
+
+    idList.push_back( zgID );
+
+    get_objects_for_ids( url, "tmpname", idList, objList );
+
+    zgObj = objList[0];
+
+    get_zone_group_rules( true, zgID, idList, zroList ); 
+}
+
+void 
+get_zone_groups( bool detail )
+{
+    std::vector< std::string > idList;
+    std::vector< RESTContentNode > objList;
+
+    std::string url = "http://localhost:8200/schedule/zone-groups";
+
+    get_list_of_ids( url, "zone-group-list", idList );
+
+    if( detail )
+    {
+        get_objects_for_ids( url, "tmpname", idList, objList );
+
+        for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+        {  
+            std::vector< std::string > zriList;
+            std::vector< RESTContentNode > zroList;
+
+            get_zone_group_rules( true, it->getID(), zriList, zroList ); 
+    
+            std::cout << std::endl;
+            std::string title = "Object( id: " + it->getID() + " )";
+            display_rawobj( title, *it );
+            display_rawobj_list( "Zone Rule Objects", zroList );
+        }
+    }
+    else
+        display_id_list( "Zone Groups", idList );
+}
+
+void get_trigger_group_rules( bool detail, std::string tgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+{
+    idList.clear();
+    objList.clear();
+
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members";
+
+    get_list_of_ids( url, "trigger-rule-list", idList );
+
+    if( detail )
+    {
+        get_objects_for_ids( url, "tmpname", idList, objList );
+    }
+}
+
+void 
+get_trigger_group_details( std::string tgID, RESTContentNode &tgObj, std::vector< RESTContentNode > &troList )
+{
+    std::vector< std::string > idList;
+    std::vector< RESTContentNode > objList;
+
+    std::string url = "http://localhost:8200/schedule/trigger-groups";
+
+    idList.push_back( tgID );
+
+    get_objects_for_ids( url, "tmpname", idList, objList );
+
+    tgObj = objList[0];
+
+    get_trigger_group_rules( true, tgID, idList, troList ); 
+}
+
+void 
+get_trigger_groups( bool detail )
+{
+    std::vector< std::string > idList;
+    std::vector< RESTContentNode > objList;
+
+    std::string url = "http://localhost:8200/schedule/trigger-groups";
+
+    get_list_of_ids( url, "trigger-group-list", idList );
+
+    if( detail )
+    {
+        get_objects_for_ids( url, "tmpname", idList, objList );
+
+        std::cout << "==== " << "Trigger Group Objects" << " ====" << std::endl;
+
+        for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+        {  
+            std::vector< std::string > triList;
+            std::vector< RESTContentNode > troList;
+
+            get_trigger_group_rules( true, it->getID(), triList, troList ); 
+    
+            std::cout << std::endl;
+            std::string title = "Object( id: " + it->getID() + " )";
+            display_rawobj( title, *it );
+            display_rawobj_list( "Trigger Rule Objects", troList );
+        }
+
+    }
+    else
+        display_id_list( "Trigger Groups", idList );
+}
+
+void get_schedule_events( bool detail )
+{
+    std::vector< std::string > idList;
+    std::vector< RESTContentNode > objList;
+
+    std::string url = "http://localhost:8200/schedule/rules";
+
+    get_list_of_ids( url, "event-rule-list", idList );
+
+    if( detail )
+    {
+        get_objects_for_ids( url, "tmpname", idList, objList );
+
+        for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+        {  
+            RESTContentNode zgObj;
+            std::vector< RESTContentNode > zroList;
+
+            RESTContentNode tgObj;
+            std::vector< RESTContentNode > troList;
+
+            std::string tgID;
+            it->getField( "trigger-group-id", tgID );
+            if( tgID.empty() == false )
+            {
+                get_trigger_group_details( tgID, tgObj, troList );
+            }
+
+            std::string zgID;
+            it->getField( "zone-group-id", zgID );
+            if( zgID.empty() == false )
+            {
+                get_zone_group_details( zgID, zgObj, zroList );
+            }
+
+            std::cout << std::endl;
+            std::string title = "Object( id: " + it->getID() + " )";
+            display_rawobj( title, *it );
+
+            if( tgID.empty() == false )
+            {
+                std::string tgtitle = "Object( id: " + tgObj.getID() + " )";
+                display_rawobj( tgtitle, tgObj );
+                display_rawobj_list( "Trigger Rule Objects", troList );
+            }
+
+            if( zgID.empty() == false )
+            {
+                std::string zgtitle = "Object( id: " + zgObj.getID() + " )";
+                display_rawobj( zgtitle, zgObj );
+                display_rawobj_list( "Zone Rule Objects", zroList );
+            }
+        }
+
+    }
+    else
+        display_id_list( "Schedule Rules", idList );
 }
 
 int main( int argc, char* argv[] )
@@ -1757,10 +2007,12 @@ int main( int argc, char* argv[] )
 
         ("get-zone-list", "Get a list of available zones.")
 
+        ("zone-groups", "Get a list of zone groups.  Specify the --detail parameter to get more than ids." )
         ("new-zone-group", "Create a new zone group.  Requires the --name and --desc parameters. Optional --zone-list parameter.")
         ("add-zone", "Add a new zone to a zone group. Requires the --zgID parameter.")
         ("delete-zone", "Delete a zone from a zone group. Requires the --zgID and --zoneID parameters.")
 
+        ("trigger-groups", "Get a list of trigger groups.  Specify the --detail parameter to get more than ids." )
         ("new-trigger-group", "Create a new trigger group.  Requires the --name and --desc parameters. Optional --day-and-time-list and --start-duration-interval parameters.")
         ("add-trigger", "Add a new trigger to a trigger group. Requires the --tgID parameter.")
         ("delete-trigger", "Delete a trigger from a trigger group. Requires the --tgID and --triggerID parameters.")
@@ -1811,37 +2063,11 @@ int main( int argc, char* argv[] )
     }
 
     // In windows, this will init the winsock stuff 
-    curl_global_init(CURL_GLOBAL_ALL);
+    //curl_global_init(CURL_GLOBAL_ALL);
 
     if( vm.count( "get-zone-list" ) )
     {
-        std::vector< std::string > idList;
-
-        if( get_zone_list( idList ) == true )
-        {
-            std::cerr << "ERROR: Unable to retrieve zone id list." << std::endl;
-            return 2;
-        }
-
-        // Output the zone IDs
-        std::cout << "=== Zone IDs (Count: " << idList.size() << " ) ===" << std::endl;
-        for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
-        {
-            std::map< std::string, std::string > objFields;
-
-            std::cout << "Zone ID: " << *it << std::endl;
-        
-            if( vm.count( "detail" ) )
-            {
-                get_zone_object( *it, objFields );
-
-                for( std::map< std::string, std::string >::iterator fi = objFields.begin(); fi != objFields.end(); ++fi )
-                {
-                    std::cout << "    " << fi->first << " : " << fi->second << std::endl;
-                }
-            }
-        }
-        std::cout << std::endl;
+        get_zone_list( (vm.count( "detail" ) ? true : false) );
     }
     else if( vm.count( "new-zone-group" ) )
     {
@@ -1927,6 +2153,32 @@ int main( int argc, char* argv[] )
 
         create_schedule_rule( nameStr, descStr, zgID, tgID, erID);
     }
+    else if( vm.count( "get-event-log" ) )
+    {
+        get_event_log();
+    }
+    else if( vm.count( "get-status" ) )
+    {
+        get_status();
+    }
+    else if( vm.count( "get-calendar" ) )
+    {
+        get_calendar( periodStr );
+    }
+    else if( vm.count( "zone-groups" ) )
+    {
+        get_zone_groups( vm.count( "detail" ) ? true : false );
+    }
+    else if( vm.count( "trigger-groups" ) )
+    {
+        get_trigger_groups( vm.count( "detail" ) ? true : false );
+    }
+    else if( vm.count( "schedule-events" ) )
+    {
+        get_schedule_events( vm.count( "detail" ) ? true : false );
+    }
+
+#if 0
     else if( vm.count( "ids" ) )
     {
         CURL *curl;
@@ -2371,594 +2623,8 @@ int main( int argc, char* argv[] )
 
         curl_global_cleanup();
     }
-    
-    if( vm.count( "get-event-log" ) )
-    {
-        CURL *curl;
-        CURLcode res;
-        std::string url;
-
-        xmlDocPtr doc;
-        xmlParserCtxtPtr ctxt = NULL;
-
-        url = "http://localhost:8200/schedule/event-log/";
-
-        // get a curl handle 
-        curl = curl_easy_init();
-
-        if( curl ) 
-        {
-            struct curl_slist *slist = NULL;
-	  
-	        slist = curl_slist_append(slist, "Accept: */*");
-	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	        slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-            // Setup the put operation parameters				
-	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-	        
-            // Perform the request, res will get the return code 
-            res = curl_easy_perform(curl);
-
-            // Check for errors 
-            if( res != CURLE_OK )
-            {
-                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-                return -1;
-            }
-
-            // Finished
-            xmlParseChunk( ctxt, NULL, 0, 1 );
-
-            doc = ctxt->myDoc;
-            if( ctxt->wellFormed )
-            {
-                printf("Return successfully parsed:\n");
-
-                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-                if( strcmp( (const char *)rootNode->name, "schedule-event-log" ) == 0 )
-                {
-                    xmlNode *entryNode = NULL;
-
-                    for( entryNode = rootNode->children; entryNode; entryNode = entryNode->next )
-                    {
-                        xmlNode *curNode = NULL;
-
-                        unsigned long seqNum;
-                        std::string timestamp;
-                        boost::posix_time::ptime pstamp;
-                        std::string eventID;
-                        std::string eventMsg;
-
-                        for( curNode = entryNode->children; curNode; curNode = curNode->next )
-                        {
-                            if( strcmp( (const char *)curNode->name, "seqnum" ) == 0 )
-                            {
-                                xmlChar *content = xmlNodeGetContent( curNode );
-                                seqNum = strtol( (const char *)content, NULL, 0);
-                                xmlFree( content );
-                            }
-                            else if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
-                            {
-                                xmlChar *content = xmlNodeGetContent( curNode );
-                                timestamp = (const char *)content;
-
-                                pstamp = boost::posix_time::from_iso_string( timestamp );
-
-                                boost::local_time::time_zone_ptr zone = get_system_timezone();
-                                boost::local_time::local_date_time ltstamp( pstamp, zone );
-
-                                timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
-
-                                xmlFree( content );
-                            }
-                            else if( strcmp( (const char *)curNode->name, "event-id" ) == 0 )
-                            {
-                                xmlChar *content = xmlNodeGetContent( curNode );
-                                eventID = (const char *)content;
-                                xmlFree( content );
-                            }
-                            else if( strcmp( (const char *)curNode->name, "event-msg" ) == 0 )
-                            {
-                                xmlChar *content = xmlNodeGetContent( curNode );
-                                eventMsg = (const char *)content;
-                                xmlFree( content );
-                            }
-                        }
-
-                        printf( "%-5ld %-25s %-25s %s\n", seqNum, timestamp.c_str(), eventID.c_str(), eventMsg.c_str() );
-                    }
-                }
-                else
-                {
-                    fprintf( stderr, "schedule event log format error\n" );
-                    return -1;
-                }
-
-            }
-            else
-            {
-                fprintf( stderr, "Failed to parse return data.\n" );
-            }
-
-            xmlFreeParserCtxt( ctxt );
-            xmlFreeDoc( doc );
-
-            // always cleanup 
-            curl_easy_cleanup( curl );
-            curl_slist_free_all( slist );
-        }
-
-        curl_global_cleanup();
-    }
-
-    if( vm.count( "get-status" ) )
-    {
-        CURL *curl;
-        CURLcode res;
-        std::string url;
-
-        xmlDocPtr doc;
-        xmlParserCtxtPtr ctxt = NULL;
-
-        url = "http://localhost:8200/schedule/status/";
-
-        // get a curl handle 
-        curl = curl_easy_init();
-
-        if( curl ) 
-        {
-            struct curl_slist *slist = NULL;
-	  
-	        slist = curl_slist_append(slist, "Accept: */*");
-	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	        slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-            // Setup the put operation parameters				
-	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-	        
-            // Perform the request, res will get the return code 
-            res = curl_easy_perform(curl);
-
-            // Check for errors 
-            if( res != CURLE_OK )
-            {
-                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-                return -1;
-            }
-
-            // Finished
-            xmlParseChunk( ctxt, NULL, 0, 1 );
-
-            doc = ctxt->myDoc;
-            if( ctxt->wellFormed )
-            {
-                printf("Return successfully parsed:\n");
-
-                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-                if( strcmp( (const char *)rootNode->name, "schedule-status" ) == 0 )
-                {
-                    xmlNode *curNode = NULL;
-
-                    unsigned long seqNum;
-                    std::string timestamp;
-                    boost::posix_time::ptime pstamp;
-      
-                    for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                    {
-                        if( strcmp( (const char *)curNode->name, "timestamp" ) == 0 )
-                        {
-                            xmlChar *content = xmlNodeGetContent( curNode );
-
-                            pstamp = boost::posix_time::from_iso_string( (const char *)content );
-
-                            boost::local_time::time_zone_ptr zone = get_system_timezone();
-                            boost::local_time::local_date_time ltstamp( pstamp, zone );
-
-                            timestamp = boost::posix_time::to_simple_string( ltstamp.local_time() );
-
-                            xmlFree( content );
-                        }
-                    }
-
-                    printf( "==== Current Status ====\n" );
-                    printf( "Current Time: %s\n", timestamp.c_str() );
-                }
-                else
-                {
-                    fprintf( stderr, "schedule status format error\n" );
-                    return -1;
-                }
-            }
-            else
-            {
-                fprintf( stderr, "Failed to parse return data.\n" );
-            }
-
-            xmlFreeParserCtxt( ctxt );
-            xmlFreeDoc( doc );
-
-            // always cleanup 
-            curl_easy_cleanup( curl );
-            curl_slist_free_all( slist );
-        }
-
-        curl_global_cleanup();
-    }
-
-    if( vm.count( "get-calendar" ) )
-    {
-        CURL *curl;
-        CURLcode res;
-        std::string url;
-
-        xmlDocPtr doc;
-        xmlParserCtxtPtr ctxt = NULL;
-
-        url = "http://localhost:8200/schedule/calendar/";
-
-        if( vm.count( "period" ) == 0 )
-        {
-            // Default to getting the current days events
-            periodStr = "day";
-        }
-
-        boost::local_time::time_zone_ptr zone = get_system_timezone();
-        boost::posix_time::time_duration std( 0, 0, 0, 0 );
-        boost::posix_time::time_duration etd( 23, 59, 59, 0 );
-
-        if( periodStr == "day" )
-        {
-            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
-
-            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
-            boost::local_time::local_date_time end( ltstamp.date(), etd, zone, false );  
-
-            url += "?startTime=";
-            url += to_iso_string( start.utc_time() );
-            url += "&endTime=";
-            url += to_iso_string( end.utc_time() );
-        } 
-        else if( periodStr == "week" )
-        {
-            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
-            unsigned long dayofWeek = ltstamp.date().day_of_week();
-            ltstamp -= boost::gregorian::days( dayofWeek );
-
-            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
-            boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(6)), etd, zone, false );  
-
-            url += "?startTime=";
-            url += to_iso_string( start.utc_time() );
-            url += "&endTime=";
-            url += to_iso_string( end.utc_time() );
-        }
-        else if( periodStr == "twoweek" )
-        {
-            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
-            unsigned long dayofWeek = ltstamp.date().day_of_week();
-            ltstamp -= boost::gregorian::days( dayofWeek );
-
-            boost::local_time::local_date_time start( ltstamp.date(), std, zone, false );  
-            boost::local_time::local_date_time end( (ltstamp.date() + boost::gregorian::days(13)), etd, zone, false );  
-
-            url += "?startTime=";
-            url += to_iso_string( start.utc_time() );
-            url += "&endTime=";
-            url += to_iso_string( end.utc_time() );
-        }
-        else if( periodStr == "month" )
-        {
-            boost::local_time::local_date_time ltstamp = boost::local_time::local_sec_clock::local_time( zone );
-
-            unsigned long dayofMonth = ltstamp.date().day();
-            unsigned long endofMonth = ltstamp.date().end_of_month().day();
-
-            boost::local_time::local_date_time start( (ltstamp.date() - boost::gregorian::days(dayofMonth-1)), std, zone, false );  
-            boost::local_time::local_date_time end( (start.date() + boost::gregorian::days(endofMonth-1)), etd, zone, false );  
-
-            url += "?startTime=";
-            url += to_iso_string( start.utc_time() );
-            url += "&endTime=";
-            url += to_iso_string( end.utc_time() );
-        }
-        else
-        {
-            std::cerr << "ERROR: Requested period is not supportted." << std::endl;
-            return -1;
-        }
-
-        // get a curl handle 
-        curl = curl_easy_init();
-
-        if( curl ) 
-        {
-            struct curl_slist *slist = NULL;
-	  
-	        slist = curl_slist_append(slist, "Accept: */*");
-	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	        slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-            // Setup the put operation parameters				
-	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-	        
-            // Perform the request, res will get the return code 
-            res = curl_easy_perform(curl);
-
-            // Check for errors 
-            if( res != CURLE_OK )
-            {
-                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-                return -1;
-            }
-
-            // Finished
-            xmlParseChunk( ctxt, NULL, 0, 1 );
-
-            doc = ctxt->myDoc;
-            if( ctxt->wellFormed )
-            {
-                printf("Return successfully parsed:\n");
-
-                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-                if( strcmp( (const char *)rootNode->name, "schedule-event-calendar" ) == 0 )
-                {
-                    xmlNode *curNode = NULL;
-
-                    for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                    {
-                        if( strcmp( (const char *)curNode->name, "period-start" ) == 0 )
-                        {
-
-                        }
-                        else if( strcmp( (const char *)curNode->name, "period-end" ) == 0 )
-                        {
-
-                        } 
-                        else if( strcmp( (const char *)curNode->name, "event-list" ) == 0 )
-                        {
-                            xmlNodePtr entryNode = NULL;
-
-                            boost::posix_time::ptime pstamp;
-                            std::string startTime;
-                            std::string endTime;
-                            std::string eventID;
-                            std::string zoneName;
-                            std::string triggerName;
-                            std::string duration;
-
-                            // <event><end-time>20150701T135200</end-time><id>zg1</id><start-time>20150701T135000</start-time><title>zr2-2015-Jul-01 13:50:00</title></event>
-
-                            for( entryNode = curNode->children; entryNode; entryNode = entryNode->next )
-                            {
-                                xmlNodePtr childNode = NULL;
-
-                                for( childNode = entryNode->children; childNode; childNode = childNode->next )
-                                {
-
-                                    if( strcmp( (const char *)childNode->name, "start-time" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        startTime = (const char *)content;
-
-                                        pstamp = boost::posix_time::from_iso_string( startTime );
-
-                                        boost::local_time::time_zone_ptr zone = get_system_timezone();
-                                        boost::local_time::local_date_time ltstamp( pstamp, zone );
-
-                                        startTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
-
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "end-time" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        endTime = (const char *)content;
-
-                                        pstamp = boost::posix_time::from_iso_string( endTime );
-
-                                        boost::local_time::time_zone_ptr zone = get_system_timezone();
-                                        boost::local_time::local_date_time ltstamp( pstamp, zone );
-
-                                        endTime = boost::posix_time::to_simple_string( ltstamp.local_time() );
-
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "id" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        eventID = (const char *)content;
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "zone-name" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        zoneName = (const char *)content;
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "trigger-name" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        triggerName = (const char *)content;
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "duration" ) == 0 )
-                                    {
-                                        xmlChar *content = xmlNodeGetContent( childNode );
-                                        duration = (const char *)content;
-                                        xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "erID" ) == 0 )
-                                    {
-                                        //xmlChar *content = xmlNodeGetContent( childNode );
-                                        //eventTitle = (const char *)content;
-                                        //xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "zgID" ) == 0 )
-                                    {
-                                        //xmlChar *content = xmlNodeGetContent( childNode );
-                                        //eventTitle = (const char *)content;
-                                        //xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "zrID" ) == 0 )
-                                    {
-                                        //xmlChar *content = xmlNodeGetContent( childNode );
-                                        //eventTitle = (const char *)content;
-                                        //xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "tgID" ) == 0 )
-                                    {
-                                        //xmlChar *content = xmlNodeGetContent( childNode );
-                                        //eventTitle = (const char *)content;
-                                        //xmlFree( content );
-                                    }
-                                    else if( strcmp( (const char *)childNode->name, "trID" ) == 0 )
-                                    {
-                                        //xmlChar *content = xmlNodeGetContent( childNode );
-                                        //eventTitle = (const char *)content;
-                                        //xmlFree( content );
-                                    }
-
-                                }
-
-                                printf( "%-22s %-22s %-10s %-20s %-20s %s\n", startTime.c_str(), endTime.c_str(), duration.c_str(), zoneName.c_str(), triggerName.c_str(), eventID.c_str() );
-
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                fprintf( stderr, "Failed to parse return data.\n" );
-            }
-
-            xmlFreeParserCtxt( ctxt );
-            xmlFreeDoc( doc );
-
-            // always cleanup 
-            curl_easy_cleanup( curl );
-            curl_slist_free_all( slist );
-        }
-
-        curl_global_cleanup();
-    }
-    else if( vm.count( "schedule-events" ) )
-    {
-        CURL *curl;
-        CURLcode res;
-        std::string url;
-        sscReadBuf rspData;
-
-        xmlDocPtr doc;
-        xmlParserCtxtPtr ctxt = NULL;
-
-        url = "http://localhost:8200/schedule/rules";
+#endif
  
-        // get a curl handle 
-        curl = curl_easy_init();
-
-        if( curl ) 
-        {
-            struct curl_slist *slist = NULL;
-	  
-	        slist = curl_slist_append(slist, "Accept: */*");
-	        // slist = curl_slist_append(slist, "Content-Type: application/x-www-form-urlencoded");
-	        slist = curl_slist_append(slist, "Content-Type: text/xml");
-
-            // Setup the post operation parameters				
-	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
-	        curl_easy_setopt(curl, CURLOPT_VERBOSE, 0L);
-	        curl_easy_setopt(curl, CURLOPT_HEADER, 0);
-	        curl_easy_setopt(curl, CURLOPT_USERAGENT,  "Linux C  libcurl");
-	        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
-	        
-            // Setup the read callback 
-            curl_easy_setopt( curl, CURLOPT_WRITEFUNCTION, schedule_event_log_reader );
-            curl_easy_setopt( curl, CURLOPT_WRITEDATA, &ctxt );
-
-            // Perform the request, res will get the return code 
-            res = curl_easy_perform(curl);
-
-            // Check for errors 
-            if( res != CURLE_OK )
-            {
-                fprintf( stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res) );
-                return -1;
-            }
-
-            // always cleanup 
-            curl_easy_cleanup( curl );
-            curl_slist_free_all( slist );
-
-            // Finished
-            xmlParseChunk( ctxt, NULL, 0, 1 );
-
-            doc = ctxt->myDoc;
-            if( ctxt->wellFormed )
-            {
-                printf("=== ID List ===\n");
-
-                xmlNodePtr rootNode = xmlDocGetRootElement( doc );
-
-                if( strcmp( (const char *)rootNode->name, "event-rule-list" ) == 0 )
-                {
-                    xmlNode *curNode = NULL;
-
-                    for( curNode = rootNode->children; curNode; curNode = curNode->next )
-                    {
-                        if( strcmp( (const char *)curNode->name, "id" ) == 0 )
-                        {
-                            xmlChar *content = xmlNodeGetContent( curNode );
-                            printf( "%s\n", (const char *)content );
-
-                            if( vm.count( "detail" ) )
-                            {
-                                get_event_rule_detail( (const char*) content );
-                            }
-                       
-                            xmlFree( content );
-                        }
-                    }
-                }
-            }
-            else
-            {
-                fprintf( stderr, "Failed to parse return data.\n" );
-            }
-
-            xmlFreeParserCtxt( ctxt );
-            xmlFreeDoc( doc );
-
-        }
-
-        curl_global_cleanup();
-    }
 
     // Success
     return 0;

@@ -1328,6 +1328,8 @@ RESTContentHelperXML::parseRawData( RESTRepresentation *repPtr )
     // Find the databuffer to parse
     dataPtr = repPtr->getSimpleContentPtr( contentType, dataLength );
 
+    printf( "Data(%d):\n%*.*s\n", dataLength, dataLength, dataLength, dataPtr );
+ 
     // Run the simple content through the xml parser
     doc = xmlParseMemory( (const char *)dataPtr, dataLength );
     if (doc == NULL) 
