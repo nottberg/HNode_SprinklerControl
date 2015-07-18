@@ -1195,32 +1195,256 @@ display_id_list( std::string title, std::vector< std::string > &idList )
 }
 
 void 
-display_rawobj( std::string title, RESTContentNode &obj )
+display_rawobj( unsigned long offset, std::string title, RESTContentNode &obj )
 {
     std::vector< RESTContentField* > fields;
 
-    std::cout << "==== " << title << " ====" << std::endl;
+    std::cout << std::setw( offset ) << " " << "==== " << title << " ====" << std::endl;
 
     fields = obj.getFieldList();
      
     for( std::vector< RESTContentField* >::iterator fit = fields.begin(); fit != fields.end(); fit++ )
     {
-        std::cout << (*fit)->getName() << ": " << (*fit)->getValue() << std::endl;
+        std::cout << std::setw( offset+2 ) << " " << std::setw( 10 ) << std::left << (*fit)->getName() << ": " << (*fit)->getValue() << std::endl;
     }
 }
 
 void 
-display_rawobj_list( std::string title, std::vector< RESTContentNode > &objList )
+display_rawobj_list( unsigned long offset, std::string title, std::vector< RESTContentNode > &objList )
 {
-    std::cout << "==== " << title << " ====" << std::endl;
-
     for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
     {  
+        std::string hdr = title + "( id: " + it->getID() + " )";
+        display_rawobj( offset + 4, hdr, *it );
         std::cout << std::endl;
-
-        std::string title = "Object( id: " + it->getID() + " )";
-        display_rawobj( title, *it );
     }
+}
+
+void 
+display_trigger_rule( unsigned long offset, RESTContentNode &obj )
+{
+    std::string tmpStr;
+    std::string idStr;
+    std::string typeStr;
+
+    if( obj.getField( "type", typeStr ) == false )
+    {
+        return;
+    }
+
+    if( obj.getField( "id", idStr ) == false )
+    {
+        return;
+    }
+
+    if( "time" == typeStr )
+    {
+        std::string refTimeStr;
+        std::string scopeStr;
+
+        boost::posix_time::ptime pstamp;
+
+        if( obj.getField( "scope", scopeStr ) == false )
+        {
+            return;
+        } 
+
+        if( obj.getField( "reftime", refTimeStr ) == false )
+        {
+            return;
+        } 
+
+        pstamp = boost::posix_time::from_iso_string( refTimeStr );
+
+        boost::local_time::time_zone_ptr zone = get_system_timezone();
+        boost::local_time::local_date_time ltstamp( pstamp, zone );
+
+        if( gTRSScopeStrings[ TRS_REPEAT_MINUTE ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%S sec each minute") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_HOUR ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%M:%S min/sec each hour") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_DAY ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%I:%M:%S %p each day") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_WEEK ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%A %I:%M:%S %p of each week") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_EVEN_WEEK ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%A %I:%M:%S %p of EVEN weeks") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_ODD_WEEK ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%A at %I:%M:%S %p of ODD weeks") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+        else if( gTRSScopeStrings[ TRS_REPEAT_YEAR ] == scopeStr )
+        {
+            boost::local_time::local_time_facet* ltfacet( new boost::local_time::local_time_facet("%x %I:%M:%S %p of each year") );
+            std::cout.imbue( std::locale(std::cout.getloc(), ltfacet) );
+
+            std::cout << std::setw( offset ) << " " << idStr << ": " << ltstamp << std::endl;
+        }
+
+    }
+    else
+    {
+        display_rawobj( offset, "Trigger Rule", obj );
+    }
+}
+
+void 
+display_trigger_rule_list( unsigned long offset, std::vector< RESTContentNode > &objList )
+{
+    for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+    {  
+        display_trigger_rule( offset, *it );
+    }
+}
+
+void 
+display_trigger_group( unsigned long offset, RESTContentNode &obj )
+{
+    std::string idStr;
+    std::string nameStr;
+    std::string descStr;
+
+    obj.getField( "id", idStr );
+    obj.getField( "name", nameStr );
+    obj.getField( "desc", descStr );
+
+    std::cout << std::setw( offset ) << " " << idStr << ": " << nameStr << " - " << descStr << std::endl;
+}
+
+void 
+display_zone_rule( unsigned long offset, RESTContentNode &obj )
+{
+    std::string tmpStr;
+    std::string idStr;
+    std::string typeStr;
+
+    if( obj.getField( "type", typeStr ) == false )
+    {
+        return;
+    }
+
+    if( obj.getField( "id", idStr ) == false )
+    {
+        return;
+    }
+
+    if( "fixedduration" == typeStr )
+    {
+        std::string durStr;
+        std::string zoneIDStr;
+        unsigned long duration;
+        char tdStr[128];
+
+        if( obj.getField( "duration", durStr ) == false )
+        {
+            return;
+        } 
+
+        if( obj.getField( "zoneid", zoneIDStr ) == false )
+        {
+            return;
+        } 
+
+        duration = strtol( durStr.c_str(), NULL, 0 );
+
+        durStr.clear();
+
+        if( duration > (60*60) )
+        {
+            unsigned long hours = duration / (60*60);
+            sprintf(tdStr, "%ld hours ", hours);
+            durStr += tdStr;
+            duration -= (hours * 60 * 60);
+        }
+
+        if( duration > 60 )
+        {
+            unsigned long mins = duration / 60;
+            sprintf(tdStr, "%ld minutes ", mins);
+            durStr += tdStr;
+            duration -= (mins * 60);
+        }
+
+        if( duration )
+        {
+            sprintf(tdStr, "%ld seconds ", duration);
+            durStr += tdStr;
+        }
+
+        std::cout << std::setw( offset ) << " " << idStr << ": " << zoneIDStr  << " for " << durStr << std::endl;
+
+    }
+    else
+    {
+        display_rawobj( offset, "Zone Rule", obj );
+    }
+}
+
+void 
+display_zone_rule_list( unsigned long offset, std::vector< RESTContentNode > &objList )
+{
+    for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
+    {  
+        display_zone_rule( offset, *it );
+    }
+}
+
+void 
+display_zone_group( unsigned long offset, RESTContentNode &obj )
+{
+    std::string idStr;
+
+    obj.getField( "id", idStr );
+
+    std::cout << std::setw( offset ) << " " << idStr << ": " << "Sequential zone group" << std::endl;
+}
+
+void 
+display_schedule_event( unsigned long offset, RESTContentNode &obj )
+{
+    std::string enableStr;
+    std::string idStr;
+    std::string nameStr;
+    std::string descStr;
+
+    if( obj.getField( "id", idStr ) == false )
+    {
+        return;
+    }
+
+    obj.getField( "name", nameStr );
+    obj.getField( "desc", descStr );
+    obj.getField( "enabled", enableStr );
+
+    std::cout << std::setw( offset ) << " " << idStr << ": " << nameStr  << "( " << ( enableStr == "true" ? "enabled" : "disabled" ) << " )" << " - " << descStr << std::endl;
 }
 
 bool
@@ -1401,6 +1625,7 @@ get_zone_groups( bool detail )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
+    unsigned long offset = 0;
 
     std::string url = "http://localhost:8200/schedule/zone-groups";
 
@@ -1417,10 +1642,11 @@ get_zone_groups( bool detail )
 
             get_zone_group_rules( true, it->getID(), zriList, zroList ); 
     
+    
+            display_zone_group( offset, *it );
+            display_zone_rule_list( offset+4, zroList );
+
             std::cout << std::endl;
-            std::string title = "Object( id: " + it->getID() + " )";
-            display_rawobj( title, *it );
-            display_rawobj_list( "Zone Rule Objects", zroList );
         }
     }
     else
@@ -1464,6 +1690,7 @@ get_trigger_groups( bool detail )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
+    unsigned long offset = 0;
 
     std::string url = "http://localhost:8200/schedule/trigger-groups";
 
@@ -1473,8 +1700,6 @@ get_trigger_groups( bool detail )
     {
         get_objects_for_ids( url, "tmpname", idList, objList );
 
-        std::cout << "==== " << "Trigger Group Objects" << " ====" << std::endl;
-
         for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
         {  
             std::vector< std::string > triList;
@@ -1482,10 +1707,10 @@ get_trigger_groups( bool detail )
 
             get_trigger_group_rules( true, it->getID(), triList, troList ); 
     
+            display_trigger_group( offset, *it );
+            display_trigger_rule_list( offset+4, troList );
+
             std::cout << std::endl;
-            std::string title = "Object( id: " + it->getID() + " )";
-            display_rawobj( title, *it );
-            display_rawobj_list( "Trigger Rule Objects", troList );
         }
 
     }
@@ -1508,9 +1733,9 @@ void get_schedule_events( bool detail )
 
         for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
         {  
+            unsigned long offset = 0;
             RESTContentNode zgObj;
             std::vector< RESTContentNode > zroList;
-
             RESTContentNode tgObj;
             std::vector< RESTContentNode > troList;
 
@@ -1528,22 +1753,34 @@ void get_schedule_events( bool detail )
                 get_zone_group_details( zgID, zgObj, zroList );
             }
 
+            display_schedule_event( offset, *it );
             std::cout << std::endl;
-            std::string title = "Object( id: " + it->getID() + " )";
-            display_rawobj( title, *it );
+            //std::string title = "Object( id: " + it->getID() + " )";
+            //display_rawobj( offset, title, *it );
+            //std::cout << std::endl;
+
+            offset += 4;
 
             if( tgID.empty() == false )
             {
-                std::string tgtitle = "Object( id: " + tgObj.getID() + " )";
-                display_rawobj( tgtitle, tgObj );
-                display_rawobj_list( "Trigger Rule Objects", troList );
+                display_trigger_group( offset, tgObj );
+                display_trigger_rule_list( offset+4, troList );
+                //std::string tgtitle = "Trigger Group( id: " + tgObj.getID() + " )";
+                //display_rawobj( offset, tgtitle, tgObj );
+                //std::cout << std::endl;
+                //display_rawobj_list( offset, "Trigger Rule", troList );
+                std::cout << std::endl;
             }
 
             if( zgID.empty() == false )
             {
-                std::string zgtitle = "Object( id: " + zgObj.getID() + " )";
-                display_rawobj( zgtitle, zgObj );
-                display_rawobj_list( "Zone Rule Objects", zroList );
+                display_zone_group( offset, zgObj );
+                display_zone_rule_list( offset+4, zroList );
+//                std::string zgtitle = "Zone Group( id: " + zgObj.getID() + " )";
+//                display_rawobj( offset, zgtitle, zgObj );
+//                std::cout << std::endl;
+//                display_rawobj_list( offset, "Zone Rule", zroList );
+                std::cout << std::endl;
             }
         }
 

@@ -1323,12 +1323,12 @@ RESTContentHelperXML::parseRawData( RESTRepresentation *repPtr )
     unsigned long dataLength;
     std::string   contentType;
    
-    std::cout << "RESTContentHelperXML::parseRepSimple -- start" << std::endl;
+    //std::cout << "RESTContentHelperXML::parseRepSimple -- start" << std::endl;
 
     // Find the databuffer to parse
     dataPtr = repPtr->getSimpleContentPtr( contentType, dataLength );
 
-    printf( "Data(%d):\n%*.*s\n", dataLength, dataLength, dataLength, dataPtr );
+    //printf( "Data(%d):\n%*.*s\n", dataLength, dataLength, dataLength, dataPtr );
  
     // Run the simple content through the xml parser
     doc = xmlParseMemory( (const char *)dataPtr, dataLength );
@@ -1340,7 +1340,7 @@ RESTContentHelperXML::parseRawData( RESTRepresentation *repPtr )
     // Get the root element for the document
     rootElem = xmlDocGetRootElement( doc );
 
-    std::cout << "Root Elem Name: " << rootElem->name << std::endl;
+    //std::cout << "Root Elem Name: " << rootElem->name << std::endl;
 
     // Clean up any old root element
     clearRootNode(); 
