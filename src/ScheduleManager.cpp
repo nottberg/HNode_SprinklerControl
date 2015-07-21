@@ -2153,21 +2153,18 @@ ScheduleEventRule::setFieldsFromContentNode( RESTContentNode *objCN )
     }
 
     // Optional Fields
-    objCN->getField( "enabled", tmpStr );
-
-    if( tmpStr.empty() )
-    {
-        // The attribute was not found
-        enabled = true;
-    }
-    else
+    if( objCN->getField( "enabled", tmpStr ) )
     {
         // Set state according to 
         // configuration file.
         if( tmpStr == "true" )
+        {
             enabled = true;
+        }
         else
+        {
             enabled = false;
+        }
     }
 
 }
@@ -2477,7 +2474,7 @@ ScheduleManager::loadConfiguration()
     std::string filePath;
     ScheduleConfig cfgReader;
 
-    filePath = cfgPath + "/irrigation/test_config2.xml";
+    filePath = cfgPath + "/irrigation/schedule_config.xml";
 
     // Clear out any existing items.
     clear();
@@ -2496,7 +2493,7 @@ ScheduleManager::saveConfiguration()
     ScheduleConfig cfgWriter;
     std::string filePath;
 
-    filePath = cfgPath + "/irrigation/test_config2.xml";
+    filePath = cfgPath + "/irrigation/schedule_config.xml";
 
     // Write everything out to a file
     cfgWriter.writeConfig( filePath, this );
