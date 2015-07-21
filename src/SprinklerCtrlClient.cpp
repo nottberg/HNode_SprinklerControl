@@ -29,12 +29,12 @@ bool hasEnding( std::string const &fullString, std::string const &ending )
 }
 
 bool 
-create_zone_rule( std::string parentID, std::string zoneID, int duration, std::string &zrID )
+create_zone_rule( std::string zgID, std::string zoneID, int duration, std::string &zrID )
 {
     RESTHttpClient client;
     char durStr[32];
     std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + parentID + "/members";
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
 
     client.setRequest( RHC_REQTYPE_POST, url );
 
@@ -62,11 +62,11 @@ create_zone_rule( std::string parentID, std::string zoneID, int duration, std::s
 }
 
 bool 
-create_from_zone_list( std::string parentID, std::string name, std::string zoneList )
+add_zone_rules( std::string zgID, std::string zoneSpecStr )
 {
     std::string zrID;
     boost::regex re(",+");
-    boost::sregex_token_iterator i( zoneList.begin(), zoneList.end(), re, -1);
+    boost::sregex_token_iterator i( zoneSpecStr.begin(), zoneSpecStr.end(), re, -1);
     boost::sregex_token_iterator j;
 
     while(i != j)
@@ -115,9 +115,7 @@ create_from_zone_list( std::string parentID, std::string name, std::string zoneL
             k++;
         }
 
-        create_zone_rule( parentID, zoneID, duration, zrID );
-
-        std::cout << "Created Zone Rule: " << zrID << std::endl;
+        create_zone_rule( zgID, zoneID, duration, zrID );
 
         i++;
     }
@@ -156,10 +154,70 @@ create_zone_group( std::string name, std::string desc, std::string zones, std::s
     // If there is also a zone list then continue processing
     if( zones.size() )
     {
-        create_from_zone_list( zgID, "zonerule", zones );
+        add_zone_rules( zgID, zones );
     }
 }
 
+bool 
+update_zone_group( std::string zgID, std::string name, std::string desc )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID;
+
+    client.setRequest( RHC_REQTYPE_PUT, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-zone-group" );
+
+    if( name.empty() == false )
+    {
+        objNode->setField( "name", name );
+    }
+
+    if( desc.empty() == false )
+    {
+        objNode->setField( "desc", desc );
+    }
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+}
+
+bool 
+delete_zone_group( std::string zgID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID;
+
+    client.setRequest( RHC_REQTYPE_DELETE, url );
+
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    client.makeRequest();
+}
+
+bool
+delete_zone_rule( std::string zgID, std::string zrID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members/" + zrID;
+
+    client.setRequest( RHC_REQTYPE_DELETE, url );
+
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    client.makeRequest();
+}
 
 bool
 create_trigger_group( std::string name, std::string desc, std::string &tgID )
@@ -188,6 +246,67 @@ create_trigger_group( std::string name, std::string desc, std::string &tgID )
     client.getLocationHeaderTerminal( tgID );
 
     std::cout << "tgID: " << tgID << std::endl;
+}
+
+bool
+update_trigger_group( std::string tgID, std::string name, std::string desc )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID;
+
+    client.setRequest( RHC_REQTYPE_PUT, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-trigger-group" );
+
+    if( name.empty() == false )
+    {
+        objNode->setField( "name", name );
+    }
+
+    if( desc.empty() == false )
+    {
+        objNode->setField( "desc", desc );
+    }
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+}
+
+bool
+delete_trigger_group( std::string tgID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID;
+
+    client.setRequest( RHC_REQTYPE_DELETE, url );
+
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    client.makeRequest();
+}
+
+bool
+delete_trigger_rule( std::string tgID, std::string trID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members/" + trID;
+
+    client.setRequest( RHC_REQTYPE_DELETE, url );
+
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    client.makeRequest();
 }
 
 boost::local_time::time_zone_ptr
@@ -447,35 +566,7 @@ build_day_of_week_list( std::string timeListStr, TRS_REPEAT_T repeat, boost::gre
     }    
 }
 
-bool 
-create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
-{
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
 
-    client.setRequest( RHC_REQTYPE_POST, url );
-
-    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
-    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
-
-    // Allocate the appropriate type of helper to parse the content
-    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
-    RESTContentNode *objNode  = helper->getRootNode();
-
-    objNode->setAsObject( "schedule-trigger-rule" );
-    objNode->setField( "type", "time" );
-    objNode->setField( "scope", trSpec.getScopeAsStr() );
-    objNode->setField( "reftime", trSpec.getReftimeAsISOStr() );
-
-    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
-
-    client.makeRequest();
-
-    client.getLocationHeaderTerminal( trID );
-
-    std::cout << "trID: " << trID << std::endl;
-}
 
 void
 process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &trList )
@@ -673,6 +764,51 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
     }        
 }
 
+bool 
+create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
+
+    client.setRequest( RHC_REQTYPE_POST, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-trigger-rule" );
+    objNode->setField( "type", "time" );
+    objNode->setField( "scope", trSpec.getScopeAsStr() );
+    objNode->setField( "reftime", trSpec.getReftimeAsISOStr() );
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+
+    client.getLocationHeaderTerminal( trID );
+
+    std::cout << "trID: " << trID << std::endl;
+}
+
+void
+add_trigger_rules( std::string tgID, std::string timeSpec )
+{
+    std::vector< TriggerRuleSpec > trList;
+    std::string trID;
+
+    process_time_set_list( timeSpec, trList );
+
+    for( std::vector< TriggerRuleSpec >::iterator it = trList.begin(); it != trList.end(); ++it )
+    {
+        it->debugPrint();
+        create_trigger_rule( tgID, *it, trID );
+    }    
+}
+
 bool
 create_schedule_rule( std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
 {
@@ -704,36 +840,110 @@ create_schedule_rule( std::string name, std::string desc, std::string zgID, std:
     std::cout << "New ObjID: " << locID << std::endl;
 }
 
-#if 0
-    std::string contentType;
-    unsigned char *data;
-    unsigned long length;
-    data = client.getOutboundRepresentation().getSimpleContentPtr( contentType, length );
-    printf( "%*.*s\n", length, length, data );
-#endif
-
-size_t
-schedule_event_log_reader( void *buffer, size_t size, size_t nmemb, void *userp )
+bool
+update_schedule_rule( std::string seID, std::string name, std::string desc, std::string zgID, std::string tgID )
 {
-    xmlParserCtxtPtr *pctxt = (xmlParserCtxtPtr *) userp;
-    xmlParserCtxtPtr ctxt   = *pctxt;
-    size_t length = size * nmemb;
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/rules/" + seID;
 
-    if( ctxt == NULL )
+    client.setRequest( RHC_REQTYPE_PUT, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-event-rule" );
+
+    if( name.empty() == false )
     {
-        ctxt = xmlCreatePushParserCtxt( NULL, NULL, (const char *) buffer, length, "dummy.xml" ); 
-      
-        *pctxt = ctxt;
-    }
-    else
-    {
-        xmlParseChunk( ctxt, (const char *) buffer, length, 0 );
+        objNode->setField( "name", name );
     }
 
-    return length;
+    if( desc.empty() == false )
+    {
+        objNode->setField( "desc", desc );
+    }
+
+    if( zgID.empty() == false )
+    {
+        objNode->setField( "zone-group-id", zgID );
+    }
+
+    if( tgID.empty() == false )
+    {
+        objNode->setField( "trigger-group-id", tgID );
+    }
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
 }
 
+bool
+delete_schedule_rule( std::string seID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/rules/" + seID;
 
+    client.setRequest( RHC_REQTYPE_DELETE, url );
+
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    client.makeRequest();
+}
+
+bool
+enable_schedule_rule( std::string seID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+
+    client.setRequest( RHC_REQTYPE_PUT, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-event-rule" );
+    objNode->setField( "enabled", "true" );
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+}
+
+bool
+disable_schedule_rule( std::string seID )
+{
+    RESTHttpClient client;
+    std::string locID;
+    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+
+    client.setRequest( RHC_REQTYPE_PUT, url );
+
+    client.getOutboundRepresentation().setSimpleContent( "application/xml" );
+    client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
+
+    // Allocate the appropriate type of helper to parse the content
+    RESTContentHelper *helper = RESTContentHelperFactory::getRequestSimpleContentHelper( &client.getOutboundRepresentation() );
+    RESTContentNode *objNode  = helper->getRootNode();
+
+    objNode->setAsObject( "schedule-event-rule" );
+    objNode->setField( "enabled", "false" );
+
+    helper->generateContentRepresentation( &client.getOutboundRepresentation() );
+
+    client.makeRequest();
+}
 
 void
 get_event_log()
@@ -1755,9 +1965,6 @@ void get_schedule_events( bool detail )
 
             display_schedule_event( offset, *it );
             std::cout << std::endl;
-            //std::string title = "Object( id: " + it->getID() + " )";
-            //display_rawobj( offset, title, *it );
-            //std::cout << std::endl;
 
             offset += 4;
 
@@ -1765,10 +1972,6 @@ void get_schedule_events( bool detail )
             {
                 display_trigger_group( offset, tgObj );
                 display_trigger_rule_list( offset+4, troList );
-                //std::string tgtitle = "Trigger Group( id: " + tgObj.getID() + " )";
-                //display_rawobj( offset, tgtitle, tgObj );
-                //std::cout << std::endl;
-                //display_rawobj_list( offset, "Trigger Rule", troList );
                 std::cout << std::endl;
             }
 
@@ -1776,10 +1979,6 @@ void get_schedule_events( bool detail )
             {
                 display_zone_group( offset, zgObj );
                 display_zone_rule_list( offset+4, zroList );
-//                std::string zgtitle = "Zone Group( id: " + zgObj.getID() + " )";
-//                display_rawobj( offset, zgtitle, zgObj );
-//                std::cout << std::endl;
-//                display_rawobj_list( offset, "Zone Rule", zroList );
                 std::cout << std::endl;
             }
         }
@@ -1791,20 +1990,19 @@ void get_schedule_events( bool detail )
 
 int main( int argc, char* argv[] )
 {
-    std::string objID;
-    std::string obj2ID;
-
     std::string descStr;
     std::string nameStr;
 
+    std::string seID;
     std::string zgID;
     std::string tgID;
+    std::string zrID;
+    std::string trID;
     std::string zoneID;
-    std::string triggerID;
 
-    std::string zoneListStr;
+    std::string zoneSpecStr;
 
-    std::string wksListStr;
+    std::string timeSpecStr;
     std::string sdiListStr;
 
     std::string periodStr;
@@ -1813,60 +2011,49 @@ int main( int argc, char* argv[] )
     po::options_description desc("HNode Sprinkler Control Client");
     desc.add_options()
         ("help", "produce help message")
-        ("ids", "Retrieve a list of object ids")
-        ("new", "Create a new object")
-        ("object", "Get the fields for an object")
-        ("update", "Update the fields in an object")
-        ("delete", "Delete an existing object")
-
-        ("desc", po::value<std::string>(&descStr), "The value for the description field.")
-        ("name", po::value<std::string>(&nameStr), "The value for the name field.")
-
-        ("get-zone-list", "Get a list of available zones.")
-
-        ("zone-groups", "Get a list of zone groups.  Specify the --detail parameter to get more than ids." )
-        ("new-zone-group", "Create a new zone group.  Requires the --name and --desc parameters. Optional --zone-list parameter.")
-        ("add-zone", "Add a new zone to a zone group. Requires the --zgID parameter.")
-        ("delete-zone", "Delete a zone from a zone group. Requires the --zgID and --zoneID parameters.")
-
-        ("trigger-groups", "Get a list of trigger groups.  Specify the --detail parameter to get more than ids." )
-        ("new-trigger-group", "Create a new trigger group.  Requires the --name and --desc parameters. Optional --day-and-time-list and --start-duration-interval parameters.")
-        ("add-trigger", "Add a new trigger to a trigger group. Requires the --tgID parameter.")
-        ("delete-trigger", "Delete a trigger from a trigger group. Requires the --tgID and --triggerID parameters.")
-
-        ("schedule-events", "Get a list of schedule events.  Specify the --detail parameter to get more than ids." )
-        ("new-schedule-event", "Create a schedule event. Requires the --name, --desc, --zgID, --tgID parameters.")
-
-        ("zgID", po::value<std::string>(&zgID), "Specify the ID of a zone group to use with the command.")        
-        ("tgID", po::value<std::string>(&tgID), "Specify the ID of a trigger group to use with the command.")        
-        ("zoneID", po::value<std::string>(&zoneID), "Specify the ID of a zone to use with the command.")        
-        ("triggerID", po::value<std::string>(&triggerID), "Specify the ID of a trigger to use with the command.")        
-
-        ("zone-list", po::value<std::string>(&zoneListStr), "Specify a comma seperated ordered list of zones specifiers. (i.e. zone1:5m,zone2:10m,zone3:1m)")
 
         ("get-event-log", "Get the event log.")
         ("get-status", "Get current schedule status.")
         ("get-calendar", "Get the potential events for a period of time.")
 
-        // scope, start-scope, time-list, interval, repeat; next-entry
-        // scope is hourly, daily, weekly, monthly
-        ("time-list",  po::value<std::string>(&wksListStr), "Specify a list of days and times. (i.e. Mon:6am,7pm;Tue:5pm;Fri:6am,7pm")
-
-        ("detail", "In addition to getting object ids; also get the objects contents.")
-
         ("period",  po::value<std::string>(&periodStr), "Specify a calendar period. (today, week, twoweek, month)")
 
-        ("event-rule", "Operate on event rules.")
-        ("zone-group", "Operate on zone groups.")
-        ("trigger-group", "Operate on trigger groups")
-        ("zone-rule", "Operate on a zone rule")
-        ("trigger-rule", "Operate on a trigger rule")
+        ("zone-list", "Get a list of available zones.")
+        ("zone-groups", "Get a list of zone groups.  Specify the --detail parameter to get more than ids." )
+        ("trigger-groups", "Get a list of trigger groups.  Specify the --detail parameter to get more than ids." )
+        ("schedule-events", "Get a list of schedule events.  Specify the --detail parameter to get more than ids." )
 
-        ("cmd", "dummy cmd")
-        ("objid", po::value<std::string>(&objID), "The object id.")
-        ("objid2", po::value<std::string>(&obj2ID), "The object id 2.")
+        ("detail", "In addition to getting object ids; also get the objects contents and any referenced contents.")
 
+        ("new-zone-group", "Create a new zone group.  Requires the --name and --desc parameters. Optional --zone-list parameter.")
+        ("update-zone-group", "Update a zone group. Requires --zgID parameter.")
+        ("delete-zone-group", "Delete a zone group. Requires --zgID parameter.")
+        ("add-zone-rules", "Add new zone rules to a zone group. Requires the --zgID parameter.")
+        ("delete-zone-rule", "Delete a zone from a zone group. Requires the --zgID and --zrID parameters.")
 
+        ("new-trigger-group", "Create a new trigger group.  Requires the --name and --desc parameters. Optional --day-and-time-list and --start-duration-interval parameters.")
+        ("update-trigger-group", "Update a trigger group.  Requires the --tgID parameter.")
+        ("delete-trigger-group", "Delete a trigger group. Requires the --tgID parameter.")
+        ("add-trigger-rules", "Add trigger rules to a trigger group. Requires --tgID parameter.")
+        ("delete-trigger-rule", "Delete a trigger from a trigger group. Requires the --tgID and --triggerID parameters.")
+
+        ("new-schedule-event", "Create a schedule event. Requires the --name, --desc, --zgID, --tgID parameters.")
+        ("update-schedule-event", "Update a schedule event. Requires the --seID parameter.")
+        ("delete-schedule-event", "Delete a schedule event. Requires the --seID parameter.")
+        ("enable-schedule-event", "Set a schedule event to enabled. Requires the --seID parameter.")
+        ("disable-schedule-event", "Set a schedule event to disabled. Requires the --seID parameter.")
+
+        ("desc", po::value<std::string>(&descStr), "The value for the description field.")
+        ("name", po::value<std::string>(&nameStr), "The value for the name field.")
+        ("zone-spec", po::value<std::string>(&zoneSpecStr), "Specify a comma seperated ordered list of zones specifiers. (i.e. zone1:5m,zone2:10m,zone3:1m)")
+        ("time-spec",  po::value<std::string>(&timeSpecStr), "Specify a list of days and times. (i.e. Mon:6am,7pm;Tue:5pm;Fri:6am,7pm")
+
+        ("seID", po::value<std::string>(&seID), "Specify the ID of a schedule event rule.")        
+        ("zgID", po::value<std::string>(&zgID), "Specify the ID of a zone group.")        
+        ("tgID", po::value<std::string>(&tgID), "Specify the ID of a trigger group.")
+        ("zrID", po::value<std::string>(&zrID), "Specify the ID of a zone rule.")        
+        ("trID", po::value<std::string>(&trID), "Specify the ID of a trigger rule.")        
+        ("zoneID", po::value<std::string>(&zoneID), "Specify the ID of a zone.")        
     ;
 
     po::variables_map vm;
@@ -1882,13 +2069,37 @@ int main( int argc, char* argv[] )
     // In windows, this will init the winsock stuff 
     //curl_global_init(CURL_GLOBAL_ALL);
 
-    if( vm.count( "get-zone-list" ) )
+    if( vm.count( "zone-list" ) )
     {
         get_zone_list( (vm.count( "detail" ) ? true : false) );
     }
+    else if( vm.count( "get-event-log" ) )
+    {
+        get_event_log();
+    }
+    else if( vm.count( "get-status" ) )
+    {
+        get_status();
+    }
+    else if( vm.count( "get-calendar" ) )
+    {
+        get_calendar( periodStr );
+    }
+    else if( vm.count( "zone-groups" ) )
+    {
+        get_zone_groups( vm.count( "detail" ) ? true : false );
+    }
+    else if( vm.count( "trigger-groups" ) )
+    {
+        get_trigger_groups( vm.count( "detail" ) ? true : false );
+    }
+    else if( vm.count( "schedule-events" ) )
+    {
+        get_schedule_events( vm.count( "detail" ) ? true : false );
+    }
     else if( vm.count( "new-zone-group" ) )
     {
-        std::string zgID;
+        std::string newZGID;
 
         if( !vm.count( "name" ) )
         {
@@ -1902,9 +2113,55 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        create_zone_group( nameStr, descStr, zoneListStr, zgID );
+        create_zone_group( nameStr, descStr, zoneSpecStr, newZGID );
 
-        std::cout << "Zone Group created successfully. ( ID: " << zgID << " )" << std::endl; 
+        std::cout << "Zone Group created successfully. ( ID: " << newZGID << " )" << std::endl; 
+    }
+    else if( vm.count( "update-zone-group" ) )
+    {
+        if( !vm.count( "zgID" ) )
+        {
+            std::cerr << "ERROR: The --zgID parameter is required when updating a zone group." << std::endl;
+            return( -1 );
+        }
+
+        update_zone_group( zgID, nameStr, descStr );
+    }
+    else if( vm.count( "delete-zone-group" ) )
+    {
+        if( !vm.count( "zgID" ) )
+        {
+            std::cerr << "ERROR: The --zgID parameter is required when deleting a zone group." << std::endl;
+            return( -1 );
+        }
+
+        delete_zone_group( zgID );
+    }
+    else if( vm.count( "add-zone-rules" ) )
+    {
+        if( !vm.count( "zgID" ) )
+        {
+            std::cerr << "ERROR: The --zgID parameter is required when deleting a zone group." << std::endl;
+            return( -1 );
+        }
+
+        add_zone_rules( zgID, zoneSpecStr );
+    }
+    else if( vm.count( "delete-zone-rule" ) )
+    {
+        if( !vm.count( "zgID" ) )
+        {
+            std::cerr << "ERROR: The --zgID parameter is required when deleting a zone rule." << std::endl;
+            return( -1 );
+        }
+
+        if( !vm.count( "zrID" ) )
+        {
+            std::cerr << "ERROR: The --zrID parameter is required when deleting a zone rule." << std::endl;
+            return( -1 );
+        }
+
+        delete_zone_rule( zgID, zrID );
     }
     else if( vm.count( "new-trigger-group" ) )
     {
@@ -1926,19 +2183,56 @@ int main( int argc, char* argv[] )
 
         std::cout << "Trigger Group created successfully. ( ID: " << tgID << " )" << std::endl; 
 
-        if( vm.count( "time-list" ) )
+        if( vm.count( "time-spec" ) )
         {
-            std::vector< TriggerRuleSpec > trList;
-            std::string trID;
-
-            process_time_set_list( wksListStr, trList );
-
-            for( std::vector< TriggerRuleSpec >::iterator it = trList.begin(); it != trList.end(); ++it )
-            {
-                it->debugPrint();
-                create_trigger_rule( tgID, *it, trID );
-            }    
+            add_trigger_rules( tgID, timeSpecStr );
         }
+    }
+    else if( vm.count( "update-trigger-group" ) )
+    {
+        if( !vm.count( "tgID" ) )
+        {
+            std::cerr << "ERROR: The --tgID parameter is required when updating a trigger group." << std::endl;
+            return( -1 );
+        }
+
+        update_trigger_group( tgID, nameStr, descStr );
+    }
+    else if( vm.count( "delete-trigger-group" ) )
+    {
+        if( !vm.count( "tgID" ) )
+        {
+            std::cerr << "ERROR: The --tgID parameter is required when deleting a trigger group." << std::endl;
+            return( -1 );
+        }
+
+        delete_trigger_group( tgID );
+    }
+    else if( vm.count( "add-trigger-rules" ) )
+    {
+        if( !vm.count( "tgID" ) )
+        {
+            std::cerr << "ERROR: The --tgID parameter is required when deleting a trigger group." << std::endl;
+            return( -1 );
+        }
+
+        add_trigger_rules( tgID, timeSpecStr );
+    }
+    else if( vm.count( "delete-trigger-rule" ) )
+    {
+        if( !vm.count( "tgID" ) )
+        {
+            std::cerr << "ERROR: The --tgID parameter is required when deleting a trigger rule." << std::endl;
+            return( -1 );
+        }
+
+        if( !vm.count( "trID" ) )
+        {
+            std::cerr << "ERROR: The --trID parameter is required when deleting a trigger rule." << std::endl;
+            return( -1 );
+        }
+
+        delete_trigger_rule( tgID, trID );
     }
     else if( vm.count( "new-schedule-event" ) )
     {
@@ -1970,30 +2264,47 @@ int main( int argc, char* argv[] )
 
         create_schedule_rule( nameStr, descStr, zgID, tgID, erID);
     }
-    else if( vm.count( "get-event-log" ) )
+    else if( vm.count( "update-schedule-event" ) )
     {
-        get_event_log();
+        if( !vm.count( "seID" ) )
+        {
+            std::cerr << "ERROR: The --seID parameter is required when deleting a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        update_schedule_rule( seID, nameStr, descStr, zgID, tgID );
     }
-    else if( vm.count( "get-status" ) )
+    else if( vm.count( "delete-schedule-event" ) )
     {
-        get_status();
+        if( !vm.count( "seID" ) )
+        {
+            std::cerr << "ERROR: The --seID parameter is required when deleting a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        delete_schedule_rule( seID );
     }
-    else if( vm.count( "get-calendar" ) )
+    else if( vm.count( "enable-schedule-event" ) )
     {
-        get_calendar( periodStr );
+        if( !vm.count( "seID" ) )
+        {
+            std::cerr << "ERROR: The --seID parameter is required when deleting a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        enable_schedule_rule( seID );
     }
-    else if( vm.count( "zone-groups" ) )
+    else if( vm.count( "disable-schedule-event" ) )
     {
-        get_zone_groups( vm.count( "detail" ) ? true : false );
+        if( !vm.count( "seID" ) )
+        {
+            std::cerr << "ERROR: The --seID parameter is required when deleting a schedule entry." << std::endl;
+            return( -1 );
+        }
+
+        disable_schedule_rule( seID );
     }
-    else if( vm.count( "trigger-groups" ) )
-    {
-        get_trigger_groups( vm.count( "detail" ) ? true : false );
-    }
-    else if( vm.count( "schedule-events" ) )
-    {
-        get_schedule_events( vm.count( "detail" ) ? true : false );
-    }
+
 
 #if 0
     else if( vm.count( "ids" ) )
