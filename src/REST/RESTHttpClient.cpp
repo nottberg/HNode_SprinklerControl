@@ -161,7 +161,6 @@ RESTHttpClient::makeRequest()
             }
         }
 
-
         // If debug then turn on verbose
         if( debug == true )
             curl_easy_setopt( curl, CURLOPT_VERBOSE, 1L );

@@ -674,6 +674,8 @@ RESTRepresentation::setSimpleContent( std::string contentType )
     }
 
     simpleContent->setContentType( contentType );  
+
+    addHTTPHeader( "Content-Type", contentType );
 }
 
 void 
@@ -704,6 +706,8 @@ RESTRepresentation::setSimpleContent( std::string contentType, unsigned char *co
     diPtr->addData( 0, (const char*)contentPtr, contentLength );
 
     simpleContent = diPtr;
+
+    addHTTPHeader( "Content-Type", contentType );
 }
 
 void 
