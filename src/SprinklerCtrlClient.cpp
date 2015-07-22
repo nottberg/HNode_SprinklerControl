@@ -1976,8 +1976,7 @@ void get_schedule_events( RESTHttpClient &client, bool detail )
 
 int main( int argc, char* argv[] )
 {
-    std::string descStr;
-    std::string nameStr;
+    std::string hostStr;
 
     std::string seID;
     std::string zgID;
@@ -1986,10 +1985,11 @@ int main( int argc, char* argv[] )
     std::string trID;
     std::string zoneID;
 
-    std::string zoneSpecStr;
+    std::string descStr;
+    std::string nameStr;
 
+    std::string zoneSpecStr;
     std::string timeSpecStr;
-    std::string sdiListStr;
 
     std::string periodStr;
 
@@ -1997,6 +1997,8 @@ int main( int argc, char* argv[] )
     po::options_description desc("HNode Sprinkler Control Client");
     desc.add_options()
         ("help", "produce help message")
+
+        ("host",  po::value<std::string>(&hostStr), "Direct requests to a remote host.  Host string format is 'host:port' or 'addr:port'.")
 
         ("get-event-log", "Get the event log.")
         ("get-status", "Get current schedule status.")
@@ -2057,7 +2059,14 @@ int main( int argc, char* argv[] )
 
     // Setup a common client.
     RESTHttpClient client;
-    client.setHost( "localhost:8200" );
+    if( vm.count( "host" ) )
+    {
+        client.setHost( hostStr );
+    }
+    else
+    {
+        client.setHost( "localhost:8200" );
+    }
 
     // Determine the request
     if( vm.count( "zone-list" ) )
