@@ -947,6 +947,7 @@ class RESTHttpClient
 {
     private:
         RHC_REQTYPE_T  rType;
+        std::string    host;
         std::string    bURL;
 
         bool debug;
@@ -964,7 +965,12 @@ class RESTHttpClient
         RESTHttpClient();
        ~RESTHttpClient();
 
+        void setHost( std::string hostAddr );
+        std::string getHost();
+
         void setRequest( RHC_REQTYPE_T reqType, std::string baseURL );
+
+        void clearRepresentation();
 
         RESTRepresentation &getInboundRepresentation();
         RESTRepresentation &getOutboundRepresentation();

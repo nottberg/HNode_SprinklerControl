@@ -13,11 +13,42 @@ RESTHttpClient::RESTHttpClient()
     rType   = RHC_REQTYPE_GET;
     debug   = false;
     timeout = 30;
+    host    = "localhost";
 }
 
 RESTHttpClient::~RESTHttpClient()
 {
 
+}
+
+void 
+RESTHttpClient::setHost( std::string hostAddr )
+{
+    host = hostAddr;
+}
+
+std::string 
+RESTHttpClient::getHost()
+{
+    return host;
+}
+
+void 
+RESTHttpClient::clearRepresentation()
+{
+    inData.clearURIParameters();
+    inData.clearHTTPHeaders();
+    inData.clearQueryParameters();
+    inData.clearEncodedParameters();
+    inData.clearCookies();
+    inData.clearSimpleContent();
+
+    outData.clearURIParameters();
+    outData.clearHTTPHeaders();
+    outData.clearQueryParameters();
+    outData.clearEncodedParameters();
+    outData.clearCookies();
+    outData.clearSimpleContent();
 }
 
 RESTRepresentation &
@@ -101,7 +132,7 @@ RESTHttpClient::makeRequest()
     CURLcode res;
 
     // Build up the url
-    std::string url = bURL; 
+    std::string url = "http://" + host + "/" + bURL; 
 
     // Process possible headers 
     if( outData.hasQueryParameters() )

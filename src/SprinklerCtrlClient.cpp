@@ -29,13 +29,12 @@ bool hasEnding( std::string const &fullString, std::string const &ending )
 }
 
 bool 
-create_zone_rule( std::string zgID, std::string zoneID, int duration, std::string &zrID )
+create_zone_rule( RESTHttpClient &client, std::string zgID, std::string zoneID, int duration, std::string &zrID )
 {
-    RESTHttpClient client;
     char durStr[32];
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
+    std::string url = "schedule/zone-groups/" + zgID + "/members";
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_POST, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -62,7 +61,7 @@ create_zone_rule( std::string zgID, std::string zoneID, int duration, std::strin
 }
 
 bool 
-add_zone_rules( std::string zgID, std::string zoneSpecStr )
+add_zone_rules( RESTHttpClient &client, std::string zgID, std::string zoneSpecStr )
 {
     std::string zrID;
     boost::regex re(",+");
@@ -115,7 +114,7 @@ add_zone_rules( std::string zgID, std::string zoneSpecStr )
             k++;
         }
 
-        create_zone_rule( zgID, zoneID, duration, zrID );
+        create_zone_rule( client, zgID, zoneID, duration, zrID );
 
         i++;
     }
@@ -123,12 +122,11 @@ add_zone_rules( std::string zgID, std::string zoneSpecStr )
 }
 
 bool 
-create_zone_group( std::string name, std::string desc, std::string zones, std::string &zgID )
+create_zone_group( RESTHttpClient &client, std::string name, std::string desc, std::string zones, std::string &zgID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups";
+    std::string url = "schedule/zone-groups";
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_POST, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -154,17 +152,16 @@ create_zone_group( std::string name, std::string desc, std::string zones, std::s
     // If there is also a zone list then continue processing
     if( zones.size() )
     {
-        add_zone_rules( zgID, zones );
+        add_zone_rules( client, zgID, zones );
     }
 }
 
 bool 
-update_zone_group( std::string zgID, std::string name, std::string desc )
+update_zone_group( RESTHttpClient &client, std::string zgID, std::string name, std::string desc )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID;
+    std::string url = "schedule/zone-groups/" + zgID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_PUT, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -192,12 +189,11 @@ update_zone_group( std::string zgID, std::string name, std::string desc )
 }
 
 bool 
-delete_zone_group( std::string zgID )
+delete_zone_group( RESTHttpClient &client, std::string zgID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID;
+    std::string url = "schedule/zone-groups/" + zgID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_DELETE, url );
 
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -206,12 +202,11 @@ delete_zone_group( std::string zgID )
 }
 
 bool
-delete_zone_rule( std::string zgID, std::string zrID )
+delete_zone_rule( RESTHttpClient &client, std::string zgID, std::string zrID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members/" + zrID;
+    std::string url = "schedule/zone-groups/" + zgID + "/members/" + zrID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_DELETE, url );
 
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -220,12 +215,11 @@ delete_zone_rule( std::string zgID, std::string zrID )
 }
 
 bool
-create_trigger_group( std::string name, std::string desc, std::string &tgID )
+create_trigger_group( RESTHttpClient &client, std::string name, std::string desc, std::string &tgID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups";
+    std::string url = "schedule/trigger-groups";
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_POST, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -249,12 +243,11 @@ create_trigger_group( std::string name, std::string desc, std::string &tgID )
 }
 
 bool
-update_trigger_group( std::string tgID, std::string name, std::string desc )
+update_trigger_group( RESTHttpClient &client, std::string tgID, std::string name, std::string desc )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID;
+    std::string url = "schedule/trigger-groups/" + tgID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_PUT, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -282,12 +275,11 @@ update_trigger_group( std::string tgID, std::string name, std::string desc )
 }
 
 bool
-delete_trigger_group( std::string tgID )
+delete_trigger_group( RESTHttpClient &client, std::string tgID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID;
+    std::string url = "schedule/trigger-groups/" + tgID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_DELETE, url );
 
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -296,12 +288,11 @@ delete_trigger_group( std::string tgID )
 }
 
 bool
-delete_trigger_rule( std::string tgID, std::string trID )
+delete_trigger_rule( RESTHttpClient &client, std::string tgID, std::string trID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members/" + trID;
+    std::string url = "schedule/trigger-groups/" + tgID + "/members/" + trID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_DELETE, url );
 
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -765,12 +756,11 @@ process_time_set_list( std::string timeListStr, std::vector< TriggerRuleSpec > &
 }
 
 bool 
-create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
+create_trigger_rule( RESTHttpClient &client, std::string parentID, TriggerRuleSpec &trSpec, std::string &trID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + parentID + "/members";
+    std::string url = "schedule/trigger-groups/" + parentID + "/members";
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_POST, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -795,7 +785,7 @@ create_trigger_rule( std::string parentID, TriggerRuleSpec &trSpec, std::string 
 }
 
 void
-add_trigger_rules( std::string tgID, std::string timeSpec )
+add_trigger_rules( RESTHttpClient &client, std::string tgID, std::string timeSpec )
 {
     std::vector< TriggerRuleSpec > trList;
     std::string trID;
@@ -805,17 +795,17 @@ add_trigger_rules( std::string tgID, std::string timeSpec )
     for( std::vector< TriggerRuleSpec >::iterator it = trList.begin(); it != trList.end(); ++it )
     {
         it->debugPrint();
-        create_trigger_rule( tgID, *it, trID );
+        create_trigger_rule( client, tgID, *it, trID );
     }    
 }
 
 bool
-create_schedule_rule( std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
+create_schedule_rule( RESTHttpClient &client, std::string name, std::string desc, std::string zgID, std::string tgID, std::string &erID )
 {
-    RESTHttpClient client;
     std::string locID;
 
-    client.setRequest( RHC_REQTYPE_POST, "http://localhost:8200/schedule/rules" );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_POST, "schedule/rules" );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -841,12 +831,11 @@ create_schedule_rule( std::string name, std::string desc, std::string zgID, std:
 }
 
 bool
-update_schedule_rule( std::string seID, std::string name, std::string desc, std::string zgID, std::string tgID )
+update_schedule_rule( RESTHttpClient &client, std::string seID, std::string name, std::string desc, std::string zgID, std::string tgID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+    std::string url = "schedule/rules/" + seID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_PUT, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -884,12 +873,11 @@ update_schedule_rule( std::string seID, std::string name, std::string desc, std:
 }
 
 bool
-delete_schedule_rule( std::string seID )
+delete_schedule_rule( RESTHttpClient &client, std::string seID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+    std::string url = "schedule/rules/" + seID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_DELETE, url );
 
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
@@ -898,12 +886,11 @@ delete_schedule_rule( std::string seID )
 }
 
 bool
-enable_schedule_rule( std::string seID )
+enable_schedule_rule( RESTHttpClient &client, std::string seID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+    std::string url = "schedule/rules/" + seID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_PUT, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -922,12 +909,11 @@ enable_schedule_rule( std::string seID )
 }
 
 bool
-disable_schedule_rule( std::string seID )
+disable_schedule_rule( RESTHttpClient &client, std::string seID )
 {
-    RESTHttpClient client;
-    std::string locID;
-    std::string url = "http://localhost:8200/schedule/rules/" + seID;
+    std::string url = "schedule/rules/" + seID;
 
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_PUT, url );
 
     client.getOutboundRepresentation().setSimpleContent( "application/xml" );
@@ -946,16 +932,16 @@ disable_schedule_rule( std::string seID )
 }
 
 void
-get_event_log()
+get_event_log( RESTHttpClient &client )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Acquire the log data
-    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/event-log/" );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_GET, "schedule/event-log/" );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
     client.makeRequest();
 
@@ -1033,16 +1019,16 @@ get_event_log()
 }
 
 void
-get_status()
+get_status( RESTHttpClient &client )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Acquire the log data
-    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/status/" );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_GET, "schedule/status/" );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
     client.makeRequest();
 
@@ -1095,16 +1081,16 @@ get_status()
 }
 
 void
-get_calendar( std::string periodStr )
+get_calendar( RESTHttpClient &client, std::string periodStr )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Setup
-    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/schedule/calendar/" );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_GET, "schedule/calendar/" );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
 
     // Determine the data range parameters
@@ -1320,17 +1306,17 @@ get_calendar( std::string periodStr )
 }
 
 void 
-get_objects_for_ids( std::string url, std::string objName, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+get_objects_for_ids( RESTHttpClient &client, std::string url, std::string objName, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
 {
 
     for( std::vector< std::string >::iterator it = idList.begin(); it != idList.end(); it++ )
     {
-        RESTHttpClient     client;
         RESTContentHelper *helper;
 
         std::string extURL = url + "/" + *it;
  
         // Acquire the log data
+        client.clearRepresentation();
         client.setRequest( RHC_REQTYPE_GET, extURL );
         client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
         client.makeRequest();
@@ -1350,15 +1336,15 @@ get_objects_for_ids( std::string url, std::string objName, std::vector< std::str
 }
 
 void 
-get_list_of_ids( std::string url, std::string listName, std::vector< std::string > &idList )
+get_list_of_ids( RESTHttpClient &client, std::string url, std::string listName, std::vector< std::string > &idList )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Acquire the log data
+    client.clearRepresentation();
     client.setRequest( RHC_REQTYPE_GET, url );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
     client.makeRequest();
@@ -1658,16 +1644,16 @@ display_schedule_event( unsigned long offset, RESTContentNode &obj )
 }
 
 bool
-get_zone_ids( std::vector< std::string > &idList )
+get_zone_ids( RESTHttpClient &client, std::vector< std::string > &idList )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Acquire the log data
-    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/zones" );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_GET, "zones" );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
     client.makeRequest();
 
@@ -1710,16 +1696,16 @@ get_zone_ids( std::vector< std::string > &idList )
 }
 
 bool
-get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFields )
+get_zone_object( RESTHttpClient &client, std::string zoneID, std::map< std::string, std::string > &objFields )
 {
-    RESTHttpClient client;
     xmlDocPtr doc;
     std::string contentType;
     unsigned long dataLength;
     unsigned char *dataPtr;
 
     // Acquire the log data
-    client.setRequest( RHC_REQTYPE_GET, "http://localhost:8200/zones/" + zoneID );
+    client.clearRepresentation();
+    client.setRequest( RHC_REQTYPE_GET, "zones/" + zoneID );
     client.getOutboundRepresentation().addHTTPHeader( "Accept", "*/*" );
     client.makeRequest();
 
@@ -1763,13 +1749,13 @@ get_zone_object( std::string zoneID, std::map< std::string, std::string > &objFi
 }
 
 void
-get_zone_list( bool detail )
+get_zone_list( RESTHttpClient &client, bool detail )
 {
     std::vector< std::string > idList;
 
     std::cout << "ZL: " << detail << std::endl;
 
-    if( get_zone_ids( idList ) == true )
+    if( get_zone_ids( client, idList ) == true )
     {
         std::cerr << "ERROR: Unable to retrieve zone id list." << std::endl;
         return;
@@ -1785,7 +1771,7 @@ get_zone_list( bool detail )
         
         if( detail )
         {
-            get_zone_object( *it, objFields );
+            get_zone_object( client, *it, objFields );
 
             for( std::map< std::string, std::string >::iterator fi = objFields.begin(); fi != objFields.end(); ++fi )
             {
@@ -1797,60 +1783,60 @@ get_zone_list( bool detail )
     std::cout << std::endl;
 }
 
-void get_zone_group_rules( bool detail, std::string zgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+void get_zone_group_rules( RESTHttpClient &client, bool detail, std::string zgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
 {
     idList.clear();
     objList.clear();
 
-    std::string url = "http://localhost:8200/schedule/zone-groups/" + zgID + "/members";
+    std::string url = "schedule/zone-groups/" + zgID + "/members";
 
-    get_list_of_ids( url, "zone-rule-list", idList );
+    get_list_of_ids( client, url, "zone-rule-list", idList );
 
     if( detail )
     {
-        get_objects_for_ids( url, "tmpname", idList, objList );
+        get_objects_for_ids( client, url, "tmpname", idList, objList );
     }
 
 }
 
 void 
-get_zone_group_details( std::string zgID, RESTContentNode &zgObj, std::vector< RESTContentNode > &zroList )
+get_zone_group_details( RESTHttpClient &client, std::string zgID, RESTContentNode &zgObj, std::vector< RESTContentNode > &zroList )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
 
-    std::string url = "http://localhost:8200/schedule/zone-groups";
+    std::string url = "schedule/zone-groups";
 
     idList.push_back( zgID );
 
-    get_objects_for_ids( url, "tmpname", idList, objList );
+    get_objects_for_ids( client, url, "tmpname", idList, objList );
 
     zgObj = objList[0];
 
-    get_zone_group_rules( true, zgID, idList, zroList ); 
+    get_zone_group_rules( client, true, zgID, idList, zroList ); 
 }
 
 void 
-get_zone_groups( bool detail )
+get_zone_groups( RESTHttpClient &client, bool detail )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
     unsigned long offset = 0;
 
-    std::string url = "http://localhost:8200/schedule/zone-groups";
+    std::string url = "schedule/zone-groups";
 
-    get_list_of_ids( url, "zone-group-list", idList );
+    get_list_of_ids( client, url, "zone-group-list", idList );
 
     if( detail )
     {
-        get_objects_for_ids( url, "tmpname", idList, objList );
+        get_objects_for_ids( client, url, "tmpname", idList, objList );
 
         for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
         {  
             std::vector< std::string > zriList;
             std::vector< RESTContentNode > zroList;
 
-            get_zone_group_rules( true, it->getID(), zriList, zroList ); 
+            get_zone_group_rules( client, true, it->getID(), zriList, zroList ); 
     
     
             display_zone_group( offset, *it );
@@ -1863,59 +1849,59 @@ get_zone_groups( bool detail )
         display_id_list( "Zone Groups", idList );
 }
 
-void get_trigger_group_rules( bool detail, std::string tgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
+void get_trigger_group_rules( RESTHttpClient &client, bool detail, std::string tgID, std::vector< std::string > &idList, std::vector< RESTContentNode > &objList )
 {
     idList.clear();
     objList.clear();
 
-    std::string url = "http://localhost:8200/schedule/trigger-groups/" + tgID + "/members";
+    std::string url = "schedule/trigger-groups/" + tgID + "/members";
 
-    get_list_of_ids( url, "trigger-rule-list", idList );
+    get_list_of_ids( client, url, "trigger-rule-list", idList );
 
     if( detail )
     {
-        get_objects_for_ids( url, "tmpname", idList, objList );
+        get_objects_for_ids( client, url, "tmpname", idList, objList );
     }
 }
 
 void 
-get_trigger_group_details( std::string tgID, RESTContentNode &tgObj, std::vector< RESTContentNode > &troList )
+get_trigger_group_details( RESTHttpClient &client, std::string tgID, RESTContentNode &tgObj, std::vector< RESTContentNode > &troList )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
 
-    std::string url = "http://localhost:8200/schedule/trigger-groups";
+    std::string url = "schedule/trigger-groups";
 
     idList.push_back( tgID );
 
-    get_objects_for_ids( url, "tmpname", idList, objList );
+    get_objects_for_ids( client, url, "tmpname", idList, objList );
 
     tgObj = objList[0];
 
-    get_trigger_group_rules( true, tgID, idList, troList ); 
+    get_trigger_group_rules( client, true, tgID, idList, troList ); 
 }
 
 void 
-get_trigger_groups( bool detail )
+get_trigger_groups( RESTHttpClient &client, bool detail )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
     unsigned long offset = 0;
 
-    std::string url = "http://localhost:8200/schedule/trigger-groups";
+    std::string url = "schedule/trigger-groups";
 
-    get_list_of_ids( url, "trigger-group-list", idList );
+    get_list_of_ids( client, url, "trigger-group-list", idList );
 
     if( detail )
     {
-        get_objects_for_ids( url, "tmpname", idList, objList );
+        get_objects_for_ids( client, url, "tmpname", idList, objList );
 
         for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
         {  
             std::vector< std::string > triList;
             std::vector< RESTContentNode > troList;
 
-            get_trigger_group_rules( true, it->getID(), triList, troList ); 
+            get_trigger_group_rules( client, true, it->getID(), triList, troList ); 
     
             display_trigger_group( offset, *it );
             display_trigger_rule_list( offset+4, troList );
@@ -1928,18 +1914,18 @@ get_trigger_groups( bool detail )
         display_id_list( "Trigger Groups", idList );
 }
 
-void get_schedule_events( bool detail )
+void get_schedule_events( RESTHttpClient &client, bool detail )
 {
     std::vector< std::string > idList;
     std::vector< RESTContentNode > objList;
 
-    std::string url = "http://localhost:8200/schedule/rules";
+    std::string url = "schedule/rules";
 
-    get_list_of_ids( url, "event-rule-list", idList );
+    get_list_of_ids( client, url, "event-rule-list", idList );
 
     if( detail )
     {
-        get_objects_for_ids( url, "tmpname", idList, objList );
+        get_objects_for_ids( client, url, "tmpname", idList, objList );
 
         for( std::vector< RESTContentNode >::iterator it = objList.begin(); it != objList.end(); it++ )
         {  
@@ -1953,14 +1939,14 @@ void get_schedule_events( bool detail )
             it->getField( "trigger-group-id", tgID );
             if( tgID.empty() == false )
             {
-                get_trigger_group_details( tgID, tgObj, troList );
+                get_trigger_group_details( client, tgID, tgObj, troList );
             }
 
             std::string zgID;
             it->getField( "zone-group-id", zgID );
             if( zgID.empty() == false )
             {
-                get_zone_group_details( zgID, zgObj, zroList );
+                get_zone_group_details( client, zgID, zgObj, zroList );
             }
 
             display_schedule_event( offset, *it );
@@ -2069,33 +2055,38 @@ int main( int argc, char* argv[] )
     // In windows, this will init the winsock stuff 
     //curl_global_init(CURL_GLOBAL_ALL);
 
+    // Setup a common client.
+    RESTHttpClient client;
+    client.setHost( "localhost:8200" );
+
+    // Determine the request
     if( vm.count( "zone-list" ) )
     {
-        get_zone_list( (vm.count( "detail" ) ? true : false) );
+        get_zone_list( client, (vm.count( "detail" ) ? true : false) );
     }
     else if( vm.count( "get-event-log" ) )
     {
-        get_event_log();
+        get_event_log( client );
     }
     else if( vm.count( "get-status" ) )
     {
-        get_status();
+        get_status( client );
     }
     else if( vm.count( "get-calendar" ) )
     {
-        get_calendar( periodStr );
+        get_calendar( client, periodStr );
     }
     else if( vm.count( "zone-groups" ) )
     {
-        get_zone_groups( vm.count( "detail" ) ? true : false );
+        get_zone_groups( client, vm.count( "detail" ) ? true : false );
     }
     else if( vm.count( "trigger-groups" ) )
     {
-        get_trigger_groups( vm.count( "detail" ) ? true : false );
+        get_trigger_groups( client, vm.count( "detail" ) ? true : false );
     }
     else if( vm.count( "schedule-events" ) )
     {
-        get_schedule_events( vm.count( "detail" ) ? true : false );
+        get_schedule_events( client, vm.count( "detail" ) ? true : false );
     }
     else if( vm.count( "new-zone-group" ) )
     {
@@ -2113,7 +2104,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        create_zone_group( nameStr, descStr, zoneSpecStr, newZGID );
+        create_zone_group( client, nameStr, descStr, zoneSpecStr, newZGID );
 
         std::cout << "Zone Group created successfully. ( ID: " << newZGID << " )" << std::endl; 
     }
@@ -2125,7 +2116,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        update_zone_group( zgID, nameStr, descStr );
+        update_zone_group( client, zgID, nameStr, descStr );
     }
     else if( vm.count( "delete-zone-group" ) )
     {
@@ -2135,7 +2126,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        delete_zone_group( zgID );
+        delete_zone_group( client, zgID );
     }
     else if( vm.count( "add-zone-rules" ) )
     {
@@ -2145,7 +2136,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        add_zone_rules( zgID, zoneSpecStr );
+        add_zone_rules( client, zgID, zoneSpecStr );
     }
     else if( vm.count( "delete-zone-rule" ) )
     {
@@ -2161,7 +2152,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        delete_zone_rule( zgID, zrID );
+        delete_zone_rule( client, zgID, zrID );
     }
     else if( vm.count( "new-trigger-group" ) )
     {
@@ -2179,13 +2170,13 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        create_trigger_group( nameStr, descStr, tgID );
+        create_trigger_group( client, nameStr, descStr, tgID );
 
         std::cout << "Trigger Group created successfully. ( ID: " << tgID << " )" << std::endl; 
 
         if( vm.count( "time-spec" ) )
         {
-            add_trigger_rules( tgID, timeSpecStr );
+            add_trigger_rules( client, tgID, timeSpecStr );
         }
     }
     else if( vm.count( "update-trigger-group" ) )
@@ -2196,7 +2187,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        update_trigger_group( tgID, nameStr, descStr );
+        update_trigger_group( client, tgID, nameStr, descStr );
     }
     else if( vm.count( "delete-trigger-group" ) )
     {
@@ -2206,7 +2197,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        delete_trigger_group( tgID );
+        delete_trigger_group( client, tgID );
     }
     else if( vm.count( "add-trigger-rules" ) )
     {
@@ -2216,7 +2207,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        add_trigger_rules( tgID, timeSpecStr );
+        add_trigger_rules( client, tgID, timeSpecStr );
     }
     else if( vm.count( "delete-trigger-rule" ) )
     {
@@ -2232,7 +2223,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        delete_trigger_rule( tgID, trID );
+        delete_trigger_rule( client, tgID, trID );
     }
     else if( vm.count( "new-schedule-event" ) )
     {
@@ -2262,7 +2253,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        create_schedule_rule( nameStr, descStr, zgID, tgID, erID);
+        create_schedule_rule( client, nameStr, descStr, zgID, tgID, erID);
     }
     else if( vm.count( "update-schedule-event" ) )
     {
@@ -2272,7 +2263,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        update_schedule_rule( seID, nameStr, descStr, zgID, tgID );
+        update_schedule_rule( client, seID, nameStr, descStr, zgID, tgID );
     }
     else if( vm.count( "delete-schedule-event" ) )
     {
@@ -2282,7 +2273,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        delete_schedule_rule( seID );
+        delete_schedule_rule( client, seID );
     }
     else if( vm.count( "enable-schedule-event" ) )
     {
@@ -2292,7 +2283,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        enable_schedule_rule( seID );
+        enable_schedule_rule( client, seID );
     }
     else if( vm.count( "disable-schedule-event" ) )
     {
@@ -2302,7 +2293,7 @@ int main( int argc, char* argv[] )
             return( -1 );
         }
 
-        disable_schedule_rule( seID );
+        disable_schedule_rule( client, seID );
     }
 
     // Success
