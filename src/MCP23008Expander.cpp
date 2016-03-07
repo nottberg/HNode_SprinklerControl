@@ -66,6 +66,8 @@ MCP23008Expander::getState( Switch *io, int &state )
     if( g_mcp23008_check_pin_state( expander, SwitchID ) )
         state = 1;
 
+    printf( "getState: %d\n", state);
+
     return false;    
 }
 

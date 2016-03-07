@@ -136,6 +136,23 @@ Zone::addSwitch( Switch *swObj )
     valveList.push_back( swObj );
 }
 
+bool 
+Zone::isStateOn()
+{
+    bool result = false;
+
+    // Search through the switch list to see if any of the switches are on.
+    for( std::vector<Switch *>::iterator it = valveList.begin() ; it != valveList.end(); ++it)
+    {
+        if( (*it)->isStateOn() == true )
+        {
+            result = true;
+        }
+    }    
+
+    return result;
+}
+
 void 
 Zone::setStateOn( std::string origin )
 {

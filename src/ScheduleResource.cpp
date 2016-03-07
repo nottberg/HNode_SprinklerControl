@@ -121,7 +121,7 @@ ScheduleRuleResource::~ScheduleRuleResource()
 }
 
 ScheduleStatusResource::ScheduleStatusResource( ScheduleManager &mgr )
-:RESTResourceRESTStatusProvider( "/schedule/status", mgr, SCHRSRC_STATID_STATUS )
+:RESTResourceRESTStatusProvider( "/dashboard", mgr, SCHRSRC_STATID_STATUS )
 {
 
 }

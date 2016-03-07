@@ -10,6 +10,10 @@
 #include <libxml/xmlwriter.h>
 
 #include <string.h>
+#include <arpa/inet.h>
+
+#include <boost/regex.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include "ScheduleConfig.hpp"
 #include "ScheduleManager.hpp"
@@ -174,6 +178,26 @@ ScheduleDateTime::advanceToMatchingWeekDay( ScheduleDateTime &targetTime )
 
 }
 
+void 
+ScheduleDateTime::retreatToStartOfDay()
+{
+    time_duration td( 0, 0, 0, 0 );
+
+    ptime newTime( time.date(), td );
+
+    time = newTime; 
+}
+
+void 
+ScheduleDateTime::advanceToEndOfDay()
+{
+    time_duration td( 23, 59, 59, 0 );
+
+    ptime newTime( time.date(), td );
+
+    time = newTime; 
+}
+
 bool 
 ScheduleDateTime::isBefore( ScheduleDateTime &cmpTime )
 {
@@ -184,6 +208,12 @@ bool
 ScheduleDateTime::isAfter( ScheduleDateTime &cmpTime )
 {
     return (time >= cmpTime.time);
+}
+
+bool 
+ScheduleDateTime::isSameDay( ScheduleDateTime &cmpTime )
+{
+    return ( time.date() == cmpTime.time.date() );
 }
 
 std::string
@@ -356,6 +386,308 @@ void
 ScheduleTimeIterator::setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval )
 {
     ti = new time_iterator( start.time, interval.td );
+}
+
+
+
+typedef struct TZInfoHeader
+{
+    char magic4[4];
+    char version[1];
+    char reserved[15];
+    char ttisgmtcnt[4]; // UTC/local indicator count
+    char ttisstdcnt[4]; // standard/wall indicator count
+    char leapcnt[4];    // leap seconds count
+    char timecnt[4];    // transistion times count
+    char typecnt[4];    // local time types count
+    char charcnt[4];    // timezone abbreviation strings    
+}TZINFO_HDR_T;
+
+ScheduleTimezone::ScheduleTimezone()
+{
+}
+
+ScheduleTimezone::~ScheduleTimezone()
+{
+
+}
+
+void
+ScheduleTimezone::initFromSystemFiles()
+{
+    struct tm newtime;
+    time_t ltime;
+    char olsenzone[512];
+    char buf[512];
+    size_t readCnt;
+    TZINFO_HDR_T tzhdr;
+
+    unsigned long ttisgmtcnt; // UTC/local indicator count
+    unsigned long ttisstdcnt; // standard/wall indicator count
+    unsigned long leapcnt;    // leap seconds count
+    unsigned long timecnt;    // transistion times count
+    unsigned long typecnt;    // local time types count
+    unsigned long charcnt;    // timezone abbreviation strings
+
+    FILE *filePtr = fopen( "/etc/timezone", "r" );
+    readCnt = fread( olsenzone, 1, sizeof(olsenzone), filePtr ); 
+    fclose( filePtr );
+
+    olsenZone = olsenzone;
+    boost::trim( olsenZone );
+
+    printf("otz: %s\n", olsenZone.c_str() );
+
+    std::string filePath("/usr/share/zoneinfo/");
+    filePath += olsenZone;
+
+    filePtr = fopen( filePath.c_str(), "r" );
+    if( filePtr == NULL )
+    {
+        perror("zoneinfo");
+        return;
+    }
+
+    // Magic 4
+    readCnt = fread( (void *)&tzhdr, sizeof(tzhdr), 1, filePtr ); 
+
+    printf("magic4: %4.4s\n", tzhdr.magic4 );
+
+    if( strncmp( (const char*) tzhdr.magic4, "TZif", 4 ) != 0 )
+    {
+        printf("magic4 mismatch\n");
+        return;
+    }
+
+    // 6 item counts
+    ttisgmtcnt = ntohl( *((unsigned long *)&tzhdr.ttisgmtcnt) );
+    ttisstdcnt = ntohl( *((unsigned long *)&tzhdr.ttisstdcnt) );
+    leapcnt = ntohl( *((unsigned long *)&tzhdr.leapcnt) );
+    timecnt = ntohl( *((unsigned long *)&tzhdr.timecnt) );
+    typecnt = ntohl( *((unsigned long *)&tzhdr.typecnt) );
+    charcnt = ntohl( *((unsigned long *)&tzhdr.charcnt) );
+
+    //printf( "Size: %ld\n", sizeof(tzhdr) );
+    //printf( "Version: %c\n", tzhdr.version[0] );
+    //printf( "Counts: %ld, %ld, %ld, %ld, %ld, %ld\n", ttisgmtcnt, ttisstdcnt, leapcnt, timecnt, typecnt, charcnt );
+   
+    // Skip
+    unsigned long skip = 0;
+    skip += (timecnt * 4); // Transistion times (longs)
+    skip += (timecnt * 1); // Local Time Types for transition times
+    skip += (typecnt * (4 + 1 + 1)); // ttinfo structure, gmtoff, isdst, abbrind
+    skip += (leapcnt * (4 + 4)); // leapcnt pairs
+    skip += (ttisstdcnt * 1); // standard or wall clock indicators
+    skip += (ttisgmtcnt * 1); // utc or locat time indicators
+    skip += charcnt * 1;
+
+    //printf( "skip1: %ld\n", skip );
+
+    // Skip over first set of data
+    fseek( filePtr, skip, SEEK_CUR );
+
+    if( tzhdr.version[0] != '2' )
+        return;
+
+    // Magic 4
+    readCnt = fread( (void *)&tzhdr, sizeof(tzhdr), 1, filePtr ); 
+
+    // 6 item counts
+    ttisgmtcnt = ntohl( *((unsigned long *)&tzhdr.ttisgmtcnt) );
+    ttisstdcnt = ntohl( *((unsigned long *)&tzhdr.ttisstdcnt) );
+    leapcnt = ntohl( *((unsigned long *)&tzhdr.leapcnt) );
+    timecnt = ntohl( *((unsigned long *)&tzhdr.timecnt) );
+    typecnt = ntohl( *((unsigned long *)&tzhdr.typecnt) );
+    charcnt = ntohl( *((unsigned long *)&tzhdr.charcnt) );
+
+    //printf( "Counts2: %ld, %ld, %ld, %ld, %ld, %ld\n", ttisgmtcnt, ttisstdcnt, leapcnt, timecnt, typecnt, charcnt );
+   
+    // Skip
+    skip = 0;
+    skip += (timecnt * 8); // Transistion times (longs)
+    skip += (timecnt * 1); // Local Time Types for transition times
+    skip += (typecnt * (4 + 1 + 1)); // ttinfo structure, gmtoff, isdst, abbrind
+    skip += (leapcnt * (4 + 8)); // leapcnt pairs
+    skip += (ttisstdcnt * 1); // standard or wall clock indicators
+    skip += (ttisgmtcnt * 1); // utc or locat time indicators
+    skip += charcnt * 1;
+
+    //printf( "skip2: %ld\n", skip );
+
+    // Skip over second set of data
+    fseek( filePtr, skip, SEEK_CUR );
+
+    readCnt = fread( (void *)buf, 1, sizeof(buf), filePtr ); 
+
+    printf( "buf read: %d\n", readCnt );
+    printf( "buf: %*.*s\n", readCnt, readCnt, buf );
+
+    posixStr.append( buf, readCnt );
+    boost::trim( posixStr );
+
+    fclose( filePtr );
+
+    //printf("otz: %s\n", olsenzone );
+
+    //ltime=time(&ltime);
+    //localtime_r(&ltime, &newtime);
+    //printf("The date and time is %s", asctime_r(&newtime, buf));
+    //printf("tz: %s\n", newtime.tm_zone );
+
+    // Swap the polarity to match boost's implementation
+    boost::regex expression( "^([A-Z]+)([-]?)([0-9:]+)(.*)" );
+    boost::smatch what;
+    std::string boostStr;
+
+    if( boost::regex_match( posixStr, what, expression ) )
+    {
+        // what[0] contains whole string
+        // what[1] contains normal timezone abbreviation 
+        // what[2] contains optional '-' character
+        // what[3] contains the time offset from UTC 
+        // what[4] contains the savings time abbreviation, and the date for change over.
+        boostStr = what[1].str();
+
+        if( what[2].str().empty() )
+        {
+            boostStr += "-";
+        }
+
+        boostStr += what[3].str();
+        boostStr += what[4].str();
+    }
+    else
+    {
+        // Defualt to UTC time
+        boostStr = "UTC0";
+    }
+
+    std::cout << "boostStr" << boostStr << std::endl;
+
+    time_zone_ptr tzPtr( new posix_time_zone( boostStr ) );
+//    time_zone_ptr tzPtr( new posix_time_zone( "MST-7MDT,M3.2.0,M11.1.0" ) );
+
+    std::cout << tzPtr->to_posix_string() << std::endl;
+
+    ptz = tzPtr;
+}
+
+std::string 
+ScheduleTimezone::getOlsenStr() 
+{ 
+    return olsenZone; 
+}
+
+std::string 
+ScheduleTimezone::getPosixStr() 
+{ 
+    return ptz->to_posix_string(); 
+}
+
+ScheduleLocalDateTime::ScheduleLocalDateTime()
+{
+
+}
+
+ScheduleLocalDateTime::ScheduleLocalDateTime( ScheduleDateTime &timestamp )
+{
+    // Copy over the timestamp
+    utcObj = timestamp;
+
+    // Use the system timezone.
+    tzObj.initFromSystemFiles();
+}
+
+ScheduleLocalDateTime::ScheduleLocalDateTime( ScheduleDateTime &timestamp, ScheduleTimezone &timezone )
+{
+    // Copy over the timestamp
+    utcObj = timestamp;
+
+    // Use the provided timezone.
+    tzObj = timezone;
+}
+
+ScheduleLocalDateTime::~ScheduleLocalDateTime()
+{
+
+}
+
+void 
+ScheduleLocalDateTime::setTimezone( ScheduleTimezone &timezone )
+{
+    tzObj = timezone;
+}
+
+void 
+ScheduleLocalDateTime::setTime( ScheduleDateTime &time )
+{
+    utcObj = time;
+}
+
+void 
+ScheduleLocalDateTime::setFromCurrentSystemTime()
+{
+    // Get the timezone for the local system time.
+    tzObj.initFromSystemFiles();
+
+    // Get the current time from the system clock.
+    utcObj.getCurrentTime();
+}
+
+ScheduleDateTime 
+ScheduleLocalDateTime::getUTCTime()
+{
+    return utcObj;
+}
+
+std::string 
+ScheduleLocalDateTime::getSimpleString()
+{
+    local_date_time ltime( utcObj.time, tzObj.ptz );
+
+    std::cout << "local getSimpleStr: " << ltime << std::endl;
+
+    return to_simple_string( ltime.local_time() );
+}
+
+std::string 
+ScheduleLocalDateTime::getISOString()
+{
+    local_date_time ltime( utcObj.time, tzObj.ptz );
+
+    return to_iso_string( ltime.local_time() );
+}
+
+std::string 
+ScheduleLocalDateTime::getExtendedISOString()
+{
+    local_date_time ltime( utcObj.time, tzObj.ptz );
+
+    return to_iso_extended_string( ltime.local_time() );
+}
+
+void 
+ScheduleLocalDateTime::retreatToStartOfDay()
+{
+    local_date_time ltime( utcObj.time, tzObj.ptz );
+
+    time_duration td( 0, 0, 0, 0 );
+
+    local_date_time newTime( ltime.date(), td, tzObj.ptz, local_date_time::NOT_DATE_TIME_ON_ERROR );
+
+    utcObj.time = newTime.utc_time(); 
+}
+
+void 
+ScheduleLocalDateTime::advanceToEndOfDay()
+{
+    local_date_time ltime( utcObj.time, tzObj.ptz );
+
+    time_duration td( 23, 59, 59, 0 );
+
+    local_date_time newTime( ltime.date(), td, tzObj.ptz, local_date_time::NOT_DATE_TIME_ON_ERROR );
+
+    utcObj.time = newTime.utc_time(); 
 }
 
 ScheduleEvent::ScheduleEvent()
@@ -895,7 +1227,20 @@ ScheduleZoneGroup::setContentNodeFromFields( RESTContentNode *objCN )
     // Create the root object
     objCN->setAsObject( "schedule-zone-group" );
     objCN->setID( getID() );
+    objCN->setField( "name", getName() );
     objCN->setField( "policy", getZoneEventPolicyStr() );
+}
+
+void
+ScheduleZoneGroup::setName( std::string value )
+{
+    name = value;
+}
+
+std::string
+ScheduleZoneGroup::getName()
+{
+    return name;
 }
 
 void 
@@ -2330,6 +2675,7 @@ ScheduleManager::ScheduleManager()
     zoneMgr         = NULL;
     nextID          = 1;
     serializeEvents = true;
+    masterEnable    = true;
 }
 
 ScheduleManager::~ScheduleManager()
@@ -2478,6 +2824,9 @@ ScheduleManager::loadConfiguration()
 
     // Clear out any existing items.
     clear();
+
+    // Load the local timezone information
+    localtz.initFromSystemFiles();
 
     // Read everything from a file
     cfgReader.readConfig( filePath, this );
@@ -2705,24 +3054,113 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
     {
         case SCHRSRC_STATID_STATUS:
         {
-            // Give the root element a tag name
-            outNode->setAsObject( "schedule-status" );
+            ScheduleEventList *eventList;
 
+            // Give the root element a tag name
+            outNode->setAsObject( "irrigation-dashboard" );
+
+            // Give the currect time as we see it
             ScheduleDateTime timestamp;
             timestamp.getCurrentTime();
             outNode->setField( "timestamp", timestamp.getISOString() );
 
-#if 0
-            for( std::list< ScheduleEventLogEntry >::iterator it = logData.begin(); it != logData.end() ; it++ )
+            // Give the controllers timezone
+            std::string tmpStr = localtz.getOlsenStr();
+            outNode->setField( "timezone", tmpStr );
+
+            // Give the controllers timezone
+            tmpStr = localtz.getPosixStr();
+            outNode->setField( "posix-timezone", tmpStr );
+
+            // Master enable state
+            outNode->setField( "master-enable", masterEnable ? "true" : "false" );
+
+            // Add a list for any active zones
+            RESTContentNode *azList = RESTContentHelperFactory::newContentNode();
+
+            azList->setAsArray( "zone-states" );
+            outNode->addChild( azList );
+
+            for( int indx = 0; indx < zoneMgr->getZoneCount(); indx++ )
             {
+                Zone *zonePtr;
+
+                zonePtr = zoneMgr->getZoneByIndex( indx );
+
                 RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
 
-                curNode->setAsObject( "entry" );
-                it->setContentNodeFromFields( curNode );
+                curNode->setAsObject( "zone" );
 
-                rtnNode->addChild( curNode );
+                curNode->setField( "id", zonePtr->getID() );
+                curNode->setField( "name", zonePtr->getName() );
+                curNode->setField( "state", zonePtr->isStateOn() ? "on" : "off" );
+
+                azList->addChild( curNode );
             }
-#endif
+
+            // Add todays scheduled events
+            RESTContentNode *dsList = RESTContentHelperFactory::newContentNode();
+
+            dsList->setAsArray( "todays-schedule" );
+            outNode->addChild( dsList );
+
+/*
+            ScheduleDateTime startTime( timestamp );
+            startTime.retreatToStartOfDay();
+
+            ScheduleDateTime endTime( timestamp );
+            endTime.advanceToEndOfDay();
+*/
+            ScheduleLocalDateTime startTime( timestamp );
+            startTime.retreatToStartOfDay();
+
+            ScheduleLocalDateTime endTime( timestamp );
+            endTime.advanceToEndOfDay();
+
+            eventList = getPotentialEventsForPeriod( startTime.getUTCTime(), endTime.getUTCTime() );
+
+            // Do processing for active rules
+            for( unsigned int index = 0; index < eventList->getEventCount(); ++index )
+            {
+                ScheduleEvent *event = eventList->getEvent( index );
+
+                ScheduleDateTime evStart;
+                ScheduleDateTime evEnd;
+
+                event->getStartTime( evStart );
+                event->getEndTime( evEnd );
+
+                std::cout << "Event Entry -- ID: " << event->getId() << " Title: " << event->getDescription() << " Start: " << evStart.getISOString() << " End: " << evEnd.getISOString() << std::endl;
+
+                RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
+
+                curNode->setAsObject( "event" );
+
+                curNode->setField( "id", event->getId() );
+                curNode->setField( "start-time", evStart.getISOString() );
+                curNode->setField( "end-time", evEnd.getISOString() );
+                curNode->setField( "zone-name", event->getZoneRecord().getZoneName() );
+                curNode->setField( "trigger-name", event->getTriggerRecord().getTriggerName() );
+                curNode->setField( "duration", event->getDurationStr() );  
+                curNode->setField( "erID", event->getTriggerRecord().getERID() );
+                curNode->setField( "zgID", event->getZoneRecord().getGroupID() );
+                curNode->setField( "zrID", event->getZoneRecord().getRuleID() );
+                curNode->setField( "tgID", event->getTriggerRecord().getGroupID() );
+                curNode->setField( "trID", event->getTriggerRecord().getRuleID() );
+          
+                dsList->addChild( curNode );
+            } 
+
+            freeScheduleEventList( eventList );
+    
+
+            // Add todays log events
+            RESTContentNode *evList = RESTContentHelperFactory::newContentNode();
+
+            outNode->addChild( evList );
+
+            eventLog.populateTodaysEventsNode( evList, timestamp );
+
         }
         break;
 
@@ -2878,6 +3316,12 @@ ScheduleEventLogEntry::setEvent( unsigned long seqNumber, std::string eventID, s
     setEvent( seqNumber, eventID, eventMsg );
 }
 
+bool 
+ScheduleEventLogEntry::onThisDay( ScheduleDateTime &targetDay )
+{
+    return timestamp.isSameDay( targetDay );
+}
+
 std::string 
 ScheduleEventLogEntry::getTimestampAsStr()
 {
@@ -2903,7 +3347,7 @@ ScheduleEventLogEntry::setContentNodeFromFields( RESTContentNode *objCN )
 
     std::cout << "ScheduleEventLogEntry::setContentNodeFromFields - 1" << std::endl;
 
-    sprintf( snStr, "%d", seqNum );
+    sprintf( snStr, "%ld", seqNum );
  
     // Fill in fields
     objCN->setAsObject( "log-entry" );
@@ -2932,7 +3376,7 @@ ScheduleEventLog::populateContentNode( RESTContentNode *rtnNode )
     // Give the root element a tag name
     rtnNode->setAsArray( "schedule-event-log" );
 
-    for( std::list< ScheduleEventLogEntry >::iterator it = logData.begin(); it != logData.end() ; it++ )
+    for( std::list< ScheduleEventLogEntry >::reverse_iterator it = logData.rbegin(); it != logData.rend() ; it++ )
     {
         RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
 
@@ -2940,6 +3384,26 @@ ScheduleEventLog::populateContentNode( RESTContentNode *rtnNode )
         it->setContentNodeFromFields( curNode );
 
         rtnNode->addChild( curNode );
+    }
+}
+
+void
+ScheduleEventLog::populateTodaysEventsNode( RESTContentNode *rtnNode, ScheduleDateTime &targetDay )
+{
+    // Give the root element a tag name
+    rtnNode->setAsArray( "todays-events" );
+
+    // Return the events that are on the current day.
+    for( std::list< ScheduleEventLogEntry >::reverse_iterator it = logData.rbegin(); it != logData.rend() ; it++ )
+    {
+        RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
+
+        if( it->onThisDay( targetDay ) )
+        {
+            curNode->setAsObject( "entry" );
+            it->setContentNodeFromFields( curNode );
+            rtnNode->addChild( curNode );
+        }
     }
 }
 

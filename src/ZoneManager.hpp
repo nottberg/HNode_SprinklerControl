@@ -39,6 +39,8 @@ class Zone
         std::string getDescription();
         std::string getMapPathID();
 
+        bool isStateOn();
+
         bool getDiagramLocate( std::string &diagramData );
         bool getDiagramActive( std::string &diagramData );
 

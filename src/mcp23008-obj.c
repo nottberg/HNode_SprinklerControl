@@ -530,7 +530,7 @@ g_mcp23008_check_pin_state(GMCP23008 *MCP23008, int pin )
 	priv  = G_MCP23008_GET_PRIVATE (MCP23008);
 
     if( priv->i2cActive == FALSE )
-        return TRUE;
+        return FALSE;
 
     priv->currentState = i2c_smbus_read_byte_data( priv->i2cdev, MCP23008_GPIO );
 

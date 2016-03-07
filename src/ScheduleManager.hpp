@@ -9,6 +9,7 @@
 
 #include "boost/date_time/gregorian/gregorian.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp" 
+#include "boost/date_time/local_time/local_time.hpp"
 
 #include <libxml/encoding.h>
 #include <libxml/xmlwriter.h>
@@ -18,6 +19,7 @@
 #include "ZoneManager.hpp"
 
 using namespace boost::posix_time;
+using namespace boost::local_time;
 using namespace boost::gregorian;
 
 // Forward Declaration
@@ -31,6 +33,7 @@ class ScheduleDateTime
     friend class ScheduleTimeDuration;
     friend class ScheduleTimePeriod;
     friend class ScheduleTimeIterator;
+    friend class ScheduleLocalDateTime;
 
     private:
         //ptime time;
@@ -82,8 +85,13 @@ class ScheduleDateTime
 
         void advanceToMatchingWeekDay( ScheduleDateTime &time );
 
+        void retreatToStartOfDay();
+        void advanceToEndOfDay();
+
         bool isBefore( ScheduleDateTime &time );
         bool isAfter( ScheduleDateTime &time ); 
+
+        bool isSameDay( ScheduleDateTime &time );
 };
 
 class ScheduleTimeDuration
@@ -144,6 +152,59 @@ class ScheduleTimeIterator
         void setFromStartAndInterval( ScheduleDateTime &start, ScheduleTimeDuration &interval );
 };
 
+class ScheduleTimezone
+{
+    friend class ScheduleLocalDateTime;
+
+    private:
+
+    protected:
+        std::string olsenZone;
+        std::string posixStr;
+ 
+        time_zone_ptr ptz;
+
+    public:
+
+        ScheduleTimezone();
+       ~ScheduleTimezone();
+
+        void initFromSystemFiles();
+
+        std::string getOlsenStr();
+        std::string getPosixStr();
+};
+
+class ScheduleLocalDateTime
+{
+    
+    protected:
+        ScheduleTimezone  tzObj;
+        ScheduleDateTime  utcObj;
+
+    public:
+
+        ScheduleLocalDateTime();
+        ScheduleLocalDateTime( ScheduleDateTime &timestamp );
+        ScheduleLocalDateTime( ScheduleDateTime &timestamp, ScheduleTimezone &timezone );
+
+       ~ScheduleLocalDateTime();
+
+        void setTimezone( ScheduleTimezone &timezone );
+        void setTime( ScheduleDateTime &time );
+
+        void setFromCurrentSystemTime();
+
+        ScheduleDateTime getUTCTime();
+
+        std::string getSimpleString();
+        std::string getISOString();
+        std::string getExtendedISOString();
+
+        void retreatToStartOfDay();
+        void advanceToEndOfDay();
+};
+
 class SMException : public std::exception
 {
     private:
@@ -191,6 +252,8 @@ class ScheduleEventLogEntry
         void setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg );
         void setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg, RESTContentNode &eventData );
         
+        bool onThisDay( ScheduleDateTime &targetDay );
+
         std::string   getTimestampAsStr();
         unsigned long getSequenceNumber();
         std::string   getEventID();
@@ -213,6 +276,8 @@ class ScheduleEventLog
        ~ScheduleEventLog();
 
         void populateContentNode( RESTContentNode *rootNode );
+
+        void populateTodaysEventsNode( RESTContentNode *rootNode, ScheduleDateTime &targetDay );
 
         void addLogEntry( std::string eventID, std::string eventMsg );
         void addLogEntry( std::string eventID, std::string eventMsg, RESTContentNode &eventData );
@@ -487,6 +552,9 @@ class ScheduleZoneGroup : public RESTContentNode
         ScheduleZoneGroup( RESTContentManager &objMgr );
        ~ScheduleZoneGroup();      
 
+        void setName( std::string value );
+        std::string getName();
+
         void setZoneEventPolicy( SER_ZONE_EVENT_POLICY eventPolicy );
         void setZoneEventPolicyFromStr( std::string value );
 
@@ -702,7 +770,11 @@ class ScheduleManager : public RESTContentManager
 
         unsigned long nextID;
 
+        bool masterEnable;
+
         bool serializeEvents;
+
+        ScheduleTimezone localtz;
 
         ScheduleEventLog  eventLog;
 
