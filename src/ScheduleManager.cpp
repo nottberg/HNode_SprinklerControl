@@ -3104,13 +3104,6 @@ ScheduleManager::populateContentNodeFromStatusProvider( unsigned int id, RESTCon
             dsList->setAsArray( "todays-schedule" );
             outNode->addChild( dsList );
 
-/*
-            ScheduleDateTime startTime( timestamp );
-            startTime.retreatToStartOfDay();
-
-            ScheduleDateTime endTime( timestamp );
-            endTime.advanceToEndOfDay();
-*/
             ScheduleLocalDateTime startTime( timestamp );
             startTime.retreatToStartOfDay();
 
@@ -3317,6 +3310,17 @@ ScheduleEventLogEntry::setEvent( unsigned long seqNumber, std::string eventID, s
 }
 
 bool 
+ScheduleEventLogEntry::isBetween( ScheduleDateTime startTime, ScheduleDateTime endTime )
+{
+    if( timestamp.isBefore( endTime ) && timestamp.isAfter( startTime ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool 
 ScheduleEventLogEntry::onThisDay( ScheduleDateTime &targetDay )
 {
     return timestamp.isSameDay( targetDay );
@@ -3388,8 +3392,14 @@ ScheduleEventLog::populateContentNode( RESTContentNode *rtnNode )
 }
 
 void
-ScheduleEventLog::populateTodaysEventsNode( RESTContentNode *rtnNode, ScheduleDateTime &targetDay )
+ScheduleEventLog::populateTodaysEventsNode( RESTContentNode *rtnNode, ScheduleDateTime &timestamp )
 {
+    ScheduleLocalDateTime startTime( timestamp );
+    startTime.retreatToStartOfDay();
+
+    ScheduleLocalDateTime endTime( timestamp );
+    endTime.advanceToEndOfDay();
+
     // Give the root element a tag name
     rtnNode->setAsArray( "todays-events" );
 
@@ -3398,7 +3408,7 @@ ScheduleEventLog::populateTodaysEventsNode( RESTContentNode *rtnNode, ScheduleDa
     {
         RESTContentNode *curNode = RESTContentHelperFactory::newContentNode();
 
-        if( it->onThisDay( targetDay ) )
+        if( it->isBetween( startTime.getUTCTime(), endTime.getUTCTime() ) )
         {
             curNode->setAsObject( "entry" );
             it->setContentNodeFromFields( curNode );

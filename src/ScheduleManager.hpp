@@ -253,6 +253,7 @@ class ScheduleEventLogEntry
         void setEvent( unsigned long seqNumber, std::string eventID, std::string eventMsg, RESTContentNode &eventData );
         
         bool onThisDay( ScheduleDateTime &targetDay );
+        bool isBetween( ScheduleDateTime startTime, ScheduleDateTime endTime );
 
         std::string   getTimestampAsStr();
         unsigned long getSequenceNumber();
