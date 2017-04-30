@@ -137,4 +137,19 @@ class ScheduleCalendarEventResource : public RESTResource
         virtual void restGet( RESTRequest *request );
 };
 
+class ScheduleMainControlsResource : public RESTResource
+{
+    private:
+        ScheduleManager *schManager;
+
+    public:
+        ScheduleMainControlsResource();
+       ~ScheduleMainControlsResource();
+
+        void setScheduleManager( ScheduleManager *schMgr );
+
+        virtual void restGet( RESTRequest *request );
+        virtual void restPut( RESTRequest *request );
+};
+
 #endif //__SCHEDULERESOURCE_H__

@@ -240,3 +240,102 @@ ScheduleCalendarEventResource::restGet( RESTRequest *request )
     request->sendResponse();
 }
 
+
+
+
+ScheduleMainControlsResource::ScheduleMainControlsResource()
+{
+    setURLPattern( "/controls/", (REST_RMETHOD_T)(REST_RMETHOD_GET | REST_RMETHOD_PUT) );
+}
+
+ScheduleMainControlsResource::~ScheduleMainControlsResource()
+{
+
+}
+
+void
+ScheduleMainControlsResource::setScheduleManager( ScheduleManager *schMgr )
+{
+    schManager = schMgr;
+}
+
+void 
+ScheduleMainControlsResource::restGet( RESTRequest *request )
+{
+    std::string rspData;
+
+    std::cout << "ScheduleMainControlsResource::restGet" << std::endl;
+
+#if 0
+    rspData = "<hnode-schedule-event-list>";
+
+    printf( "ScheduleCalendarResource: schManager - 0x%lx\n", (long unsigned int) schManager );
+
+    ScheduleDateTime startTime;
+    startTime.getCurrentTime();
+    startTime.subDays( 15 );
+
+    ScheduleDateTime endTime;
+    endTime.getCurrentTime();
+    endTime.addDays( 15 );
+
+    if( schManager )
+    {
+        ScheduleEventList *eventList;
+
+        eventList = schManager->getPotentialEventsForPeriod( startTime, endTime );
+
+        if( eventList != NULL )
+        {
+            printf( "EventList count: %d\n", eventList->getEventCount() );
+
+            for( int indx = 0; indx < eventList->getEventCount(); indx++ )
+            {
+                ScheduleEvent *event = eventList->getEvent( indx );
+
+                rspData += "<schedule-event>";
+
+                rspData += "<id>";
+                rspData += event->getId();
+                rspData += "</id>";
+       
+                rspData += "<title>";
+                rspData += event->getDescription();
+                rspData += "</title>";
+
+                ScheduleDateTime eventTime;
+
+                event->getStartTime( eventTime );
+                rspData += "<start-time>";
+                rspData += eventTime.getExtendedISOString();
+                rspData += "</start-time>";
+
+                event->getEndTime( eventTime );
+                rspData += "<end-time>";
+                rspData += eventTime.getExtendedISOString();
+                rspData += "</end-time>";
+
+                rspData += "</schedule-event>";
+            }
+
+            schManager->freeScheduleEventList( eventList );
+        }
+    }
+
+    rspData += "</hnode-schedule-event-list>"; 
+
+    RESTRepresentation *rspRep = request->getOutboundRepresentation();
+    rspRep->setSimpleContent( "application/xml", (unsigned char*) rspData.c_str(), rspData.size() );
+#endif
+
+    request->setResponseCode( REST_HTTP_RCODE_OK );
+    request->sendResponse();
+}
+
+void 
+ScheduleMainControlsResource::restPut( RESTRequest *request )
+{
+    std::cout << "ScheduleMainControlsResource::restPut" << std::endl;
+
+}
+
