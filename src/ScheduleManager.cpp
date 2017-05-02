@@ -2632,10 +2632,11 @@ ScheduleEventRule::getPotentialEventsForPeriod( ScheduleEventList &activeEvents,
     char tmpStr[64];
     ScheduleDateTime dummyTime;
 
-    //printf( "ScheduleEventRule -- start updateActiveEvents\n");
-    //printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
-    //printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
-    //printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
+    printf( "ScheduleEventRule -- start updateActiveEvents\n");
+    printf( "ScheduleEventRule -- name: %s\n", name.c_str() );
+    printf( "ScheduleEventRule -- zgID: %s\n", zoneGroupID.c_str() );
+    printf( "ScheduleEventRule -- tgID: %s\n", triggerGroupID.c_str() );
+    printf( "ScheduleEventRule -- enabled: %d\n", enabled );
 
     // Only check the rule if it is enabled.
     if( enabled == false )
