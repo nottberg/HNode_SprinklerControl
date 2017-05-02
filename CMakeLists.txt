@@ -88,7 +88,7 @@ SET( CMAKE_INSTALL_PREFIX /usr )
 
 INSTALL( TARGETS hnode_irrigation_daemon hnode_irrigation_client DESTINATION ${CMAKE_INSTALL_PREFIX}/bin )
 
-INSTALL( FILES ${CMAKE_SOURCE_DIR}/src/scripts/initd/hnode-irrigation-daemon DESTINATION /etc/init.d )
+INSTALL( FILES ${CMAKE_SOURCE_DIR}/src/scripts/initd/hnode-irrigation-daemon DESTINATION /etc/init.d PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ )
 
 #INSTALL( FILES ${CMAKE_BINARY_DIR}/hnode-server-1.0.pc DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/pkgconfig COMPONENT devel )
 
